@@ -12,11 +12,12 @@ from urllib.parse import urljoin,urlsplit
 from pathlib import Path
 from collections import Counter
 
-from navigation import canonical_mia,discover_case,error_kind
+from navigation import canonical_mia,discover_case,error_kind,author_check
 from resolver import ROOT,Document,subpages,rank,norm,sha
 from pilot_full import (PilotClient,WR,soup,extract_blocks,html_revision,html_url,wr_title,
                         redact_text,replay_mismatches)
-from alignment import exact_occurrences
+from alignment import exact_occurrences, aligned_candidates
+from bibliography import catalog_route, VERIFIED_AUTHORS
 from variants import source_variants
 from compare import evaluation
 from section_match import extract_headings, automatic_alignment
@@ -116,9 +117,40 @@ def automatic_selector(quote):
     return max(spans)[-1] if spans else ''
 
 
+def document_alignment(quote,source,fr_docs,en_docs,route_method):
+    """Alignment candidate when metadata identifies two standalone documents.
+    Do not infer parallel sections from a single fetched page in a larger work.
+    """
+    result={'status':'not_applicable','candidates':[],'auto_publish':False,'rights':'unreviewed',
+            'method':'bibliographic_document_alignment_v1'}
+    hits=source.get('occurrences',[])
+    if source.get('status')!='exact_in_examined_documents' or len(hits)!=1 or source.get('occurrences_truncated') or len(en_docs)!=1:
+        return result
+    hit=hits[0]
+    matches=[d for d in fr_docs if d.url==hit['url'] and d.digest==hit['sha256']]
+    if len(matches)!=1: return result
+    fr,en=matches[0],en_docs[0]
+    n,m=(sum(len(norm(b).split()) for b in d.blocks) for d in (fr,en))
+    if min(n,m)<40 or not .5<=m/max(1,n)<=2:
+        return {**result,'status':'incompatible_document_lengths'}
+    result['pair']={'status':'bibliographic_document_hypothesis','fr_url':fr.url,'en_url':en.url,
+                    'route_method':route_method,'length_ratio':round(m/n,4)}
+    attempts=[]
+    for kind in ('sentence','paragraph'):
+        a=aligned_candidates(quote,fr,en,kind)
+        attempts.append({'kind':kind,'status':a['status'],'alignment':a.get('alignment')})
+        result['status']=a['status']
+        if a['candidates']:
+            result['candidates']=[{**c,'pair_route':route_method,'boundary_verified':False,'rights':'unreviewed'} for c in a['candidates']]
+            break
+        if a['status']!='alignment_budget_exceeded': break
+    result['attempts']=attempts
+    return result
+
+
 class Retrieval:
-    def __init__(self,client,max_pages):
-        self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}
+    def __init__(self,client,max_pages,catalog=()):
+        self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
 
     def work(self,provider,root,lang):
         key=(provider,root,lang)
@@ -156,17 +188,60 @@ class Retrieval:
                 if result: return {**result,'stages':stages}
             except Exception as exc:
                 stages.append({**info,'issues':[{'kind':'direct_url_error','error':error_kind(exc)}]})
-        meta=nav['work_metadata']['fr']['mia_urls']
-        if len(meta)==1:
+        meta=nav.get('work_metadata',{}).get('fr',{}).get('mia_urls',[])
+        if len(meta)==1 and meta!=direct:
             docs,info=self.work('mia',meta[0],'fr')
             result=inspect(docs,info)
             if result: return {**result,'stages':stages}
-        docs,info=self.work('wikirouge',nav['route']['fr_title'],'fr')
-        result=inspect(docs,info)
-        if result: return {**result,'stages':stages}
+        root=nav.get('route',{}).get('fr_title')
+        if root:
+            docs,info=self.work('wikirouge',root,'fr')
+            result=inspect(docs,info)
+            if result: return {**result,'stages':stages}
+        variants=list({(c['url'],c['sha256'],c['char_start'],c['char_end']):c for c in variants}.values())
         variants.sort(key=lambda c:(c['token_edits'],c['url'],c['char_start']))
         return {'status':'variant_review_required' if variants else 'source_unconfirmed_in_bounded_scope',
                 'occurrences':[],'variants':variants[:5],'stages':stages}
+
+    def retrieve_catalog(self,case,row,quote):
+        # Only use explicit researched mappings when the ordinary route is
+        # unresolved. Never override a conflicting or ambiguous author.
+        route=catalog_route(row['navigation'].get('input',{}),self.catalog)
+        if route is None: return row
+        entry=route['entry']; row['bibliographic_route']=route
+        if entry['target_provider']=='bibliography_only':
+            row['status']='bibliographic_lead_only'; return row
+        selector=case.get('selector') or automatic_selector(quote)
+        # A catalog route is grounded in the exact cited source URL only.
+        source=self.source(quote,selector,{'input':row['navigation']['input']})
+        row['source']=source
+        if source['status'] not in ('exact_in_examined_documents','variant_review_required'):
+            row['status']='source_needs_review'; return row
+        provider,url=entry['target_provider'],entry['target_url']
+        info={'provider':provider,'scope':'researched_single_target_page_not_complete_edition','root':url,'issues':[],'pages':[]}
+        row['target_attempts']=[info]
+        try:
+            if provider=='mia':
+                doc,_=mia_doc(self.client,url)
+                if canonical_mia(doc.url)!=url: raise ValueError('catalog_target_redirect')
+            else:
+                body,final=self.client.get(url)
+                if wr_title(final,'en')!=wr_title(url,'en'): raise ValueError('catalog_target_redirect')
+                doc=Document(final,extract_blocks(body,True),sha(body),wr_title(final,'en'),html_revision(soup(body)))
+            if not doc.blocks: raise ValueError('empty_catalog_target')
+        except Exception as exc:
+            info['issues'].append({'kind':'target_error','error':error_kind(exc)})
+            row['status']='catalog_target_unavailable'; return row
+        info['pages']=[{'url':doc.url,'sha256':doc.digest,'revision':doc.revision,'blocks':len(doc.blocks)}]
+        candidates=rank(quote,[doc])
+        row.update(target_provider=provider,target_scope=info['scope'],candidates=candidates,
+                   status='catalog_candidate_review_required' if candidates else 'catalog_no_candidate',
+                   rights='unreviewed')
+        if entry.get('whole_document_parallel'):
+            aligned=document_alignment(quote,source,list(self.source_documents.values()),[doc],'researched_bibliographic_catalog')
+            row['section_alignment']=aligned
+            if aligned['candidates'] and not candidates: row['status']='catalog_candidate_review_required'
+        return row
 
     def retrieve(self,case):
         # Route construction receives only actual input page and selector.
@@ -175,7 +250,10 @@ class Retrieval:
         else: query['selector']=case['selector']
         quotes={}; nav=discover_case(self.client,query,quote_sink=quotes)
         row={'id':case['id'],'navigation_status':nav['status'],'navigation':nav,'auto_publish':False,'rights':'unreviewed','status':'no_work_route','candidates':[]}
-        if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'): return row
+        if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
+            if self.catalog and nav['status'] in ('work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed') and case['id'] in quotes:
+                return self.retrieve_catalog(case,row,quotes[case['id']])
+            return row
         quote=quotes[case['id']]
         if nav.get('author_check')=='author_tokens_differ':
             row['status']='author_metadata_conflict'; return row
@@ -205,6 +283,18 @@ class Retrieval:
         aligned=automatic_alignment(quote,source,fr_docs,docs,
                                     (route['fr_title'],route['en_title'],nav['input'].get('work','')),
                                     (meta['fr'].get('authors',''),meta['en'].get('authors','')))
+        # Direct, independently crosslinked single-document editions may
+        # align without translated chapter titles. Require source and target
+        # exact metadata URLs, reciprocal roots, matched authors, and no TOC.
+        source_url=source.get('occurrences',[{}])[0].get('url') if source.get('occurrences') else None
+        direct_parallel=(info['provider']=='mia' and len(docs)==1 and not info['issues']
+                         and not info.get('links') and route.get('reciprocal') is True
+                         and nav.get('author_check') in VERIFIED_AUTHORS
+                         and author_check(meta['fr'].get('authors',''),meta['en'].get('authors','')) in VERIFIED_AUTHORS
+                         and source_url is not None and [canonical_mia(source_url)]==meta['fr'].get('mia_urls')
+                         and [canonical_mia(docs[0].url)]==meta['en'].get('mia_urls'))
+        if not aligned['candidates'] and direct_parallel:
+            aligned=document_alignment(quote,source,fr_docs,docs,'reciprocal_work_metadata_direct_documents')
         if aligned['candidates']:
             aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
         else: aligned['evaluation']={'state':'not_executed_or_unresolved'}
@@ -212,13 +302,13 @@ class Retrieval:
         return row
 
 
-def run_auto(client,cases,max_pages):
-    r=Retrieval(client,max_pages)
+def run_auto(client,cases,max_pages,catalog=()):
+    r=Retrieval(client,max_pages,catalog)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
     return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
                         'cases':rows,'counts':counts,'requests':client.requests,'cache_hits':client.hits,
-                        'http_events':client.events,'scope':'automatically discovered bounded documents; no complete quote or rights approved'})
+                        'http_events':client.events,'scope':'automatic routes with optional researched catalog; no complete quote or rights approved' if catalog else 'automatically discovered bounded documents; no complete quote or rights approved'})
 
 
 def main():

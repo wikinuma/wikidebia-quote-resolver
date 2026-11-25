@@ -63,6 +63,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_auto_retrieve.py' -v
           python -m unittest discover -s tests -p 'test_section_match.py' -v
           python -m unittest discover -s tests -p 'test_inventory.py' -v
+          python -m unittest discover -s tests -p 'test_bibliography.py' -v
       - name: Metadata routes and offline replay
         run: python navigation.py --replay
       - name: Automatic quotation candidate retrieval and replay
@@ -99,7 +100,9 @@ jobs:
       - name: Inventory regression tests
         run: python -m unittest discover -s tests -p 'test_inventory.py' -v
       - name: Discover and evaluate candidate coverage
-        run: python inventory.py --replay
+        run: python inventory.py --catalog bibliographic-catalog.json --replay
+      - name: Expanded independent sample (no catalog)
+        run: python inventory.py --batches 4 --scan-pages 60 --sample 12 --balance-authors --exclude-file development-inventory.json --budget 320 --out reports-live/expanded-inventory.json --replay
       - name: Preserve redacted inventory reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -108,5 +111,7 @@ jobs:
           path: |
             reports-live/inventory.json
             reports-live/inventory-replay.json
+            reports-live/expanded-inventory.json
+            reports-live/expanded-inventory-replay.json
           if-no-files-found: warn
           retention-days: 7

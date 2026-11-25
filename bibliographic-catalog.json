@@ -1,0 +1,54 @@
+{
+  "schema": "wikidebia-bibliographic-catalog-1",
+  "entries": [
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/oeuvres/1937/07/lt19370706.htm",
+      "source_title": "Réponse à des questions de morale et d’histoire",
+      "authors": "Léon Trotsky",
+      "target_provider": "wikirouge",
+      "target_url": "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas",
+      "target_title": "The Questions of Wendelin Thomas",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/oeuvres/1937/07/lt19370706.htm",
+        "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas"
+      ],
+      "bibliography": "Letter to Wendelin Thomas, 6 July 1937. English publication: Socialist Appeal, vol. 1 no. 2, 21 August 1937, p. 3. French Wikirouge metadata incorrectly dates this to August.",
+      "rights_note": "Publication provenance located; translator identity and applicable reuse rights not established. Review only.",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/inter_soc/stuttgart_1907/19070800_inter_soc_stuttgart_e.htm",
+      "source_title": "Résolution relative au militarisme et aux conflits internationaux",
+      "authors": "Comité de rédaction du congrès international de l'Internationale socialiste",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/history/international/social-democracy/second-international-resolutions-book/ch07.htm",
+      "target_title": "Militarism and International Conflicts",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/history/international/social-democracy/second-international-resolutions-book/ch07.htm",
+        "https://www.marxists.org/history/international/social-democracy/second-international-resolutions-book/index.htm",
+        "https://www.marxists.org/history/international/social-democracy/second-international-resolutions-book/introduction.htm"
+      ],
+      "bibliography": "Stuttgart Congress 1907, adopted resolution in Under the Socialist Banner, edited by Mike Taber, Haymarket Books, 2021. Target page includes other resolutions.",
+      "rights_note": "2021 edited collection posted on MIA with permission; no general reuse license established. Locate only, no publication.",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/serge/works/1947/07/serge_19470700.htm",
+      "source_title": "Trente ans après la Révolution russe",
+      "authors": "Victor Serge",
+      "target_provider": "bibliography_only",
+      "target_url": null,
+      "target_title": "Thirty Years After the Russian Revolution",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://solidarity-us.org/p839/",
+        "https://www.marxists.org/archive/serge/index.htm"
+      ],
+      "bibliography": "Michel Bolsey translation, in Russia Twenty Years After, new edition prepared by Susan Weissman, Humanities Press, 1996. No full English text located in the examined public archive.",
+      "rights_note": "Modern translation; access and reuse rights unverified. Bibliographic lead only.",
+      "researched_on": "2026-11-25"
+    }
+  ]
+}

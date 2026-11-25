@@ -13,24 +13,36 @@ from navigation import citation_records,canonical_mia,raw_parse,error_kind,gener
 from resolver import ROOT,WD_API,norm,sha
 from pilot_full import PilotClient,replay_mismatches
 from auto_retrieve import run_auto
+from bibliography import load_catalog
 
 
-def link_pages(client,rows_per_query=50):
+def link_pages(client,rows_per_query=50,max_batches=1):
     pages={}; queries=[]
+    if not 1<=max_batches<=10: raise ValueError('invalid_batch_limit')
     for host in ('www.marxists.org','marxists.org'):
         for scheme in ('https','http'):
-            entry={'host':host,'scheme':scheme}
-            try:
-                r=client.api(WD_API,action='query',list='exturlusage',euquery=host,
-                             euprotocol=scheme,eunamespace=0,eulimit=rows_per_query)
-                rows=r['query']['exturlusage']
-                entry.update(rows=len(rows),more=bool(r.get('continue')))
-                for row in rows:
-                    title=row.get('title')
-                    if row.get('ns')!=0 or not isinstance(title,str) or not canonical_mia(row.get('url')): continue
-                    pages.setdefault(title,set()).add(canonical_mia(row['url']))
-            except Exception as exc: entry['error']=error_kind(exc)
-            queries.append(entry)
+            cursor={}; seen=set()
+            for batch in range(max_batches):
+                entry={'host':host,'scheme':scheme,'batch':batch+1}
+                try:
+                    r=client.api(WD_API,action='query',list='exturlusage',euquery=host,
+                                 euprotocol=scheme,eunamespace=0,eulimit=rows_per_query,**cursor)
+                    rows=r['query']['exturlusage']
+                    if len(rows)>rows_per_query: raise ValueError('excessive_api_rows')
+                    entry.update(rows=len(rows),more=bool(r.get('continue')))
+                    for row in rows:
+                        title=row.get('title'); url=canonical_mia(row.get('url'))
+                        if row.get('ns')!=0 or not isinstance(title,str) or not url: continue
+                        pages.setdefault(title,set()).add(url)
+                    cursor=r.get('continue',{})
+                    key=json.dumps(cursor,sort_keys=True)
+                    if cursor and (key in seen or not set(cursor)<= {'continue','eucontinue'}):
+                        raise ValueError('invalid_or_repeated_continuation')
+                    seen.add(key)
+                except Exception as exc:
+                    entry['error']=error_kind(exc); cursor={}
+                queries.append(entry)
+                if not cursor: break
     return pages,queries
 
 
@@ -40,12 +52,21 @@ def work_key(row):
     return norm(work)
 
 
-def choose_sample(records,max_cases):
+def choose_sample(records,max_cases,balance_authors=False):
     """Stable order, at most one candidate per work title and per normalized
     quote fingerprint. Selection never depends on retrieval results.
     """
     result=[]; works=set(); quotes=set()
-    for r in sorted(records,key=lambda x:sha((x['wiki_title']+'\0'+x['template_sha256']).encode())):
+    ordered=sorted(records,key=lambda x:sha((x['wiki_title']+'\0'+x['template_sha256']).encode()))
+    if balance_authors:
+        groups=defaultdict(list)
+        for r in ordered: groups[norm(r.get('authors',''))].append(r)
+        ordered=[]
+        # Interleave authors by stable hash order; do not use retrieval outcomes.
+        keys=sorted(groups,key=lambda k:sha(k.encode()))
+        for i in range(max((len(v) for v in groups.values()),default=0)):
+            ordered.extend(groups[k][i] for k in keys if i<len(groups[k]))
+    for r in ordered:
         key=work_key(r)
         if not key or key in works or r['quote_sha256'] in quotes: continue
         works.add(key); quotes.add(r['quote_sha256']); result.append(r)
@@ -53,8 +74,8 @@ def choose_sample(records,max_cases):
     return result
 
 
-def discover_inventory(client,excluded_titles,excluded_works,max_scan_pages,max_cases):
-    linked,queries=link_pages(client)
+def discover_inventory(client,excluded_titles,excluded_works,max_scan_pages,max_cases,max_batches=1,balance_authors=False):
+    linked,queries=link_pages(client) if max_batches==1 else link_pages(client,max_batches=max_batches)
     scan=sorted((t for t in linked if norm(t) not in excluded_titles),key=lambda t:sha(t.encode()))[:max_scan_pages]
     records=[]; inspected=[]; issues=[]; total_templates=0; eligible_before_exclusions=0
     for title in scan:
@@ -73,7 +94,7 @@ def discover_inventory(client,excluded_titles,excluded_works,max_scan_pages,max_
                 if work_key(r) in excluded_works: continue
                 records.append({**r,'wiki_title':actual,'revision':rev})
         except Exception as exc: issues.append({'title':title,'error':error_kind(exc)})
-    chosen=choose_sample(records,max_cases)
+    chosen=choose_sample(records,max_cases,balance_authors)
     cases=[]
     for r in chosen:
         ref={k:r[k] for k in ('revision','template_index','template_sha256','quote_sha256')}
@@ -85,23 +106,24 @@ def discover_inventory(client,excluded_titles,excluded_works,max_scan_pages,max_
             'inspected_pages':inspected,'issues':issues,'templates_inspected':total_templates,
             'eligible_before_work_exclusions':eligible_before_exclusions,
             'eligible_citations':len(records),'eligible_distinct_work_titles':len({work_key(r) for r in records}),
-            'selected':cases,'selection':'stable hash order; distinct work titles; development pages and works excluded; no target answers'}
+            'selected':cases,'selection':('author-balanced; ' if balance_authors else '')+'stable hash order; distinct work titles; development pages and works excluded; no target answers'}
 
 
-def run_inventory(client,known,max_scan_pages,max_cases,max_work_pages):
+def run_inventory(client,known,max_scan_pages,max_cases,max_work_pages,max_batches=1,balance_authors=False,catalog=()):
     excluded_titles={norm(c['wiki_title']) for c in known}
     excluded_works={norm(c.get('work_fr','')) for c in known if c.get('work_fr')}
-    inventory=discover_inventory(client,excluded_titles,excluded_works,max_scan_pages,max_cases)
+    inventory=discover_inventory(client,excluded_titles,excluded_works,max_scan_pages,max_cases,max_batches,balance_authors)
     # Retrieval gets only a pinned citation reference, no preselected target.
     cases=[{k:r[k] for k in ('id','wiki_title','citation_ref')} for r in inventory['selected']]
     r=run_auto(client,cases,max_work_pages)
-    return {'schema':'wikidebia-citation-inventory-0.1','offline':client.offline,'auto_publish':False,
+    assisted=run_auto(client,cases,max_work_pages,catalog) if catalog else None
+    return {'assisted_retrieval':assisted,'schema':'wikidebia-citation-inventory-0.1','offline':client.offline,'auto_publish':False,
             'inventory':inventory,'retrieval':r,'requests':client.requests,'cache_hits':client.hits,
             'http_events':client.events,'evaluation_scope':'candidate coverage only; independent human reference not yet available'}
 
 
-def summary(report):
-    inv=report['inventory']; r=report['retrieval']
+def summary(report,assisted=False):
+    inv=report['inventory']; r=report['assisted_retrieval'] if assisted else report['retrieval']
     rows=[]
     for c in r['cases']:
         meta=c['navigation'].get('input',{})
@@ -115,9 +137,12 @@ def summary(report):
                      'resolved_fr_authors':c['navigation'].get('work_metadata',{}).get('fr',{}).get('authors'),
                      'resolved_en_authors':c['navigation'].get('work_metadata',{}).get('en',{}).get('authors'),
                      'author_check':c['navigation'].get('author_check'),
+                     'bibliographic_route':c.get('bibliographic_route'),
                      'source_stages':[{'provider':s['provider'],'scope':s['scope'],'pages':len(s['pages']),'issues':s['issues']} for s in c.get('source',{}).get('stages',[])],
                      'target_provider':c.get('target_provider'),'lexical_candidates':len(c['candidates']),
                      'alignment_status':c.get('section_alignment',{}).get('status'),
+                     'candidate_words':sum(x.get('text_words',0) for x in c['candidates']),
+                     'aligned_words':sum(x.get('text_words',0) for x in c.get('section_alignment',{}).get('candidates',[])),
                      'candidate_urls':sorted({x['url'] for x in c['candidates']}),
                      'aligned_candidate_urls':sorted({x['url'] for x in c.get('section_alignment',{}).get('candidates',[])})})
     return {'scope':report['evaluation_scope'],'requests':report['requests'],'cache_hits':report['cache_hits'],
@@ -134,16 +159,23 @@ def main():
     p.add_argument('--max-work-pages',type=int,default=12)
     p.add_argument('--budget',type=int,default=220)
     p.add_argument('--replay',action='store_true')
+    p.add_argument('--batches',type=int,default=1)
+    p.add_argument('--balance-authors',action='store_true')
+    p.add_argument('--exclude-file',type=Path)
+    p.add_argument('--catalog',type=Path)
     a=p.parse_args()
-    if not 1<=a.scan_pages<=50 or not 1<=a.sample<=20 or not 1<=a.max_work_pages<=40 or not 1<=a.budget<=400:
+    if not 1<=a.scan_pages<=80 or not 1<=a.sample<=20 or not 1<=a.max_work_pages<=40 or not 1<=a.budget<=400 or not 1<=a.batches<=10:
         p.error('bounded positive limits required')
     known=json.loads((ROOT/'cases-v02.json').read_text())['cases']
+    if a.exclude_file: known+=json.loads(a.exclude_file.read_text())['cases']
+    catalog=load_catalog(a.catalog) if a.catalog else ()
     c=PilotClient(a.cache,budget=a.budget)
-    args=(known,a.scan_pages,a.sample,a.max_work_pages)
+    args=(known,a.scan_pages,a.sample,a.max_work_pages,a.batches,a.balance_authors,catalog)
     report=run_inventory(c,*args)
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     small=summary(report)
+    if catalog: small['assisted_comparison']=summary(report,assisted=True)
     rc=int(not report['inventory']['selected'])
     if a.replay:
         expected={}
@@ -156,7 +188,9 @@ def main():
         replay=run_inventory(replay_client,*args)
         same=(report['inventory']==replay['inventory'] and
               report['retrieval']['cases']==replay['retrieval']['cases'] and
-              report['retrieval']['counts']==replay['retrieval']['counts'])
+              report['retrieval']['counts']==replay['retrieval']['counts'] and
+              (not catalog or report['assisted_retrieval']['cases']==replay['assisted_retrieval']['cases'] and
+               report['assisted_retrieval']['counts']==replay['assisted_retrieval']['counts']))
         mismatches=replay_mismatches(expected,replay_client.events)
         integrity={'results_match':same,'response_mismatches':mismatches,'network_requests':replay_client.requests}
         replay['replay_integrity']=integrity

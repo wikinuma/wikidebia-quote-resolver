@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "wiki_title": "Les syndicats sont complètement intégrés à l'État",
+      "work_fr": "Les syndicats à l'époque de la décadence impérialiste"
+    },
+    {
+      "wiki_title": "Des marins lettons et estoniens hostiles à la révolution s'étaient réfugiés à Kronstadt",
+      "work_fr": "Beaucoup de tapage autour de Cronstadt"
+    },
+    {
+      "wiki_title": "La question de l'insurrection bolchévik était publiquement débattue dès septembre 1917",
+      "work_fr": "Histoire de la révolution russe"
+    },
+    {
+      "wiki_title": "Tous les partis révolutionnaires russes étaient autoritaires et fortement centralisés avant la Révolution russe",
+      "work_fr": "Trente ans après la Révolution russe"
+    },
+    {
+      "wiki_title": "Le capitalisme est la cause de guerres incessantes",
+      "work_fr": "Résolution relative au militarisme et aux conflits internationaux"
+    },
+    {
+      "wiki_title": "Les mutins de Kronstadt en 1921 étaient bien différents des marins révolutionnaires de 1917",
+      "work_fr": "Réponse à des questions de morale et d’histoire"
+    }
+  ],
+  "note": "First six-work inventory now treated as development cohort; exclude its titles and works from next fresh sample."
+}
