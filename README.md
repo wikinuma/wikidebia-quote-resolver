@@ -51,6 +51,12 @@ python navigation.py --replay
 
 Le job navigation teste les neuf cas du corpus, y compris les cas non confirmés, et conserve uniquement les rapports de métadonnées et d'empreintes. Les extraits de citation ne figurent ni dans les rapports ni dans les logs. Ce parcours ne télécharge pas les œuvres intégrales et ne suppose pas que le champ MIA URL est rempli sur toutes les pages. La vérification des passages et des droits reste distincte.
 
+## Première recherche automatique de passages (sans URL cible pré-identifiée)
+
+Le pilote `auto_retrieve.py --replay` utilise le même cache que navigation.py et le wikicode de la Citation comme entrée. Les noms génériques d'archives (notamment Marxists.org) sont exclus comme titres d'œuvres ; deux racines réciproques doivent comporter le modèle Text. La vérification de l'auteur exploite également le tableau de métadonnées rendu, lorsque le paramètre brut n'est pas exploitable.
+
+Le moteur examine d'abord l'URL française citée, puis les liens directs du sommaire MIA et, si nécessaire, les sous-pages Wikirouge. Les règles de collecte MIA sont bornées (liens du même répertoire pour un index, même radical pour les anciens fichiers, préfaces datées explicitement liées). Elles ne démontrent pas une couverture intégrale. Le moteur ne recherche l'anglais qu'après avoir retrouvé une source française exacte dans les documents examinés ou une variante à revoir. Il privilégie l'URL MIA anglaise explicitement fournie par Wikirouge, et se replie sur les sous-pages anglaises de Wikirouge. Les rangs sont évalués après recherche ; pas de correspondances de chapitres ni d'URL cible présélectionnées. Ce pilote n'effectue pas encore d'alignement structurel automatique. Il ne valide ni les limites, ni les droits, ni la fidélité d'une citation.
+
 ## Avant intégration au dépôt principal
 
 Confirmer les résultats sur les sources réelles, élargir le corpus indépendant et les cas négatifs, évaluer les droits et les limites des citations, exploiter les métadonnées des modèles Citation bruts, mesurer le coût réel. Ne pas relâcher les critères pour obtenir une CI verte. L'intégration au workflow de traduction fera l'objet d'une décision séparée.

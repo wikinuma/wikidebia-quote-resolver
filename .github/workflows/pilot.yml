@@ -58,9 +58,13 @@ jobs:
       - name: Install navigation dependencies
         run: python -m pip install -r requirements-navigation.txt
       - name: Navigation regression tests
-        run: python -m unittest discover -s tests -p 'test_navigation.py' -v
+        run: |
+          python -m unittest discover -s tests -p 'test_navigation.py' -v
+          python -m unittest discover -s tests -p 'test_auto_retrieve.py' -v
       - name: Metadata routes and offline replay
         run: python navigation.py --replay
+      - name: Automatic quotation candidate retrieval and replay
+        run: python auto_retrieve.py --replay
       - name: Preserve bibliographic navigation reports
         if: always()
         uses: actions/upload-artifact@v6
@@ -69,5 +73,7 @@ jobs:
           path: |
             reports-live/navigation.json
             reports-live/navigation-replay.json
+            reports-live/auto-candidates.json
+            reports-live/auto-candidates-replay.json
           if-no-files-found: warn
           retention-days: 7

@@ -2,7 +2,7 @@ import importlib.util
 import unittest
 from unittest.mock import Mock,patch
 from navigation import (canonical_mia,mia_urls,safe_title,extract_citation,text_metadata,
-                        reverse_lookup,title_lookup,reciprocal_roots,discover_case,evaluate_route,
+                        reverse_lookup,title_lookup,reciprocal_roots,discover_case,evaluate_route,generic_work_name,rendered_authors,
                         API,WR)
 
 HAS_PARSER=bool(importlib.util.find_spec('mwparserfromhell'))
@@ -65,8 +65,37 @@ class NavigationTests(unittest.TestCase):
         with patch('navigation.raw_parse',return_value=('Argument',5,raw)), \
              patch('navigation.reverse_lookup',return_value={'matches':[{'title':'Livre'}],'truncated':False}), \
              patch('navigation.reciprocal_roots',return_value={'fr_title':'Livre','en_title':'Book','reciprocal':True}), \
-             patch('navigation.wr_meta',side_effect=[{'authors':'Karl Marx','mia_urls':['https://www.marxists.org/fr.htm']},{'authors':'Karl Marx','mia_urls':['https://www.marxists.org/en.htm']}]):
+             patch('navigation.wr_meta',side_effect=[{'status':'raw_text_metadata','authors':'Karl Marx','mia_urls':['https://www.marxists.org/fr.htm']},{'status':'raw_text_metadata','authors':'Karl Marx','mia_urls':['https://www.marxists.org/en.htm']}]):
             row=discover_case(c,case)
         self.assertEqual(row['status'],'mia_route_candidate'); self.assertFalse(row['auto_publish'])
         self.assertFalse(evaluate_route(row,case)['target_exact_url_match'])
         c.get.assert_called_once_with('https://www.marxists.org/en.htm')
+
+    def test_generic_archive_and_rendered_authors(self):
+        self.assertTrue(generic_work_name('Marxists.org'))
+        self.assertFalse(generic_work_name('Le Capital'))
+        html='<table><tr><th>Auteur·e(s)</th><td><a>Friedrich Engels</a></td></tr></table>'
+        self.assertEqual(rendered_authors(html),'Friedrich Engels')
+
+    @unittest.skipUnless(HAS_PARSER,'navigation parser optional')
+    def test_help_page_cannot_be_a_work(self):
+        c=Mock()
+        raw='{{Citation|citation=une phrase assez longue ici|ouvrage=Marxists.org|article=Une lettre}}'
+        with patch('navigation.raw_parse',return_value=('Argument',5,raw)), \
+             patch('navigation.title_lookup',return_value={'titles':['Une lettre'],'method':'exact_api_title_or_redirect'}) as lookup, \
+             patch('navigation.reciprocal_roots',return_value={'fr_title':'Une lettre','en_title':'A letter','reciprocal':True}), \
+             patch('navigation.wr_meta',side_effect=[{'status':'missing_or_ambiguous_text_template','authors':'','mia_urls':[]},{'status':'raw_text_metadata','authors':'','mia_urls':[]}]):
+            row=discover_case(c,{'id':'x','wiki_title':'Argument','selector':'phrase assez longue'})
+        lookup.assert_called_once_with(c,'Une lettre')
+        self.assertEqual(row['status'],'work_metadata_unconfirmed')
+        c.get.assert_not_called()
+
+    @unittest.skipUnless(HAS_PARSER,'navigation parser optional')
+    def test_internal_quote_sink_not_exposed(self):
+        c=Mock(); quotes={}
+        raw='{{Citation|citation=une phrase assez longue ici|ouvrage=Marxists.org}}'
+        with patch('navigation.raw_parse',return_value=('Argument',5,raw)):
+            row=discover_case(c,{'id':'x','wiki_title':'Argument','selector':'phrase assez longue'},quote_sink=quotes)
+        self.assertEqual(quotes['x'],'une phrase assez longue ici')
+        self.assertNotIn('text',row['input'])
+        self.assertEqual(row['status'],'work_not_resolved')

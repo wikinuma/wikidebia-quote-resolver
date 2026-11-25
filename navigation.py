@@ -83,7 +83,7 @@ def plain(value):
     return clean(soup(value.strip_code()).get_text(' ',strip=False))
 
 
-def extract_citation(raw,selector):
+def extract_citation(raw,selector,include_text=False):
     needle=norm(selector)
     if len(needle.split())<3: raise ValueError('selector_too_short')
     matches=[]
@@ -93,7 +93,7 @@ def extract_citation(raw,selector):
             matches.append((f,q))
     if len(matches)!=1: raise ValueError('raw_quote_selector_matches='+str(len(matches)))
     f,q=matches[0]
-    return {'quote_sha256':sha(q.encode()),'quote_words':len(norm(q).split()),
+    result={'quote_sha256':sha(q.encode()),'quote_words':len(norm(q).split()),
             'authors':plain(f.get('auteurs'))[:300],
             'work':plain(f.get('ouvrage'))[:300],
             'article':plain(f.get('article'))[:300],
@@ -101,6 +101,8 @@ def extract_citation(raw,selector):
             'mia_urls':mia_urls(str(f.get('lien',''))),
             'link_present':bool(str(f.get('lien','')).strip()),
             'source_kind':'raw_citation_template_not_generated_translation'}
+    if include_text: result['text']=q
+    return result
 
 
 def text_metadata(raw):
@@ -108,9 +110,15 @@ def text_metadata(raw):
     if len(found)!=1:
         return {'status':'missing_or_ambiguous_text_template','mia_urls':[],'authors':''}
     f=fields(found[0])
-    authors=plain(f.get('auteur s') or f.get('author s') or f.get('auteurs') or f.get('authors'))
+    author_fields=[(key,value) for key,value in f.items() if key in ('auteur','auteurs','auteur s','auteur e s','auteur es','author','authors','author s') or key.startswith(('auteur ','author '))]
+    authors=''
+    if len(author_fields)==1:
+        value=author_fields[0][1]
+        authors=plain(value)
+        if not authors:
+            authors=clean(value.strip_code(keep_template_params=True))
     return {'status':'raw_text_metadata','mia_urls':mia_urls(str(f.get('mia url',''))),
-            'authors':authors[:300],
+            'authors':authors[:300], 'author_field_names':[key for key,_ in author_fields],
             'date':plain(f.get('date ecriture') or f.get('date of writing'))[:120],
             'interlanguages_parameter_present':bool(str(f.get('interlanguages','')).strip())}
 
@@ -179,6 +187,21 @@ def wr_meta(client,lang,title):
     return result
 
 
+def rendered_authors(body):
+    values=set()
+    labels={'auteur','auteurs','auteur s','auteur e s','auteur es','author','authors','author s'}
+    for tr in soup(body).find_all('tr'):
+        cells=tr.find_all(['th','td'],recursive=False)
+        if len(cells)==2 and norm(cells[0].get_text(' ',strip=True)) in labels:
+            text=clean(cells[1].get_text(' ',strip=True))
+            if text: values.add(text[:300])
+    return next(iter(values)) if len(values)==1 else ''
+
+
+def generic_work_name(title):
+    return norm(title) in ('marxists org','www marxists org','wikirouge','wikirouge net','archives militantes','militant archives','marxists internet archive')
+
+
 def reciprocal_roots(client,title):
     # A semantic URL may identify a chapter. Follow only the explicit work
     # hierarchy; never infer that chapter numbers agree across translations.
@@ -186,6 +209,7 @@ def reciprocal_roots(client,title):
     body,fr=client.get(html_url(WR+'fr/',root))
     ft=wr_title(fr,'fr')
     if ft is None or '/' in ft: raise ValueError('unexpected_french_root')
+    fa=rendered_authors(body)
     targets=wr_interlanguage(soup(body),fr,'en')
     if len(targets)!=1: raise ValueError('missing_or_ambiguous_english_root')
     body,en=client.get(targets[0]); et=wr_title(en,'en')
@@ -193,7 +217,7 @@ def reciprocal_roots(client,title):
     back={wr_title(u,'fr') for u in wr_interlanguage(soup(body),en,'fr')}
     if back!={ft}: raise ValueError('nonreciprocal_work_langlink')
     return {'fr_title':ft,'en_title':et,'fr_url':fr,'en_url':en,
-            'reciprocal':True,'scope':'work_identity_candidate_not_section_or_quote_identity'}
+            'reciprocal':True,'fr_rendered_authors':fa,'en_rendered_authors':rendered_authors(body),'scope':'work_identity_candidate_not_section_or_quote_identity'}
 
 
 def author_check(citation,work):
@@ -205,11 +229,12 @@ def author_check(citation,work):
     return 'author_tokens_differ'
 
 
-def discover_case(client,case):
+def discover_case(client,case,quote_sink=None):
     row={'id':case['id'],'auto_publish':False,'rights':'unreviewed','status':'unresolved','attempts':[]}
     try:
         title,rev,raw=raw_parse(client,WD_API,title=case['wiki_title'])
-        metadata=extract_citation(raw,case['selector'])
+        metadata=extract_citation(raw,case['selector'],include_text=quote_sink is not None)
+        if quote_sink is not None: quote_sink[case['id']]=metadata.pop('text')
         row['input']={**metadata,'wiki_title':title,'revision':rev,'raw_sha256':sha(raw.encode())}
     except Exception as exc:
         row.update(status='input_unavailable',error=error_kind(exc)); return row
@@ -228,6 +253,9 @@ def discover_case(client,case):
         for field in ('work','article'):
             candidate=metadata[field]
             if not candidate: continue
+            if generic_work_name(candidate):
+                row['attempts'].append({'field':field,'method':'skip_generic_archive_name'})
+                continue
             try:
                 r=title_lookup(client,candidate); row['attempts'].append({'field':field,**r})
                 if len(r['titles'])>1 or r.get('search_truncated'):
@@ -241,7 +269,13 @@ def discover_case(client,case):
     try:
         route=reciprocal_roots(client,selected); row['route']=route
         fr=wr_meta(client,'fr',route['fr_title']); en=wr_meta(client,'en',route['en_title'])
+        for lang,m in [('fr',fr),('en',en)]:
+            if not m.get('authors') and route.get(lang+'_rendered_authors'):
+                m['authors']=route[lang+'_rendered_authors']; m['authors_method']='rendered_metadata_row'
         row['work_metadata']={'fr':fr,'en':en}
+        # Reciprocal links on a site help page do not identify a textual work.
+        if fr.get('status')!='raw_text_metadata' or en.get('status')!='raw_text_metadata':
+            row['status']='work_metadata_unconfirmed'; return row
         row['author_check']=author_check(metadata['authors'],fr['authors'])
         row['citation_mia_url_in_root_metadata']=bool(set(metadata['mia_urls'])&set(fr['mia_urls']))
         row['status']='wikirouge_route_candidate'
