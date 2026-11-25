@@ -62,6 +62,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_navigation.py' -v
           python -m unittest discover -s tests -p 'test_auto_retrieve.py' -v
           python -m unittest discover -s tests -p 'test_section_match.py' -v
+          python -m unittest discover -s tests -p 'test_inventory.py' -v
       - name: Metadata routes and offline replay
         run: python navigation.py --replay
       - name: Automatic quotation candidate retrieval and replay
@@ -76,5 +77,36 @@ jobs:
             reports-live/navigation-replay.json
             reports-live/auto-candidates.json
             reports-live/auto-candidates-replay.json
+          if-no-files-found: warn
+          retention-days: 7
+  inventory:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-navigation.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-navigation.txt
+      - name: Inventory regression tests
+        run: python -m unittest discover -s tests -p 'test_inventory.py' -v
+      - name: Discover and evaluate candidate coverage
+        run: python inventory.py --replay
+      - name: Preserve redacted inventory reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: quote-inventory-reports
+          path: |
+            reports-live/inventory.json
+            reports-live/inventory-replay.json
           if-no-files-found: warn
           retention-days: 7

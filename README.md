@@ -61,6 +61,10 @@ Le moteur examine d'abord l'URL française citée, puis les liens directs du som
 
 Le moteur extrait les titres et libellés des sommaires des pages déjà récupérées. Un petit vocabulaire bilingue de concepts généraux rapproche les titres indépendamment de la citation. Les numéros de chapitre seuls ne suffisent jamais ; les titres génériques, les titres d'œuvres répétés, les ambiguïtés et les longueurs incompatibles sont filtrés. Une hypothèse unique déclenche l'alignement par phrases lorsque la source française est exacte et non ambiguë. Les candidats lexicaux originaux restent inchangés, et les résultats de l'alignement sont mesurés séparément (ancre courte et volume de mots candidats). Ce dictionnaire a été développé en connaissant le corpus pilote : une évaluation sur un corpus distinct demeure indispensable.
 
+## Échantillon découvert automatiquement (hors corpus de développement)
+
+`python inventory.py --replay` interroge des lots bornés de liens externes de Wikidébats vers Marxists.org, puis recense les modèles Citation bruts effectivement liés au site. Le test sélectionne au plus huit œuvres distinctes par un ordre déterministe, en excluant les pages et titres d'œuvres du corpus de développement. La citation est référencée par sa révision, l'indice du modèle et les empreintes du modèle et du texte. Il n'y a plus besoin d'un fragment choisi à la main pour identifier le modèle ; un sélecteur interne est dérivé de la citation seulement pour la recherche approximative. Les réponses attendues ne sont pas fournies au moteur. Les résultats mesurent la couverture de candidats, pas leur exactitude. Les compteurs et empreintes sont publiés, jamais les textes des citations.
+
 ## Avant intégration au dépôt principal
 
 Confirmer les résultats sur les sources réelles, élargir le corpus indépendant et les cas négatifs, évaluer les droits et les limites des citations, exploiter les métadonnées des modèles Citation bruts, mesurer le coût réel. Ne pas relâcher les critères pour obtenir une CI verte. L'intégration au workflow de traduction fera l'objet d'une décision séparée.

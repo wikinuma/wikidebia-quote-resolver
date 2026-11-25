@@ -83,17 +83,11 @@ def plain(value):
     return clean(soup(value.strip_code()).get_text(' ',strip=False))
 
 
-def extract_citation(raw,selector,include_text=False):
-    needle=norm(selector)
-    if len(needle.split())<3: raise ValueError('selector_too_short')
-    matches=[]
-    for t in templates(raw,{'citation'}):
-        f=fields(t); q=plain(f.get('citation'))
-        if ' '+needle+' ' in ' '+norm(q)+' ':
-            matches.append((f,q))
-    if len(matches)!=1: raise ValueError('raw_quote_selector_matches='+str(len(matches)))
-    f,q=matches[0]
+def citation_record(t,index,include_text=False):
+    """One raw Citation template, with its position and exact fingerprint."""
+    f=fields(t); q=plain(f.get('citation'))
     result={'quote_sha256':sha(q.encode()),'quote_words':len(norm(q).split()),
+            'template_index':index,'template_sha256':sha(str(t).encode()),
             'authors':plain(f.get('auteurs'))[:300],
             'work':plain(f.get('ouvrage'))[:300],
             'article':plain(f.get('article'))[:300],
@@ -103,6 +97,46 @@ def extract_citation(raw,selector,include_text=False):
             'source_kind':'raw_citation_template_not_generated_translation'}
     if include_text: result['text']=q
     return result
+
+
+def citation_records(raw):
+    """Enumerate all raw templates, without a human-selected phrase.
+    Preserve indices even for invalid/empty records. Never print raw text.
+    """
+    rows=[]; issues=[]
+    for index,t in enumerate(templates(raw,{'citation'})):
+        try: rows.append(citation_record(t,index))
+        except Exception as exc: issues.append({'template_index':index,'error':error_kind(exc)})
+    return rows,issues
+
+
+def extract_citation(raw,selector,include_text=False):
+    needle=norm(selector)
+    if len(needle.split())<3: raise ValueError('selector_too_short')
+    matches=[]
+    for index,t in enumerate(templates(raw,{'citation'})):
+        rec=citation_record(t,index,include_text=True)
+        if ' '+needle+' ' in ' '+norm(rec['text'])+' ':
+            matches.append(rec)
+    if len(matches)!=1: raise ValueError('raw_quote_selector_matches='+str(len(matches)))
+    result=matches[0]
+    if not include_text: result.pop('text')
+    return result
+
+
+def extract_citation_ref(raw,ref,include_text=False):
+    """Require the exact template occurrence and fingerprints, not merely
+    an identical selector elsewhere in the page.
+    """
+    index=ref.get('template_index')
+    if type(index) is not int or index<0: raise ValueError('invalid_citation_index')
+    for i,t in enumerate(templates(raw,{'citation'})):
+        if i!=index: continue
+        rec=citation_record(t,i,include_text)
+        if rec['template_sha256']!=ref.get('template_sha256') or rec['quote_sha256']!=ref.get('quote_sha256'):
+            raise ValueError('citation_fingerprint_mismatch')
+        return rec
+    raise ValueError('citation_index_not_found')
 
 
 def text_metadata(raw):
@@ -232,8 +266,17 @@ def author_check(citation,work):
 def discover_case(client,case,quote_sink=None):
     row={'id':case['id'],'auto_publish':False,'rights':'unreviewed','status':'unresolved','attempts':[]}
     try:
-        title,rev,raw=raw_parse(client,WD_API,title=case['wiki_title'])
-        metadata=extract_citation(raw,case['selector'],include_text=quote_sink is not None)
+        ref=case.get('citation_ref')
+        if ref is not None:
+            rev=ref.get('revision')
+            if type(rev) is not int or rev<=0: raise ValueError('invalid_citation_revision')
+            title,rev,raw=raw_parse(client,WD_API,oldid=rev)
+            if title.replace('_',' ')!=case['wiki_title'].replace('_',' '):
+                raise ValueError('citation_page_mismatch')
+            metadata=extract_citation_ref(raw,ref,include_text=quote_sink is not None)
+        else:
+            title,rev,raw=raw_parse(client,WD_API,title=case['wiki_title'])
+            metadata=extract_citation(raw,case['selector'],include_text=quote_sink is not None)
         if quote_sink is not None: quote_sink[case['id']]=metadata.pop('text')
         row['input']={**metadata,'wiki_title':title,'revision':rev,'raw_sha256':sha(raw.encode())}
     except Exception as exc:

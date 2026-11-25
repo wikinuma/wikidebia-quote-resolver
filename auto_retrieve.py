@@ -10,6 +10,7 @@ import posixpath
 import re
 from urllib.parse import urljoin,urlsplit
 from pathlib import Path
+from collections import Counter
 
 from navigation import canonical_mia,discover_case,error_kind
 from resolver import ROOT,Document,subpages,rank,norm,sha
@@ -98,6 +99,23 @@ def collect_wr(client,title,lang,max_pages):
     return docs,info
 
 
+def automatic_selector(quote):
+    """A unique informative 4-6 token span selected from the quote alone.
+    Used only for approximate source lookup, never for choosing a template.
+    """
+    words=norm(quote).split(); freq=Counter(words)
+    stop=set('le la les l de des du un une et en a au aux d que qui est sont pour par dans ce cette ces il ils elle elles'.split())
+    spans=[]
+    for size in (6,5,4):
+        counts=Counter(tuple(words[i:i+size]) for i in range(len(words)-size+1))
+        for i in range(len(words)-size+1):
+            seq=tuple(words[i:i+size])
+            if counts[seq]!=1: continue
+            score=sum(min(12,len(w))/freq[w] for w in seq if w not in stop and len(w)>=3)
+            if score: spans.append((score,-i,size,' '.join(seq)))
+    return max(spans)[-1] if spans else ''
+
+
 class Retrieval:
     def __init__(self,client,max_pages):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}
@@ -152,14 +170,17 @@ class Retrieval:
 
     def retrieve(self,case):
         # Route construction receives only actual input page and selector.
-        query={k:case[k] for k in ('id','wiki_title','selector')}
+        query={k:case[k] for k in ('id','wiki_title')}
+        if 'citation_ref' in case: query['citation_ref']=case['citation_ref']
+        else: query['selector']=case['selector']
         quotes={}; nav=discover_case(self.client,query,quote_sink=quotes)
         row={'id':case['id'],'navigation_status':nav['status'],'navigation':nav,'auto_publish':False,'rights':'unreviewed','status':'no_work_route','candidates':[]}
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'): return row
         quote=quotes[case['id']]
         if nav.get('author_check')=='author_tokens_differ':
             row['status']='author_metadata_conflict'; return row
-        source=self.source(quote,case['selector'],nav); row['source']=source
+        selector=case.get('selector') or automatic_selector(quote)
+        source=self.source(quote,selector,nav); row['source']=source
         if source['status'] not in ('exact_in_examined_documents','variant_review_required'):
             row['status']='source_needs_review'; return row
         target=nav.get('mia_target',{})
