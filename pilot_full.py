@@ -228,3 +228,213 @@ def index_links(body,base,spec):
         if not valid_url(u) or p.hostname not in ('marxists.org','www.marxists.org') or p.query: continue
         path=unquote(p.path)
         if path not in required and not (spec.get('pattern') and re.fullmatch(spec['pattern'],path)): continue
+        if path==urlsplit(spec['index']).path: continue
+        urls.setdefault(path,{'url':MIA+path,'label':clean(a.get_text(' ',strip=True))})
+    missing=sorted(required-set(urls)); issues=[]
+    if missing: issues.append({'kind':'required_toc_links_missing','paths':missing})
+    if len(urls)!=spec['expected']:
+        issues.append({'kind':'toc_count_changed','expected':spec['expected'],'actual':len(urls)})
+    return list(urls.values()),issues
+
+
+def mia_work(client,work,max_pages):
+    docs={'fr':[],'en':[]}; info={'scope':'reviewed_toc_rules_not_arbitrary_site_crawl','sides':{},'issues':[]}
+    for lang in ('fr','en'):
+        spec=work[lang]; side={'index':spec['index'],'expected_unique_pages':spec['expected'],'pages':[]}; info['sides'][lang]=side
+        try:
+            body,final=client.get(spec['index']); side['index_sha256']=sha(body)
+            links,issues=index_links(body,final,spec); info['issues'] += [dict(x,lang=lang) for x in issues]
+            side['discovered']=links
+            if len(links)>max_pages:
+                info['issues'].append({'kind':'page_limit','lang':lang,'count':len(links),'limit':max_pages})
+            for row in links[:max_pages]:
+                try:
+                    data,url=client.get(row['url']); s=soup(data)
+                    if urlsplit(url).hostname not in ('marxists.org','www.marxists.org') or unquote(urlsplit(url).path)!=unquote(urlsplit(row['url']).path): raise ValueError('redirect outside expected MIA document')
+                    blocks=extract_blocks(data)
+                    if not blocks: raise ValueError('no_extracted_blocks')
+                    d=Document(url,blocks,sha(data),clean(s.title.get_text()) if s.title else '')
+                    docs[lang].append(d)
+                    side['pages'].append({'requested_url':row['url'],'url':url,'sha256':d.digest,'blocks':len(blocks),'words':sum(len(norm(b).split()) for b in blocks)})
+                except Exception as exc:
+                    info['issues'].append({'kind':'fetch_or_extract_error','lang':lang,'url':row['url'],'error':str(exc)})
+        except Exception as exc:
+            info['issues'].append({'kind':'index_error','lang':lang,'error':str(exc)})
+    info['scope_complete']=bool(docs['fr'] and docs['en'] and not info['issues'])
+    return docs,info
+
+
+def mia_pairs(wid,docs,info):
+    # Work-level section mappings, not case-specific expected URLs.
+    pairs=[]
+    def get(lang,path):
+        hits=[d for d in docs[lang] if unquote(urlsplit(d.url).path)==path]
+        return hits[0] if len(hits)==1 else None
+    if wid=='manifesto':
+        candidates=[(FR_MAN+x+'.htm',EN_MAN+f'ch{i:02}.htm') for i,x in enumerate('abcd',1)]
+    else:
+        def find(lang,label):
+            rows=info['sides'].get(lang,{}).get('discovered',[])
+            matches=[unquote(urlsplit(r['url']).path) for r in rows if norm(r['label'])==norm(label)]
+            return matches[0] if len(matches)==1 else None
+        candidates=[(find('fr',f),find('en',e)) for f,e in ENGELS_SECTION_LABELS]
+    for f,e in candidates:
+        fd=get('fr',f); ed=get('en',e)
+        if fd and ed: pairs.append((fd,ed,'work_level_section_mapping_not_gold_passage'))
+    return pairs
+
+
+def wr_title(url,lang):
+    p=urlsplit(url); prefix='/texts/'+lang+'/'
+    if p.hostname!='wikirouge.net' or p.query or not p.path.startswith(prefix): return None
+    title=unquote(p.path[len(prefix):]).replace('_',' ')
+    if not title or title.startswith('w/') or ':' in title.split('/')[0]: return None
+    return title
+
+
+def wr_interlanguage(s,base,lang):
+    out=set()
+    for a in s.select('a.interlanguage-link-target[href],.interlanguage-link a[href],a[hreflang][href]'):
+        u=canonical_url(urljoin(base,a['href']))
+        if valid_url(u) and wr_title(u,lang): out.add(u)
+    return sorted(out)
+
+
+def wr_public_work(client,work,max_pages):
+    docs={'fr':[],'en':[]}; info={'scope':'public_html_visible_subpage_links_only','scope_complete':False,'issues':[],'routes':[],'sides':{}}
+    interlinks={}; root_fr=html_url(WR+'fr/',work['wr_fr']); roots={'fr':root_fr}
+    for lang in ('fr','en'):
+        if lang not in roots: break
+        queue=[roots[lang]]; seen=set(); root_title=None; records=[]; info['sides'][lang]=records
+        while queue and len(seen)<max_pages:
+            url=queue.pop(0)
+            if url in seen: continue
+            seen.add(url)
+            try:
+                data,final=client.get(url); title=wr_title(final,lang)
+                if title is None: raise ValueError('unexpected Wikirouge final URL')
+                if root_title is None: root_title=title
+                if title!=root_title and not title.startswith(root_title+'/'): raise ValueError('redirect outside work')
+                s=soup(data); body=body_root(s); blocks=extract_blocks(data,mediawiki=True)
+                d=Document(final,blocks,sha(data),title,html_revision(s)); docs[lang].append(d)
+                targets=wr_interlanguage(s,final,'en' if lang=='fr' else 'fr'); interlinks[final]=targets
+                records.append({'url':final,'title':title,'revision':d.revision,'sha256':d.digest,'blocks':len(blocks),'words':sum(len(norm(b).split()) for b in blocks),'interlanguage':targets})
+                if lang=='fr' and len(seen)==1:
+                    if len(targets)==1:
+                        roots['en']=targets[0]; info['routes'].append({'fr':final,'en':targets[0],'method':'public_html_langlink'})
+                    else: info['issues'].append({'kind':'missing_or_ambiguous_root_langlink','count':len(targets)})
+                for a in body.find_all('a',href=True):
+                    u=canonical_url(urljoin(final,a['href'])); t=wr_title(u,lang)
+                    if valid_url(u) and t and t.startswith(root_title+'/') and u not in seen and u not in queue: queue.append(u)
+            except Exception as exc: info['issues'].append({'kind':'fetch_error','url':url,'error':str(exc)})
+        if queue: info['issues'].append({'kind':'page_limit','lang':lang,'remaining':len(queue)})
+    # HTML alone cannot prove that no unlinked subpage exists.
+    return docs,info,interlinks
+
+
+def wr_api_work(client,work,max_pages):
+    # Use the existing API implementation for true prefix enumeration. Fetch
+    # text with the same extraction policy as the other provider.
+    from resolver import work_title,subpages
+    docs={'fr':[],'en':[]}; info={'scope':'api_prefix_enumeration','issues':[],'routes':[],'sides':{}}
+    try:
+        fr,targets=work_title(client,work['wr_fr'])
+        info['native_langlink']={'fr_title':fr,'en_titles':targets}
+        if not fr or len(targets)!=1: raise ValueError('missing_or_ambiguous_work_langlink')
+        info['routes']=[{'fr_title':fr,'en_title':targets[0],'method':'api_langlinks'}]
+        for lang,title in [('fr',fr),('en',targets[0])]:
+            rows=[]; info['sides'][lang]=rows
+            names,truncated=subpages(client,lang,title,max_pages)
+            if truncated: info['issues'].append({'kind':'page_limit','lang':lang})
+            for name in names:
+                try:
+                    data=client.api(API[lang],action='parse',page=name,redirects=1,prop='text|revid')['parse']
+                    raw=data['text']; raw=raw['*'] if isinstance(raw,dict) else raw; body=raw.encode('utf-8')
+                    actual=data['title']
+                    if actual!=title and not actual.startswith(title+'/'): raise ValueError('redirect outside work')
+                    d=Document(html_url(WR+lang+'/',actual),extract_blocks(body,True),sha(body),actual,data.get('revid'))
+                    docs[lang].append(d); rows.append({'url':d.url,'title':actual,'sha256':d.digest,'revision':d.revision,'blocks':len(d.blocks),'words':sum(len(norm(b).split()) for b in d.blocks)})
+                except Exception as exc: info['issues'].append({'kind':'fetch_error','lang':lang,'title':name,'error':str(exc)})
+    except Exception as exc: info['issues'].append({'kind':'api_work_error','error':str(exc)})
+    # A TOC-only root is allowed, but both languages must have actual text.
+    for lang in ('fr','en'):
+        if not any(d.blocks for d in docs[lang]): info['issues'].append({'kind':'no_extracted_text','lang':lang})
+        titles=[d.title for d in docs[lang]]
+        if len(titles)!=len(set(titles)): info['issues'].append({'kind':'duplicate_resolved_title','lang':lang})
+    info['scope_complete']=bool(docs['fr'] and docs['en'] and not info['issues'])
+    return docs,info,{}
+
+
+
+def wr_hybrid_work(client,work,max_pages,native_attempt):
+    """Use reciprocally linked public roots, then verify the prefix inventory.
+
+    Reuse the already downloaded public HTML (including cache). Only fetch
+    missing inventory pages by API. A native langlink failure is diagnostic,
+    not fatal when independent root links and inventory are both confirmed.
+    This certifies a bounded prefix inventory, not textual equivalence.
+    """
+    docs,public,links=wr_public_work(client,work,max_pages)
+    public_issues=list(public['issues'])
+    info={**public,'scope':'html_roots_api_prefix_enumeration','scope_complete':False,
+          'issues':[],'html_attempt_issues':public_issues,'api_attempt':native_attempt}
+    if len(public['routes'])!=1:
+        info['issues'].append({'kind':'unconfirmed_html_root_pair'})
+        return docs,info,links
+    route=public['routes'][0]
+    roots={l:wr_title(route[l],l) for l in ('fr','en')}
+    # Compare canonical decoded titles, not literal URL encodings.
+    en_roots=[d for d in docs['en'] if d.title==roots['en']]
+    fr_roots=[d for d in docs['fr'] if d.title==roots['fr']]
+    if (not all(roots.values()) or len(fr_roots)!=1 or len(en_roots)!=1 or
+        {wr_title(u,'fr') for u in links.get(en_roots[0].url,[])}!={roots['fr']}):
+        info['issues'].append({'kind':'missing_or_ambiguous_reciprocal_root_link'})
+        return docs,info,links
+    native=native_attempt.get('native_langlink',{})
+    if ((native.get('fr_title') and native['fr_title']!=roots['fr']) or
+        (native.get('en_titles') and set(native['en_titles'])!={roots['en']})):
+        info['issues'].append({'kind':'native_and_html_root_conflict'})
+        return docs,info,links
+    info['routes']=[{**route,'method':'reciprocal_html_root_langlinks','reciprocal':True}]
+    info['prefix_inventory']={}
+    from resolver import subpages
+    for lang in ('fr','en'):
+        title=roots[lang]
+        try:
+            names,truncated=subpages(client,lang,title,max_pages)
+            info['prefix_inventory'][lang]={'titles':names,'truncated':truncated}
+            if truncated: info['issues'].append({'kind':'page_limit','lang':lang})
+            existing={d.title:d for d in docs[lang]}
+            if len(existing)!=len(docs[lang]):
+                info['issues'].append({'kind':'duplicate_resolved_title','lang':lang})
+            extras=sorted(set(existing)-set(names))
+            if extras:
+                info['issues'].append({'kind':'html_titles_outside_api_inventory','lang':lang,'titles':extras})
+            for name in names:
+                if name in existing and existing[name].blocks: continue
+                try:
+                    data=client.api(API[lang],action='parse',page=name,redirects=1,prop='text|revid')['parse']
+                    raw=data['text']; raw=raw['*'] if isinstance(raw,dict) else raw; body=raw.encode('utf-8')
+                    if data['title']!=name: raise ValueError('inventory_title_redirect_or_mismatch')
+                    rev=data.get('revid'); blocks=extract_blocks(body,True)
+                    if not isinstance(rev,int) or rev<=0: raise ValueError('missing_revision')
+                    d=Document(html_url(WR+lang+'/',name),blocks,sha(body),name,rev)
+                    existing[name]=d
+                    info['sides'][lang]=[r for r in info['sides'][lang] if r['title']!=name]
+                    info['sides'][lang].append({'url':d.url,'title':name,'revision':rev,'sha256':d.digest,'blocks':len(blocks),'words':sum(len(norm(b).split()) for b in blocks),'retrieval':'api_parse'})
+                except Exception as exc:
+                    info['issues'].append({'kind':'inventory_fetch_error','lang':lang,'title':name,'error':str(exc)})
+            # Keep public traversal order so ties in the baseline are stable.
+            docs[lang]=list(existing.values())
+            missing=sorted(set(names)-set(existing))
+            if missing: info['issues'].append({'kind':'missing_inventory_titles','lang':lang,'titles':missing})
+            if any(not isinstance(d.revision,int) or d.revision<=0 for d in docs[lang]):
+                info['issues'].append({'kind':'missing_document_revision','lang':lang})
+            if not any(d.blocks for d in docs[lang]): info['issues'].append({'kind':'no_extracted_text','lang':lang})
+            if any(not d.blocks for d in docs[lang] if d.title!=title):
+                info['issues'].append({'kind':'empty_subpage_text','lang':lang})
+        except Exception as exc: info['issues'].append({'kind':'api_inventory_error','lang':lang,'error':str(exc)})
+    info['scope_complete']=bool(docs['fr'] and docs['en'] and not info['issues'])
+    return docs,info,links
+
+
