@@ -38,6 +38,19 @@ Pour les citations françaises non localisées exactement, la recherche par dist
 
 Le mode `python pilot_full.py --provider preferred` privilégie MIA : si la source française est unique, l'inventaire complet et un candidat d'alignement par phrases disponible, il ne parcourt pas aussi Wikirouge pour cette citation. Sinon, il tente le second parcours. Cette règle optimise la **recherche de candidats** et ne prouve pas leur fidélité. Le banc comparatif complet reste le mode par défaut. La CI mesure aussi le parcours préférentiel à partir du cache du test complet, sans nouvelle requête ; ses chiffres de requêtes potentielles ne sont pas des durées réseau mesurées. Les URL MIA et titres Wikirouge des deux œuvres restent pré-identifiés ; la découverte générale d'œuvres et de traductions reste à développer.
 
+## Navigation bibliographique (expérience séparée)
+
+Le modèle Text de Wikirouge comporte une propriété sémantique MIA URL dans les deux langues ; le wiki anglais centralise les interlangues. Documentation : https://wikirouge.net/texts/fr/Aide:Accueil/Architecture_du_site et https://wikirouge.net/texts/en/Template:Text.
+
+Le module `navigation.py` extrait les métadonnées des modèles Citation originaux, tente la recherche inverse de l'URL MIA via Semantic MediaWiki, puis à défaut une correspondance de titre sur le wiki français. Il vérifie les interlangues HTML réciproques et lit les métadonnées brutes des deux œuvres, dont MIA URL ; l'API ask par titre sert de repli. Une URL anglaise trouvée est vérifiée en lecture HTTP. Aucune URL cible du benchmark n'est utilisée pour choisir un résultat. Les réponses restent des pistes bibliographiques, non des citations approuvées. Les métadonnées absentes, ambiguës et les erreurs sont explicitement signalées.
+
+```sh
+python -m pip install -r requirements-navigation.txt
+python navigation.py --replay
+```
+
+Le job navigation teste les neuf cas du corpus, y compris les cas non confirmés, et conserve uniquement les rapports de métadonnées et d'empreintes. Les extraits de citation ne figurent ni dans les rapports ni dans les logs. Ce parcours ne télécharge pas les œuvres intégrales et ne suppose pas que le champ MIA URL est rempli sur toutes les pages. La vérification des passages et des droits reste distincte.
+
 ## Avant intégration au dépôt principal
 
 Confirmer les résultats sur les sources réelles, élargir le corpus indépendant et les cas négatifs, évaluer les droits et les limites des citations, exploiter les métadonnées des modèles Citation bruts, mesurer le coût réel. Ne pas relâcher les critères pour obtenir une CI verte. L'intégration au workflow de traduction fera l'objet d'une décision séparée.
