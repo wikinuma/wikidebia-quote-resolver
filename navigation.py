@@ -254,12 +254,30 @@ def reciprocal_roots(client,title):
             'reciprocal':True,'fr_rendered_authors':fa,'en_rendered_authors':rendered_authors(body),'scope':'work_identity_candidate_not_section_or_quote_identity'}
 
 
+# Explicit complete-name aliases only. Do not generalize spelling changes to
+# arbitrary authors or silently conflate persons sharing a surname.
+# Wikirouge's French page "Le développement du militarisme mondial et nos
+# tâches militaires" uses both spellings for the same named author.
+AUTHOR_ALIASES=(
+    ('leon trotski','leon trotsky'),
+)
+
+
+def author_tokens(value,aliases=False):
+    text=norm(value)
+    if aliases:
+        for alternative,canonical in AUTHOR_ALIASES:
+            text=re.sub(r'(?<!\w)'+re.escape(alternative)+r'(?!\w)',canonical,text)
+    return set(text.split())-{'auteur','auteurs','author','authors','et','and'}
+
+
 def author_check(citation,work):
-    def words(s): return set(norm(s).split())-{'auteur','auteurs','author','authors','et','and'}
-    a,b=words(citation),words(work)
+    a,b=author_tokens(citation),author_tokens(work)
     if not a or not b: return 'metadata_missing'
     if a==b: return 'same_normalized_author_tokens'
-    if a<=b or b<=a: return 'partial_author_overlap'
+    aa,bb=author_tokens(citation,True),author_tokens(work,True)
+    if aa==bb: return 'same_documented_author_alias'
+    if aa<=bb or bb<=aa: return 'partial_author_overlap'
     return 'author_tokens_differ'
 
 

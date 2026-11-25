@@ -2,7 +2,7 @@ import importlib.util
 import unittest
 from unittest.mock import Mock,patch
 from navigation import (canonical_mia,mia_urls,safe_title,extract_citation,text_metadata,
-                        reverse_lookup,title_lookup,reciprocal_roots,discover_case,evaluate_route,generic_work_name,rendered_authors,
+                        reverse_lookup,title_lookup,reciprocal_roots,discover_case,evaluate_route,generic_work_name,rendered_authors,author_check,
                         API,WR)
 
 HAS_PARSER=bool(importlib.util.find_spec('mwparserfromhell'))
@@ -99,3 +99,11 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(quotes['x'],'une phrase assez longue ici')
         self.assertNotIn('text',row['input'])
         self.assertEqual(row['status'],'work_not_resolved')
+
+    def test_documented_full_name_alias(self):
+        self.assertEqual(author_check('Léon Trotsky','Léon Trotski'),'same_documented_author_alias')
+        self.assertEqual(author_check('Léon Trotski','Leon Trotsky'),'same_documented_author_alias')
+        self.assertEqual(author_check('Léon Trotsky','Ivan Trotski'),'author_tokens_differ')
+        self.assertEqual(author_check('Léon Trotsky','Karl Marx'),'author_tokens_differ')
+        self.assertEqual(author_check('Léon Trotsky','Léon Trotski, Karl Marx'),'partial_author_overlap')
+        self.assertEqual(author_check('','Léon Trotski'),'metadata_missing')

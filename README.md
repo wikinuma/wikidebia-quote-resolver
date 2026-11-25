@@ -65,6 +65,10 @@ Le moteur extrait les titres et libellés des sommaires des pages déjà récup�
 
 `python inventory.py --replay` interroge des lots bornés de liens externes de Wikidébats vers Marxists.org, puis recense les modèles Citation bruts effectivement liés au site. Le test sélectionne au plus huit œuvres distinctes par un ordre déterministe, en excluant les pages et titres d'œuvres du corpus de développement. La citation est référencée par sa révision, l'indice du modèle et les empreintes du modèle et du texte. Il n'y a plus besoin d'un fragment choisi à la main pour identifier le modèle ; un sélecteur interne est dérivé de la citation seulement pour la recherche approximative. Les réponses attendues ne sont pas fournies au moteur. Les résultats mesurent la couverture de candidats, pas leur exactitude. Les compteurs et empreintes sont publiés, jamais les textes des citations.
 
+## Variantes de noms d'auteurs
+
+Le premier inventaire hors corpus de développement (six œuvres sélectionnées, 24 pages examinées, 40 modèles) a révélé trois conflits de graphie et trois routes bibliographiques non résolues. Le contrôle d'auteur prend en charge une liste explicite et limitée de variantes du nom complet, dont Léon Trotski/Trotsky. Ces deux graphies sont attestées sur la même page de Wikirouge : https://wikirouge.net/texts/fr/Le_d%C3%A9veloppement_du_militarisme_mondial_et_nos_t%C3%A2ches_militaires . Aucune normalisation générale des patronymes, aucune acceptation automatique des citations. Les conflits réels et les ambiguïtés restent bloquants.
+
 ## Avant intégration au dépôt principal
 
 Confirmer les résultats sur les sources réelles, élargir le corpus indépendant et les cas négatifs, évaluer les droits et les limites des citations, exploiter les métadonnées des modèles Citation bruts, mesurer le coût réel. Ne pas relâcher les critères pour obtenir une CI verte. L'intégration au workflow de traduction fera l'objet d'une décision séparée.
