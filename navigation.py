@@ -283,7 +283,7 @@ def author_check(citation,work):
     return 'author_tokens_differ'
 
 
-def discover_case(client,case,quote_sink=None):
+def discover_case(client,case,quote_sink=None,local_index=None):
     row={'id':case['id'],'auto_publish':False,'rights':'unreviewed','status':'unresolved','attempts':[]}
     try:
         ref=case.get('citation_ref')
@@ -301,6 +301,24 @@ def discover_case(client,case,quote_sink=None):
         row['input']={**metadata,'wiki_title':title,'revision':rev,'raw_sha256':sha(raw.encode())}
     except Exception as exc:
         row.update(status='input_unavailable',error=error_kind(exc)); return row
+    if local_index is not None:
+        attempt, route = local_index.route(metadata)
+        row['attempts'].append(attempt)
+        if route is not None:
+            row.update(route)
+            fr,en=row['work_metadata']['fr'],row['work_metadata']['en']
+            row['citation_mia_url_in_root_metadata']=bool(set(metadata['mia_urls'])&set(fr['mia_urls']))
+            if len(en['mia_urls'])==1:
+                requested=en['mia_urls'][0]
+                try:
+                    body,final=client.get(requested)
+                    if canonical_mia(final) is None: raise ValueError('unexpected_mia_final_host')
+                    row['mia_target']={'requested_url':requested,'final_url':final,'sha256':sha(body),
+                                       'url_accessible':True,'scope':'metadata_link_only_not_quote_match'}
+                    row['status']='mia_route_candidate'
+                except Exception as exc:
+                    row['mia_target']={'requested_url':requested,'url_accessible':False,'error':error_kind(exc)}
+            return row
     selected=None
     if len(metadata['mia_urls'])==1:
         try:

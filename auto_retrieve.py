@@ -166,8 +166,9 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=()):
+    def __init__(self,client,max_pages,catalog=(),local_index=None):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
+        self.local_index=local_index
 
     def work(self,provider,root,lang):
         key=(provider,root,lang)
@@ -302,7 +303,9 @@ class Retrieval:
         query={k:case[k] for k in ('id','wiki_title')}
         if 'citation_ref' in case: query['citation_ref']=case['citation_ref']
         else: query['selector']=case['selector']
-        quotes={}; nav=discover_case(self.client,query,quote_sink=quotes)
+        quotes={}
+        kwargs={'local_index':self.local_index} if self.local_index is not None else {}
+        nav=discover_case(self.client,query,quote_sink=quotes,**kwargs)
         row={'id':case['id'],'navigation_status':nav['status'],'navigation':nav,'auto_publish':False,'rights':'unreviewed','status':'no_work_route','candidates':[]}
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
             if self.catalog and nav['status'] in ('work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed') and case['id'] in quotes:
@@ -369,8 +372,8 @@ class Retrieval:
         return row
 
 
-def run_auto(client,cases,max_pages,catalog=()):
-    r=Retrieval(client,max_pages,catalog)
+def run_auto(client,cases,max_pages,catalog=(),local_index=None):
+    r=Retrieval(client,max_pages,catalog,local_index)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
     return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
