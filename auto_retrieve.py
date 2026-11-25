@@ -20,6 +20,7 @@ from alignment import exact_occurrences, aligned_candidates
 from bibliography import catalog_route, VERIFIED_AUTHORS
 from window_rank import rank_short_windows
 from variants import source_variants
+from source_evidence import omission_candidates,multi_anchor_candidates
 from compare import evaluation
 from section_match import extract_headings, automatic_alignment
 
@@ -175,7 +176,7 @@ class Retrieval:
                               else collect_wr(self.client,root,lang,self.max_pages))
         return self.works[key]
 
-    def source(self,quote,selector,nav):
+    def source(self,quote,selector,nav,preferred_source=None):
         stages=[]; variants=[]; self.source_documents={}; inspected=set()
         def inspect(docs,info):
             stages.append(info)
@@ -198,6 +199,16 @@ class Retrieval:
             variants.extend(v['candidates'])
             if v['truncated']: stages[-1]['variant_search_truncated']=True
             return None
+        if preferred_source:
+            info={'provider':'mia','scope':'researched_source_document','root':preferred_source,'issues':[],'pages':[]}
+            try:
+                d,_=mia_doc(self.client,preferred_source)
+                if canonical_mia(d.url)!=preferred_source: raise ValueError('catalog_source_redirect')
+                info['pages']=[{'url':d.url,'sha256':d.digest,'blocks':len(d.blocks)}]
+                result=inspect([d],info)
+                if result: return {**result,'stages':stages}
+            except Exception as exc:
+                stages.append({**info,'issues':[{'kind':'researched_source_error','error':error_kind(exc)}]})
         direct=nav['input']['mia_urls']; examined_root=None
         if len(direct)==1:
             info={'provider':'mia','scope':'explicit_citation_url','root':direct[0],'issues':[],'pages':[]}
@@ -223,10 +234,23 @@ class Retrieval:
             docs,info=self.work('wikirouge',root,'fr')
             result=inspect(docs,info)
             if result: return {**result,'stages':stages}
+        diagnostics=[]
+        docs=list(self.source_documents.values())
+        # Explicit omitted fragments are a distinct kind of evidence, never
+        # exact contiguous quotation. Multi-anchor fallback runs only when
+        # the original conservative single-selector method found nothing.
+        omitted=omission_candidates(quote,docs)
+        diagnostics.append({k:v for k,v in omitted.items() if k!='candidates'})
+        if omitted['candidates']:
+            variants=omitted['candidates']
+        if not variants:
+            multi=multi_anchor_candidates(quote,docs)
+            diagnostics.append({k:v for k,v in multi.items() if k!='candidates'})
+            variants.extend(multi['candidates'])
         variants=list({(c['url'],c['sha256'],c['char_start'],c['char_end']):c for c in variants}.values())
         variants.sort(key=lambda c:(c['token_edits'],c['url'],c['char_start']))
         return {'status':'variant_review_required' if variants else 'source_unconfirmed_in_bounded_scope',
-                'occurrences':[],'variants':variants[:5],'stages':stages}
+                'occurrences':[],'variants':variants[:5],'stages':stages,'source_evidence_diagnostics':diagnostics}
 
     def retrieve_catalog(self,case,row,quote):
         # Only use explicit researched mappings when the ordinary route is
@@ -238,7 +262,7 @@ class Retrieval:
             row['status']='bibliographic_lead_only'; return row
         selector=case.get('selector') or automatic_selector(quote)
         # A catalog route is grounded in the exact cited source URL only.
-        source=self.source(quote,selector,{'input':row['navigation']['input']})
+        source=self.source(quote,selector,{'input':row['navigation']['input']},preferred_source=entry.get('source_document'))
         row['source']=source
         if source['status'] not in ('exact_in_examined_documents','variant_review_required'):
             row['status']='source_needs_review'; return row
@@ -265,7 +289,9 @@ class Retrieval:
         row.update(target_provider=provider,target_scope=info['scope'],candidates=candidates,
                    status='catalog_candidate_review_required' if candidates else 'catalog_no_candidate',
                    rights='unreviewed')
-        if entry.get('whole_document_parallel'):
+        expected_source=entry.get('source_document',entry['source_url'])
+        actual_source=source['occurrences'][0]['url'] if len(source['occurrences'])==1 else None
+        if entry.get('whole_document_parallel') and actual_source and canonical_mia(actual_source)==expected_source:
             aligned=document_alignment(quote,source,list(self.source_documents.values()),[doc],'researched_bibliographic_catalog')
             row['section_alignment']=aligned
             if aligned['candidates'] and not candidates: row['status']='catalog_candidate_review_required'
@@ -288,7 +314,11 @@ class Retrieval:
         selector=case.get('selector') or automatic_selector(quote)
         source=self.source(quote,selector,nav); row['source']=source
         if source['status'] not in ('exact_in_examined_documents','variant_review_required'):
-            row['status']='source_needs_review'; return row
+            row['status']='source_needs_review'
+            if self.catalog and source['status']=='source_unconfirmed_in_bounded_scope':
+                row['automatic_attempt']={'status':row['status'],'source_status':source['status']}
+                return self.retrieve_catalog(case,row,quote)
+            return row
         target=nav.get('mia_target',{})
         if target.get('url_accessible'):
             docs,info=self.work('mia',target['final_url'],'en')
@@ -333,6 +363,9 @@ class Retrieval:
             aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
         else: aligned['evaluation']={'state':'not_executed_or_unresolved'}
         row['section_alignment']=aligned
+        if self.catalog and not row['candidates'] and not aligned['candidates']:
+            row['automatic_attempt']={'status':row['status'],'source_status':source['status']}
+            return self.retrieve_catalog(case,row,quote)
         return row
 
 

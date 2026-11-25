@@ -49,6 +49,76 @@
       "bibliography": "Michel Bolsey translation, in Russia Twenty Years After, new edition prepared by Susan Weissman, Humanities Press, 1996. No full English text located in the examined public archive.",
       "rights_note": "Modern translation; access and reuse rights unverified. Bibliographic lead only.",
       "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "source_title": "La crise de la social-démocratie",
+      "authors": "Rosa Luxemburg",
+      "source_document": "https://www.marxists.org/francais/luxembur/junius/rljhf.html",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch08.htm",
+      "target_title": "The Junius Pamphlet, chapter 8",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/luxembur/junius/rljhf.html",
+        "https://www.marxists.org/archive/luxemburg/1915/junius/",
+        "https://www.marxists.org/archive/luxemburg/1915/junius/ch08.htm"
+      ],
+      "bibliography": "French and English passages about the destruction of the European proletariat located by web search. English index credits Dave Hollis, translated from German, and states GNU Free Documentation License; the exact wiki quotation still needs to be located.",
+      "rights_note": "MIA index declares GFDL; verify applicable chapter and compliance with wiki license before reuse.",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/livres/bcs/bcs05.htm",
+      "source_title": "Bolchevisme ou stalinisme",
+      "authors": "Léon Trotsky",
+      "source_document": "https://www.marxists.org/francais/trotsky/oeuvres/1937/08/lt19370829.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/trotsky/1937/08/stalinism.htm",
+      "target_title": "Stalinism and Bolshevism",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/oeuvres/1937/08/lt19370829.htm",
+        "https://www.marxists.org/archive/trotsky/1937/08/stalinism.htm"
+      ],
+      "bibliography": "29 August 1937 article; English page lists Socialist Appeal issues 7 and 8, September/October 1937, and 1990 reprint. Matching article title and subject, exact quote remains to verify.",
+      "rights_note": "Translation and reuse rights not yet established; review only.",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/engels/works/1878/06/fe18780611.htm",
+      "source_title": "Anti-Dühring",
+      "authors": "Friedrich Engels",
+      "source_document": "https://www.marxists.org/francais/engels/works/1878/06/fe18780611ab.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1877/anti-duhring/ch24.htm",
+      "target_title": "Anti-Dühring, Socialism, Theoretical",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/engels/works/1878/06/fe18780611ab.htm",
+        "https://www.marxists.org/archive/marx/works/1877/anti-duhring/ch24.htm"
+      ],
+      "bibliography": "Corresponding passage on the modern state found in the theoretical section in both languages by web search. Confirm exact citation and section boundaries.",
+      "rights_note": "Translation edition and reuse rights unreviewed.",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/livres/trans/tran.htm",
+      "source_title": "Programme de transition",
+      "authors": "Léon Trotsky",
+      "source_document": "https://www.marxists.org/francais/trotsky/livres/trans/tran3.html",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/trotsky/1938/tp/tp-text.htm",
+      "target_title": "The Transitional Program, part 1",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/livres/trans/tran.htm",
+        "https://www.marxists.org/francais/trotsky/livres/trans/tran3.html",
+        "https://www.marxists.org/archive/trotsky/1938/tp/tp-text.htm"
+      ],
+      "bibliography": "French contents explicitly link Programme minimum et programme de transition; English part 1 includes corresponding section. French chapter could not be decoded by web search; runner must verify actual source. The target contains other sections.",
+      "rights_note": "Translation edition and reuse rights unreviewed.",
+      "researched_on": "2026-11-25"
     }
   ]
 }

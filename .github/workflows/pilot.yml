@@ -65,6 +65,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_inventory.py' -v
           python -m unittest discover -s tests -p 'test_bibliography.py' -v
           python -m unittest discover -s tests -p 'test_window_rank.py' -v
+          python -m unittest discover -s tests -p 'test_source_evidence.py' -v
       - name: Metadata routes and offline replay
         run: python navigation.py --replay
       - name: Automatic quotation candidate retrieval and replay
@@ -102,8 +103,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_inventory.py' -v
       - name: Discover and evaluate candidate coverage
         run: python inventory.py --catalog bibliographic-catalog.json --replay
-      - name: Expanded independent sample (no catalog)
-        run: python inventory.py --batches 4 --scan-pages 60 --sample 12 --balance-authors --exclude-file development-inventory.json --max-work-pages 32 --budget 400 --out reports-live/expanded-inventory.json --replay
+      - name: Expanded cohort - automatic vs web-assisted
+        run: python inventory.py --batches 4 --scan-pages 60 --sample 12 --balance-authors --exclude-file development-inventory.json --max-work-pages 32 --budget 400 --catalog bibliographic-catalog.json --out reports-live/expanded-inventory.json --replay
       - name: Preserve redacted inventory reports
         if: always()
         uses: actions/upload-artifact@v6

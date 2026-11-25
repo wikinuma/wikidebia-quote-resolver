@@ -38,6 +38,9 @@ def load_catalog(path):
         elif provider=='bibliography_only':
             if target is not None: raise ValueError('bibliography_only_has_text_target')
         else: raise ValueError('invalid_catalog_provider')
+        specific=row.get('source_document')
+        if specific is not None and (canonical_mia(specific)!=specific or not specific.startswith('https://www.marxists.org/francais/') or specific not in row['evidence']):
+            raise ValueError('invalid_catalog_source_document')
         if row.get('whole_document_parallel') and provider=='bibliography_only':
             raise ValueError('invalid_catalog_alignment_scope')
     return tuple(entries)

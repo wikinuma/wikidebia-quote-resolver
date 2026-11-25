@@ -129,6 +129,9 @@ def summary(report,assisted=False):
         meta=c['navigation'].get('input',{})
         rows.append({'id':c['id'],'wiki_title':meta.get('wiki_title'),'work':meta.get('work'),'authors':meta.get('authors'),
                      'status':c['status'],'navigation_status':c['navigation_status'],'source_status':c.get('source',{}).get('status'),
+                     'quote_words':meta.get('quote_words'),
+                     'source_evidence_diagnostics':c.get('source',{}).get('source_evidence_diagnostics',[]),
+                     'variant_evidence':[ {k:v for k,v in x.items() if k in ('url','match','query_words','source_words','token_edits','omitted_words','gap_words','similarity','seed_support','boundary_ambiguous')} for x in c.get('source',{}).get('variants',[]) ],
                      'article':meta.get('article'),'source_urls':meta.get('mia_urls'),
                      'navigation_attempts':c['navigation'].get('attempts',[]),
                      'navigation_error':c['navigation'].get('error'),

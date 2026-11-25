@@ -83,6 +83,12 @@ Le premier lot élargi (60 pages, 90 modèles, 8 œuvres) a révélé des sommai
 
 Lorsque la recherche lexicale par paragraphes ne produit aucun candidat, un moteur de secours parcourt des fenêtres de phrases et exploite les ancres bilingues et préfixes de cognats. Aucun texte n'est généré ; les extraits restent candidats et les limites de calcul sont signalées. Les rangs du moteur initial restent inchangés lorsqu'il propose déjà des candidats. La graphie Lénine/Lenin est également traitée explicitement.
 
+## Recherche documentaire classique : comparaison contrôlée
+
+Le répertoire contient également quatre pistes issues de recherches Web sur le lot élargi : Luxemburg (Junius), Trotsky (Bolchevisme ou stalinisme, Programme de transition) et Engels (Anti-Dühring). Une notice peut identifier une page française plus précise que l'URL du sommaire citée ; elle doit être documentée dans les références. Le moteur vérifie le passage français avant de classer l'anglais, et n'effectue un alignement de document complet que si l'occurrence française se trouve sur la page parallèle explicitement désignée. Le parcours automatique est mesuré séparément avant le parcours assisté ; une piste Web n'est pas un résultat indépendant ni une traduction approuvée. Le lot élargi est désormais un corpus de diagnostic, plus un échantillon aveugle.
+
+Le moteur sait aussi rechercher les fragments d'une citation contenant des ellipses explicites, en conservant les positions et la taille des omissions, puis exploiter plusieurs groupes de quatre mots uniques si le sélecteur initial a changé. Les budgets et ambiguïtés sont signalés ; jamais de promotion de ces variantes en citation contiguë exacte. Les rapports contiennent uniquement les empreintes, métadonnées, coordonnées et compteurs, sans texte de citation. Les comparaisons sont reproductibles hors ligne.
+
 ## Avant intégration au dépôt principal
 
 Confirmer les résultats sur les sources réelles, élargir le corpus indépendant et les cas négatifs, évaluer les droits et les limites des citations, exploiter les métadonnées des modèles Citation bruts, mesurer le coût réel. Ne pas relâcher les critères pour obtenir une CI verte. L'intégration au workflow de traduction fera l'objet d'une décision séparée.

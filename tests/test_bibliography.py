@@ -18,6 +18,7 @@ class BibliographyTests(unittest.TestCase):
     def test_exact_bibliographic_match_and_alias(self):
         self.assertEqual(match_catalog(self.meta,self.entries),self.e)
         self.assertFalse(catalog_route(self.meta,self.entries)['auto_publish'])
+        self.assertTrue(any(e.get('source_document') for e in self.entries))
 
     def test_wrong_source_title_or_author_never_matched(self):
         for meta in ({**self.meta,'authors':'Ivan Trotski'}, {**self.meta,'article':'Wrong work'},
