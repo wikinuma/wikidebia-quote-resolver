@@ -1,0 +1,9 @@
+.cache/
+.venv/
+__pycache__/
+*.pyc
+reports-live/
+reports-live/
+models/
+*.sqlite3
+.pilot-cache/
