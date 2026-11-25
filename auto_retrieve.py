@@ -18,6 +18,7 @@ from pilot_full import (PilotClient,WR,soup,extract_blocks,html_revision,html_ur
 from alignment import exact_occurrences
 from variants import source_variants
 from compare import evaluation
+from section_match import extract_headings, automatic_alignment
 
 
 def mia_toc_links(body,root):
@@ -52,7 +53,7 @@ def mia_doc(client,url):
     body,final=client.get(url)
     if not canonical_mia(final): raise ValueError('unexpected_mia_final_url')
     s=soup(body)
-    return Document(final,extract_blocks(body),sha(body),s.title.get_text(' ',strip=True) if s.title else ''),body
+    return Document(final,extract_blocks(body),sha(body),s.title.get_text(' ',strip=True) if s.title else '',headings=extract_headings(s)),body
 
 
 def collect_mia(client,root,max_pages):
@@ -60,10 +61,17 @@ def collect_mia(client,root,max_pages):
     try:
         doc,body=mia_doc(client,root); docs.append(doc)
         links=mia_toc_links(body,doc.url); info['links']=links
+        labels={}
+        for a in soup(body).find_all('a',href=True):
+            u=canonical_mia(urljoin(doc.url,a['href']))
+            label=' '.join(a.get_text(' ',strip=True).split())
+            if u and 1<=len(norm(label).split())<=20 and len(label)<=220:
+                labels.setdefault(u,set()).add(label)
         if len(links)+1>max_pages: info['issues'].append({'kind':'page_limit'})
         for item in links[:max_pages-1]:
             try:
                 d,_=mia_doc(client,item['url'])
+                d.headings=tuple(dict.fromkeys((*d.headings,*sorted(labels.get(item['url'],set())))))
                 if d.url not in {x.url for x in docs}: docs.append(d)
             except Exception as exc: info['issues'].append({'kind':'fetch_error','url':item['url'],'error':error_kind(exc)})
     except Exception as exc: info['issues'].append({'kind':'root_error','error':error_kind(exc)})
@@ -82,7 +90,8 @@ def collect_wr(client,title,lang,max_pages):
         try:
             body,url=client.get(html_url(WR+lang+'/',name))
             if wr_title(url,lang)!=name.replace('_',' '): raise ValueError('wiki_title_mismatch')
-            d=Document(url,extract_blocks(body,True),sha(body),name,html_revision(soup(body)))
+            d=Document(url,extract_blocks(body,True),sha(body),name,html_revision(soup(body)),
+                       headings=tuple(dict.fromkeys((*(extract_headings(soup(body))),*([name.rsplit('/',1)[-1]] if '/' in name else [])))))
             docs.append(d)
         except Exception as exc: info['issues'].append({'kind':'fetch_error','title':name,'error':error_kind(exc)})
     info['pages']=[{'url':d.url,'sha256':d.digest,'revision':d.revision,'blocks':len(d.blocks)} for d in docs]
@@ -91,7 +100,7 @@ def collect_wr(client,title,lang,max_pages):
 
 class Retrieval:
     def __init__(self,client,max_pages):
-        self.client=client; self.max_pages=max_pages; self.works={}
+        self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}
 
     def work(self,provider,root,lang):
         key=(provider,root,lang)
@@ -101,9 +110,14 @@ class Retrieval:
         return self.works[key]
 
     def source(self,quote,selector,nav):
-        stages=[]; variants=[]
+        stages=[]; variants=[]; self.source_documents={}
         def inspect(docs,info):
             stages.append(info)
+            for d in docs:
+                key=(d.url,d.digest)
+                if key in self.source_documents:
+                    d.headings=tuple(dict.fromkeys((*self.source_documents[key].headings,*d.headings)))
+                self.source_documents[key]=d
             hits=[]; truncated=False
             for d in docs:
                 m,t=exact_occurrences(quote,d); hits+=m; truncated|=t
@@ -112,7 +126,7 @@ class Retrieval:
                         'occurrences':hits,'occurrences_truncated':truncated}
             v=source_variants(quote,selector,docs)
             variants.extend(v['candidates'])
-            if v['truncated']: info={**info,'variant_search_truncated':True}
+            if v['truncated']: stages[-1]={**info,'variant_search_truncated':True}
             return None
         direct=nav['input']['mia_urls']
         if len(direct)==1:
@@ -163,6 +177,17 @@ class Retrieval:
                           else 'variant_source_candidate_review_required' if candidates else 'no_target_candidate')
         # Expected targets and needles are used only now, after retrieval.
         row['evaluation']=evaluation(candidates,case,info['provider'])
+        # Preserve the original lexical list. A separately measured structural
+        # candidate uses heading evidence independent of the quotation.
+        fr_docs=list(self.source_documents.values())
+        route=nav['route']; meta=nav['work_metadata']
+        aligned=automatic_alignment(quote,source,fr_docs,docs,
+                                    (route['fr_title'],route['en_title'],nav['input'].get('work','')),
+                                    (meta['fr'].get('authors',''),meta['en'].get('authors','')))
+        if aligned['candidates']:
+            aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
+        else: aligned['evaluation']={'state':'not_executed_or_unresolved'}
+        row['section_alignment']=aligned
         return row
 
 
@@ -196,7 +221,10 @@ def main():
                       'source_status':r.get('source',{}).get('status'),'source_matches':len(r.get('source',{}).get('occurrences',[])),
                       'source_stages':[{'provider':s['provider'],'scope':s['scope'],'pages':len(s['pages']),'issues':s['issues']} for s in r.get('source',{}).get('stages',[])],
                       'target_provider':r.get('target_provider'),'target_scope':r.get('target_scope'),
-                      'candidate_count':len(r['candidates']),'evaluation':r.get('evaluation')} for r in report['cases']]
+                      'candidate_count':len(r['candidates']),'evaluation':r.get('evaluation'),
+                      'lexical_candidate_words':sum(c.get('text_words',0) for c in r['candidates']),
+                      'section_alignment':{k:v for k,v in r.get('section_alignment',{}).items() if k!='candidates'},
+                      'alignment_candidate_words':sum(c.get('text_words',0) for c in r.get('section_alignment',{}).get('candidates',[]))} for r in report['cases']]
     rc=int(not any(r['status']=='candidate_review_required' for r in report['cases']))
     if a.replay:
         expected={}

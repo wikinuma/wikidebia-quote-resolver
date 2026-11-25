@@ -94,6 +94,7 @@ class Document:
     digest: str
     title: str = ''
     revision: int | None = None
+    headings: tuple[str, ...] = ()
 
 
 def soup_from(body):

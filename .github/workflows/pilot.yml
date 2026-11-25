@@ -61,6 +61,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_navigation.py' -v
           python -m unittest discover -s tests -p 'test_auto_retrieve.py' -v
+          python -m unittest discover -s tests -p 'test_section_match.py' -v
       - name: Metadata routes and offline replay
         run: python navigation.py --replay
       - name: Automatic quotation candidate retrieval and replay
