@@ -146,7 +146,13 @@ def case_metrics(row):
     for c in lexical+aligned:
         key=c.get('text_sha256') or (c.get('url'),c.get('char_start'),c.get('char_end'))
         unique[key]=max(unique.get(key,0),c.get('text_words',0))
-    return {'work_candidate':nav.get('status') in ('mia_route_candidate','wikirouge_route_candidate'),
+    catalog=row.get('bibliographic_route',{})
+    first=row.get('review_packet',{}).get('candidates',[])
+    first_words=sum(x.get('text_words',0) for x in first) if 'review_packet' in row else sum(unique.values())
+    return {'work_candidate':nav.get('status') in ('mia_route_candidate','wikirouge_route_candidate') or bool(catalog),
+            'researched_catalog_route':bool(catalog),
+            'first_pass_words':first_words,
+            'variant_aligned_candidate':any(c.get('source_evidence_kind') not in (None,'exact_normalized_source') for c in aligned),
             'local_route':nav.get('route_method')=='local_wikirouge_snapshot',
             'french_unique_source':source.get('status')=='exact_in_examined_documents',
             'english_passage_candidate':bool(lexical or aligned),
@@ -177,9 +183,9 @@ def one_case(retrieval, case, case_budget):
     return {'metrics':metrics,'result':row}
 
 
-def aggregate(pairs):
+def aggregate(pairs,arms=('legacy','indexed')):
     out={}
-    for arm in ('legacy','indexed'):
+    for arm in arms:
         rows=[p[arm] for p in pairs]
         counts=Counter(x['result']['status'] for x in rows)
         metrics={k:round(sum(x['metrics'][k] for x in rows),4) for k in rows[0]['metrics']} if rows else {}

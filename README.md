@@ -106,3 +106,16 @@ The legacy CLI remains unchanged unless the index option is used. The indexed ro
 
 The paired benchmark selects pinned real citations with distinct quotation fingerprints and prioritized work and author diversity, prioritizes independent cases over known development examples, and admits only French Citation templates whose own lien parameter contains a canonicalizable marxists.org URL. It permits multiple distinct quotations from the same work, reporting development overlap if needed. It never fills a shortfall with non-MIA cases. Both arms share the selected input revisions, deterministic retrieval and per-case bounds but use separate initially empty caches; arm order alternates. Discovery cost is reported separately. Results are written after each pair; the run fails if fewer cases than requested were available. The benchmark reports work/source/target/alignment candidates, network requests, decoded response-body bytes (not wire bandwidth), runtime, errors, and deduplicated candidate words for review (not LLM tokens). Exact-quote verification, edition/translator and rights require independent documentary review, so unmeasured verified counts and false positives are null. No model calls, wiki writes, publication or production integration occur.
 
+
+## MIA-only refinement (development experiment)
+
+The second paired run uses the exact frozen 50-citation cohort in GitHub Actions run 45713244614, verified by report SHA-256. Both arms use the same verified Wikirouge snapshot, empty separate caches, and the same enlarged per-case/page bounds. The refined arm uses researched document leads, cached direct parallel-document alignments (including a strictly checked unique source variant/omission envelope), and a first-pass review packet prioritizing one aligned or lexical candidate. It never approves exact boundaries or removes fallback candidates. No generated translation or model call is used.
+
+Five new catalog routes were identified by inspecting the development cohort. The Plekhanov 1904 Geneva lectures must not be conflated with his distinct 1897 text under the same title. Modern copyright notices on the Rakovsky and Harman targets are recorded, not treated as permission to reuse. Bibliographic and passage candidates remain unverified.
+
+```sh
+python auto_retrieve.py --local-index data/wikirouge/manifest.json --catalog bibliographic-catalog.json --refined
+python benchmark_refine.py --baseline-report paired-index.json
+```
+
+The refinement comparison is a development recheck, not an independent holdout. The baseline artifact can expire on GitHub; keep a local copy of the original paired-index.json or use the preserved copy from the refinement artifact. The first-pass metric measures English words offered initially, not correctness, total review effort, or AI quota; all deferred candidates remain accessible. Separate exact-quotation adjudication and a fresh holdout are still necessary.

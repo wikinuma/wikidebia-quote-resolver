@@ -407,14 +407,16 @@ class Retrieval:
             aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
         else: aligned['evaluation']={'state':'not_executed_or_unresolved'}
         row['section_alignment']=aligned
+        if self.refined and aligned['candidates'] and not row['candidates']:
+            row['status']='aligned_candidate_review_required'
         if self.catalog and not row['candidates'] and not aligned['candidates']:
             row['automatic_attempt']={'status':row['status'],'source_status':source['status']}
             return self.retrieve_catalog(case,row,quote)
         return row
 
 
-def run_auto(client,cases,max_pages,catalog=(),local_index=None):
-    r=Retrieval(client,max_pages,catalog,local_index)
+def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False):
+    r=Retrieval(client,max_pages,catalog,local_index,refined)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
     return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
@@ -431,6 +433,8 @@ def main():
     p.add_argument('--case',action='append',default=[])
     p.add_argument('--replay',action='store_true')
     p.add_argument('--local-index',type=Path,help='Path to verified snapshot manifest; default is legacy live navigation')
+    p.add_argument('--refined',action='store_true',help='Cache direct alignments and expose a first-pass review packet')
+    p.add_argument('--catalog',type=Path,help='Optional researched bibliography')
     a=p.parse_args()
     if a.budget<1 or a.max_pages<1: p.error('positive limits required')
     if a.local_index:
@@ -444,7 +448,9 @@ def execute(a,local_index):
     cases=json.loads((ROOT/'cases-v02.json').read_text())['cases']
     cases=[c for c in cases if not a.case or c['id'] in a.case]
     if not cases or set(a.case)-{c['id'] for c in cases}: p.error('unknown or empty case')
-    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages,local_index=local_index)
+    from bibliography import load_catalog
+    catalog=load_catalog(a.catalog) if a.catalog else ()
+    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined)
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     summary={k:report[k] for k in ('counts','requests','cache_hits','scope','auto_publish')}
@@ -465,7 +471,7 @@ def execute(a,local_index):
                 raise RuntimeError('inconsistent_live_response')
             expected[e['request_url']]=e
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
-        replay=run_auto(replay_client,cases,a.max_pages,local_index=local_index)
+        replay=run_auto(replay_client,cases,a.max_pages,catalog,local_index,refined=a.refined)
         same=report['cases']==replay['cases'] and report['counts']==replay['counts']
         mismatches=replay_mismatches(expected,replay_client.events)
         integrity={'results_match':same,'response_mismatches':mismatches,'network_requests':replay_client.requests}
