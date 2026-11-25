@@ -354,14 +354,18 @@ class Retrieval:
         # align without translated chapter titles. Require source and target
         # exact metadata URLs, reciprocal roots, matched authors, and no TOC.
         source_url=source.get('occurrences',[{}])[0].get('url') if source.get('occurrences') else None
+        indexed_direct=(nav.get('route_method')=='local_wikirouge_snapshot'
+                        and route.get('scope')=='direct_native_link'
+                        and nav.get('citation_mia_url_in_root_metadata') is True)
         direct_parallel=(info['provider']=='mia' and len(docs)==1 and not info['issues']
-                         and not info.get('links') and route.get('reciprocal') is True
+                         and not info.get('links') and (route.get('reciprocal') is True or indexed_direct)
                          and nav.get('author_check') in VERIFIED_AUTHORS
                          and author_check(meta['fr'].get('authors',''),meta['en'].get('authors','')) in VERIFIED_AUTHORS
                          and source_url is not None and [canonical_mia(source_url)]==meta['fr'].get('mia_urls')
                          and [canonical_mia(docs[0].url)]==meta['en'].get('mia_urls'))
         if not aligned['candidates'] and direct_parallel:
-            aligned=document_alignment(quote,source,fr_docs,docs,'reciprocal_work_metadata_direct_documents')
+            aligned=document_alignment(quote,source,fr_docs,docs,
+                                       'indexed_native_link_direct_documents' if indexed_direct else 'reciprocal_work_metadata_direct_documents')
         if aligned['candidates']:
             aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
         else: aligned['evaluation']={'state':'not_executed_or_unresolved'}
@@ -389,12 +393,21 @@ def main():
     p.add_argument('--max-pages',type=int,default=24)
     p.add_argument('--case',action='append',default=[])
     p.add_argument('--replay',action='store_true')
+    p.add_argument('--local-index',type=Path,help='Path to verified snapshot manifest; default is legacy live navigation')
     a=p.parse_args()
     if a.budget<1 or a.max_pages<1: p.error('positive limits required')
+    if a.local_index:
+        from wikirouge_index import open_snapshot
+        with open_snapshot(a.local_index) as index:
+            return execute(a,index)
+    return execute(a,None)
+
+
+def execute(a,local_index):
     cases=json.loads((ROOT/'cases-v02.json').read_text())['cases']
     cases=[c for c in cases if not a.case or c['id'] in a.case]
     if not cases or set(a.case)-{c['id'] for c in cases}: p.error('unknown or empty case')
-    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages)
+    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages,local_index=local_index)
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     summary={k:report[k] for k in ('counts','requests','cache_hits','scope','auto_publish')}
@@ -415,7 +428,7 @@ def main():
                 raise RuntimeError('inconsistent_live_response')
             expected[e['request_url']]=e
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
-        replay=run_auto(replay_client,cases,a.max_pages)
+        replay=run_auto(replay_client,cases,a.max_pages,local_index=local_index)
         same=report['cases']==replay['cases'] and report['counts']==replay['counts']
         mismatches=replay_mismatches(expected,replay_client.events)
         integrity={'results_match':same,'response_mismatches':mismatches,'network_requests':replay_client.requests}

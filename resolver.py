@@ -44,6 +44,7 @@ class Client:
         self.cache = Path(cache); self.cache.mkdir(parents=True, exist_ok=True)
         self.budget = budget; self.delay = delay; self.ttl = ttl
         self.requests = 0; self.hits = 0; self.last = 0.0
+        self.network_body_bytes = 0  # decoded body bytes read, including partial failures
 
     def get(self, url, params=None):
         if not valid_url(url): raise ValueError(f'URL not allowed: {url}')
@@ -71,6 +72,7 @@ class Client:
                     chunks=[]; size=0
                     for chunk in r.iter_content(65536):
                         size += len(chunk)
+                        self.network_body_bytes += len(chunk)
                         if size > MAX_BYTES: raise RuntimeError('response too large')
                         chunks.append(chunk)
                     body=b''.join(chunks)

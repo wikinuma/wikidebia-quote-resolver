@@ -92,3 +92,17 @@ Le moteur sait aussi rechercher les fragments d'une citation contenant des ellip
 ## Avant intégration au dépôt principal
 
 Confirmer les résultats sur les sources réelles, élargir le corpus indépendant et les cas négatifs, évaluer les droits et les limites des citations, exploiter les métadonnées des modèles Citation bruts, mesurer le coût réel. Ne pas relâcher les critères pour obtenir une CI verte. L'intégration au workflow de traduction fera l'objet d'une décision séparée.
+
+## Local Wikirouge snapshot (experimental)
+
+The dated archive in `data/wikirouge/` is the original metadata snapshot, not a full-text corpus. The manifest binds the compressed archive, the SQLite member and its schema/counts. The loader extracts only that member, verifies both SHA-256 digests, and opens SQLite read-only. It never executes bundled Python code.
+
+```sh
+python auto_retrieve.py --local-index data/wikirouge/manifest.json --replay
+python benchmark_index.py --sample 50
+```
+
+The legacy CLI remains unchanged unless the index option is used. The indexed route requires a unique native pair, compatible authors on both sides and no conflicting known writing year or URL/title evidence. One-way links are labelled as such. Ambiguous mappings are retained in diagnostics and fall back to the legacy navigation. A subpage can inherit a parent's *work* route but never proves chapter identity. Mirror URLs and bibliographic fields are retained verbatim; only the existing MIA/Wikirouge allowlist is used for fetching. Neither a work candidate nor an aligned text window constitutes a verified translation, edition, translator, boundaries or reuse rights.
+
+The paired benchmark selects pinned real citations with distinct works and quotation fingerprints, excludes known development titles/works and the archive's 14 development examples, and seeks an explicit-MIA/non-MIA stratified sample. Both arms share the selected input revisions, deterministic retrieval and per-case bounds but use separate initially empty caches; arm order alternates. Discovery cost is reported separately. Results are written after each pair; the run fails if fewer cases than requested were available. The benchmark reports work/source/target/alignment candidates, network requests, decoded response-body bytes (not wire bandwidth), runtime, errors, and deduplicated candidate words for review (not LLM tokens). Exact-quote verification, edition/translator and rights require independent documentary review, so unmeasured verified counts and false positives are null. No model calls, wiki writes, publication or production integration occur.
+

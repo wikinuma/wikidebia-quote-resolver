@@ -1,0 +1,48 @@
+name: Wikirouge local index - paired comparison
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'wikirouge_index.py'
+      - 'benchmark_index.py'
+      - 'data/wikirouge/**'
+      - 'tests/test_wikirouge_index.py'
+      - 'tests/test_benchmark_index.py'
+      - '.github/workflows/index-paired.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quote-index-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  paired:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-navigation.txt
+      - name: Install deterministic retrieval dependencies
+        run: python -m pip install -r requirements-navigation.txt
+      - name: Run all regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Compare legacy and indexed retrieval on 50 pinned citations
+        timeout-minutes: 50
+        run: python benchmark_index.py --sample 50
+      - name: Preserve redacted comparison and partial results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wikirouge-paired-comparison
+          path: reports-live/paired-index.json
+          if-no-files-found: warn
+          retention-days: 14
