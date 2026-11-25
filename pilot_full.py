@@ -16,6 +16,7 @@ from resolver import API, WD_API, ROOT, Client, Document, norm, clean, sha, vali
 from alignment import exact_occurrences, text_and_starts, tokens_with_offsets, OMISSION
 from compare import compare_methods, evaluation, page_pairs
 from embedding import LocalEncoder
+from variants import source_variants, group_evidence, primary_sufficient_for_review, source_family
 
 MIA = 'https://www.marxists.org'
 WR = 'https://wikirouge.net/texts/'
@@ -504,13 +505,13 @@ def redact_text(obj):
     return out
 
 
-def run_pilot(client,cases,providers,max_pages,encoder=None,max_cells=250000,max_windows=6000,include_text=False,review_cases=()):
+def run_pilot(client,cases,providers,max_pages,encoder=None,max_cells=250000,max_windows=6000,include_text=False,review_cases=(),prefer_mia=False):
     started=time.monotonic()
     probes={'wikidebats':probe_api(client,WD_API)}
     if 'wikirouge' in providers:
         for lang in ('fr','en'): probes['wikirouge_'+lang]=probe_api(client,API[lang])
     report={'schema':'wikidebia-full-work-pilot-0.4','offline':client.offline,'api_probes':probes,
-            'auto_publish':False,'works':{},'cases':[],'evaluation_contract':'short manually verified anchors only; not full quote fidelity; no automatic acceptance'}
+            'auto_publish':False,'works':{},'cases':[],'skipped_provider_routes':[],'provider_policy':'mia_first_fallback' if prefer_mia else 'explicit_comparison','evaluation_contract':'short manually verified anchors only; not full quote fidelity; no automatic acceptance'}
     inputs={}
     for c in cases:
         try: inputs[c['id']]=wiki_input(client,c,probes['wikidebats']['status']=='available')
@@ -521,7 +522,10 @@ def run_pilot(client,cases,providers,max_pages,encoder=None,max_cells=250000,max
     for c in cases:
         q,prov=inputs[c['id']]; wid=CASES[c['id']]
         for provider in providers:
-            row={'id':c['id'],'work':wid,'provider':provider,'input':prov,'auto_publish':False,'rights':'unreviewed'}; report['cases'].append(row)
+            if prefer_mia and provider=='wikirouge' and report['cases'] and report['cases'][-1]['id']==c['id'] and primary_sufficient_for_review(report['cases'][-1]):
+                report['skipped_provider_routes'].append({'id':c['id'],'provider':provider,'reason':'mia_has_unique_source_and_aligned_candidate_for_review'})
+                continue
+            row={'id':c['id'],'work':wid,'provider':provider,'source_family':source_family(provider),'input':prov,'auto_publish':False,'rights':'unreviewed'}; report['cases'].append(row)
             if q is None: row['status']='input_unavailable'; continue
             key=(wid,provider)
             if key not in work_cache:
@@ -548,6 +552,7 @@ def run_pilot(client,cases,providers,max_pages,encoder=None,max_cells=250000,max
                 result=compare_methods(q,fr,en,pairs,encoder,max_cells,max_windows)
                 if result['source_status']=='unconfirmed':
                     result['source_diagnostics']=source_diagnostics(q,c['selector'],fr)
+                    result['source_diagnostics']['variant_search']=source_variants(q,c['selector'],fr)
                 for m in result['methods'].values():
                     if m.get('status') in ('not_requested','not_applicable_or_unresolved','error','embedding_window_budget_exceeded') or not en:
                         m['evaluation']={'state':'not_executed_or_unresolved'}
@@ -561,6 +566,7 @@ def run_pilot(client,cases,providers,max_pages,encoder=None,max_cells=250000,max
                   elapsed_seconds=round(time.monotonic()-started,3),http_events=client.events)
     if encoder: report['embedding']={'model_id':encoder.model_id,**encoder.stats}
     report['metrics']=metrics(report['cases'])
+    report['evidence_groups']=group_evidence(report['cases'])
     if include_text: return report
     redacted=redact_text(report)
     if review_cases:
@@ -610,12 +616,12 @@ def replay_mismatches(expected,actual):
 
 def replay_results(report):
     """Compare editorial/algorithmic outputs, not execution timing or cache stats."""
-    return {**{k:report.get(k) for k in ('schema','status','api_probes','works','metrics','evaluation_contract','auto_publish')},
+    return {**{k:report.get(k) for k in ('schema','status','api_probes','works','metrics','evaluation_contract','auto_publish','evidence_groups','provider_policy','skipped_provider_routes')},
             'cases':[{k:v for k,v in c.items() if k!='ranking_seconds'} for c in report.get('cases',[])]}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--provider',choices=['both','mia','wikirouge'],default='both')
+    p.add_argument('--provider',choices=['both','mia','wikirouge','preferred'],default='both')
     p.add_argument('--case',choices=list(CASES),action='append')
     p.add_argument('--cache',type=Path,default=ROOT/'.pilot-cache')
     p.add_argument('--out',type=Path,default=ROOT/'reports-live'/'full-work.json')
@@ -633,7 +639,7 @@ def main():
     client=PilotClient(a.cache,a.budget,a.delay,a.offline,replay_events(a.replay_report) if a.replay_report else None); encoder=None
     try:
         if a.model_dir: encoder=LocalEncoder(a.model_dir,a.cache/'vectors.sqlite3')
-        r=run_pilot(client,cases,['mia','wikirouge'] if a.provider=='both' else [a.provider],a.max_pages,encoder,a.max_cells,a.max_windows,a.include_text,a.review_case)
+        r=run_pilot(client,cases,['mia','wikirouge'] if a.provider in ('both','preferred') else [a.provider],a.max_pages,encoder,a.max_cells,a.max_windows,a.include_text,a.review_case,prefer_mia=a.provider=='preferred')
         r['config']={'provider':a.provider,'cases':[c['id'] for c in cases],'budget':a.budget,'max_pages':a.max_pages,'max_cells':a.max_cells,'max_windows':a.max_windows,'embedding_requested':bool(a.model_dir),'include_text':a.include_text,'review_cases':sorted(set(a.review_case))}
         if a.replay_report:
             original=json.loads(a.replay_report.read_text())

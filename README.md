@@ -1,4 +1,4 @@
-# Wikidéb’IA Quote Resolver — v0.4 experimental
+# Wikidéb’IA Quote Resolver — v0.5 experimental
 
 Module autonome de recherche des traductions anglaises déjà publiées de citations françaises présentes dans Wikidébats. Ce dépôt expérimental ne modifie ni les wikis ni le dépôt principal. Aucun identifiant wiki n'est utilisé. Les candidats ne sont jamais publiés automatiquement.
 
@@ -29,6 +29,14 @@ Le pilote utilise quatre citations réelles sur deux fournisseurs, soit huit rec
 Le pilote 0.3 exécuté sur le serveur du projet avait récupéré les 55 pages MIA et 40 pages Wikirouge prévues (sommaires Wikirouge inclus), avec 108 requêtes. Le rejeu a utilisé 108 entrées en cache et aucune requête réseau. Les deux œuvres Wikirouge n'avaient pas pu être résolues par l'API native ; la préface de 1883 n'avait pas été localisée intégralement en français. La version 0.4 ajoute un parcours hybride (liens HTML réciproques puis inventaire API des sous-pages), la comparaison des résultats du rejeu et le diagnostic des variantes françaises.
 
 La recherche lexicale et l'alignement par paragraphes ou phrases proposent des extraits candidats. L'évaluation utilise des ancres courtes après classement, jamais comme preuve de fidélité de la citation complète. Les références de sections sont fournies manuellement pour les deux œuvres du pilote. Aucun score n'est une probabilité de correspondance. Les droits, l'attribution et les limites exactes sont à vérifier par édition ; en cas de doute, s'abstenir. Les benchmarks synthétiques (benchmark_offline.py, benchmark_alignment.py) ne constituent pas une mesure indépendante de performance documentaire.
+
+## Nouvelle expérimentation v0.5
+
+Les archives MIA et Wikirouge sont considérées comme une même famille documentaire par prudence. La comparaison groupe les passages textuels identiques après normalisation, avec conservation des références de chaque fournisseur ; elle ne présume pas que toutes les éditions sont identiques. Les statistiques portent sur quatre citations, et non huit preuves indépendantes.
+
+Pour les citations françaises non localisées exactement, la recherche par distance d'édition explore des sous-chaînes autour du sélecteur, même au sein d'un long paragraphe. Les résultats restent des variantes à vérifier, jamais des correspondances exactes ni des autorisations de publication. La portée est bornée et le sélecteur doit être unique dans la citation.
+
+Le mode `python pilot_full.py --provider preferred` privilégie MIA : si la source française est unique, l'inventaire complet et un candidat d'alignement par phrases disponible, il ne parcourt pas aussi Wikirouge pour cette citation. Sinon, il tente le second parcours. Cette règle optimise la **recherche de candidats** et ne prouve pas leur fidélité. Le banc comparatif complet reste le mode par défaut. La CI mesure aussi le parcours préférentiel à partir du cache du test complet, sans nouvelle requête ; ses chiffres de requêtes potentielles ne sont pas des durées réseau mesurées. Les URL MIA et titres Wikirouge des deux œuvres restent pré-identifiés ; la découverte générale d'œuvres et de traductions reste à développer.
 
 ## Avant intégration au dépôt principal
 
