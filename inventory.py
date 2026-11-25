@@ -18,7 +18,7 @@ from bibliography import load_catalog
 
 def link_pages(client,rows_per_query=50,max_batches=1):
     pages={}; queries=[]
-    if not 1<=max_batches<=10: raise ValueError('invalid_batch_limit')
+    if not 1<=max_batches<=100: raise ValueError('invalid_batch_limit')
     for host in ('www.marxists.org','marxists.org'):
         for scheme in ('https','http'):
             cursor={}; seen=set()

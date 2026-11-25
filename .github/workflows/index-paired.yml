@@ -5,6 +5,7 @@ on:
     paths:
       - 'wikirouge_index.py'
       - 'benchmark_index.py'
+      - 'inventory.py'
       - 'data/wikirouge/**'
       - 'tests/test_wikirouge_index.py'
       - 'tests/test_benchmark_index.py'
@@ -35,9 +36,9 @@ jobs:
         run: python -m pip install -r requirements-navigation.txt
       - name: Run all regression tests
         run: python -m unittest discover -s tests -v
-      - name: Compare legacy and indexed retrieval on 50 pinned citations
+      - name: Compare legacy and indexed retrieval on 50 explicit MIA citations
         timeout-minutes: 50
-        run: python benchmark_index.py --sample 50
+        run: python benchmark_index.py --sample 50 --scan-pages 1200
       - name: Preserve redacted comparison and partial results
         if: always()
         uses: actions/upload-artifact@v6
