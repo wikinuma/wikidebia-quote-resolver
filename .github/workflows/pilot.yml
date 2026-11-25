@@ -1,0 +1,41 @@
+name: Quote resolver - public source pilot
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quote-pilot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pilot:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install lightweight dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Live pilot and strict offline replay
+        run: python ci/run_pilot.py
+      - name: Preserve redacted reports even on failure
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: quote-pilot-reports
+          path: |
+            reports-live/full-work.json
+            reports-live/full-work-replay.json
+            reports-live/ci-summary.json
+          if-no-files-found: warn
+          retention-days: 7
