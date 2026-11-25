@@ -1,0 +1,179 @@
+{
+  "cases": [
+    {
+      "id": "manifesto-ii",
+      "wiki_title": "Le communisme est une société sans classes",
+      "selector": "le libre développement de chacun",
+      "work_fr": "Manifeste du parti communiste",
+      "mia_fr": [
+        "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000a.htm",
+        "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000b.htm"
+      ],
+      "mia_en": [
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm",
+      "expected_needle": "the free development of each",
+      "expected_en_wr": "https://wikirouge.net/texts/en/Manifesto_of_the_Communist_Party/2/II._Proletarians_and_Communists",
+      "note": "Passage parallèle retrouvé. Vérifier édition et éventuels ajouts éditoriaux.",
+      "parallel_sections_mia": [
+        {
+          "fr": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000a.htm",
+          "en": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm"
+        },
+        {
+          "fr": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000b.htm",
+          "en": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm"
+        }
+      ]
+    },
+    {
+      "id": "manifesto-i",
+      "wiki_title": "Le lumpenprolétariat est trop lâche et vénal pour mener la révolution sans la trahir",
+      "selector": "produit passif de la pourriture",
+      "work_fr": "Manifeste du parti communiste",
+      "mia_fr": [
+        "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000a.htm",
+        "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000b.htm"
+      ],
+      "mia_en": [
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+      "expected_needle": "that passively rotting mass",
+      "expected_en_wr": "https://wikirouge.net/texts/en/Manifesto_of_the_Communist_Party/1/I._Bourgeois_and_Proletarians",
+      "note": "Passage retrouvé; vérifier le terme entre crochets dans cette édition.",
+      "parallel_sections_mia": [
+        {
+          "fr": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000a.htm",
+          "en": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm"
+        },
+        {
+          "fr": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000b.htm",
+          "en": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm"
+        }
+      ]
+    },
+    {
+      "id": "engels-preface",
+      "wiki_title": "Le lumpenprolétariat est trop lâche et vénal pour mener la révolution sans la trahir",
+      "selector": "de tous les alliés possibles",
+      "work_fr": "La Guerre des paysans en Allemagne",
+      "mia_fr": [
+        "https://www.marxists.org/francais/marx/works/1850/00/fe1850a.htm"
+      ],
+      "mia_en": [
+        "https://www.marxists.org/archive/marx/works/1850/peasant-war-germany/ch0a.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/marx/works/1850/peasant-war-germany/ch0a.htm",
+      "expected_en_wr": "https://wikirouge.net/texts/en/The_Peasant_War_in_Germany/00/Prefaces",
+      "expected_needle": "the worst of all possible allies",
+      "note": "Préface de 1870, non texte de 1850; Wikirouge indique traduction Olgin, 1926.",
+      "parallel_sections_mia": [
+        {
+          "fr": "https://www.marxists.org/francais/marx/works/1850/00/fe1850a.htm",
+          "en": "https://www.marxists.org/archive/marx/works/1850/peasant-war-germany/ch0a.htm"
+        }
+      ]
+    },
+    {
+      "id": "kautsky-v",
+      "wiki_title": "Le lumpenprolétariat est trop lâche et vénal pour mener la révolution sans la trahir",
+      "selector": "pêcher en eau trouble",
+      "work_fr": "Le programme socialiste",
+      "mia_fr": [
+        "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_05.htm"
+      ],
+      "mia_en": [
+        "https://www.marxists.org/archive/kautsky/1892/erfurt/ch05.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch05.htm",
+      "expected_en_wr": "https://wikirouge.net/texts/en/The_Class_Struggle_(Erfurt_Program)",
+      "expected_needle": "fish in troubled waters",
+      "note": "Passage retrouvé; segmentation différente, vérifier édition.",
+      "parallel_sections_mia": [
+        {
+          "fr": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_05.htm",
+          "en": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch05.htm"
+        }
+      ]
+    },
+    {
+      "id": "manifesto-preface-1883",
+      "wiki_title": "Le communisme est une société sans exploitation",
+      "selector": "la classe exploitée et opprimée",
+      "work_fr": "Manifeste du parti communiste",
+      "mia_fr": [],
+      "mia_en": [
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm",
+      "expected_needle": "that this struggle, however, has now reached a stage",
+      "note": "FR Wikirouge, EN MIA; préface de 1883 signée Engels; variantes 1888, limites et attribution à vérifier. FR MIA non confirmé."
+    },
+    {
+      "id": "lenin-1921",
+      "wiki_title": "En 1921 Lénine souligne les limites sociales des précédentes révolutions dont la française",
+      "selector": "vestiges du servage en Russie",
+      "work_fr": "Pour le quatrième anniversaire de la révolution d'octobre",
+      "mia_fr": [],
+      "mia_en": [
+        "https://www.marxists.org/archive/lenin/works/1921/oct/14.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/lenin/works/1921/oct/14.htm",
+      "expected_needle": "remnants of serfdom in Russia",
+      "note": "EN MIA retrouvé, trad. David Skvirsky et George Hanna, 1965, GFDL selon MIA. FR Wikirouge incomplet, FR MIA non confirmé. Pas d'acceptation automatique."
+    },
+    {
+      "id": "engels-competition",
+      "wiki_title": "Le capitalisme est la guerre de tous contre tous",
+      "selector": "La concurrence est l'expression la plus parfaite",
+      "work_fr": "La situation de la classe laborieuse en Angleterre",
+      "mia_fr": [
+        "https://www.marxists.org/francais/engels/works/1845/03/fe_18450315_3.htm"
+      ],
+      "mia_en": [
+        "https://www.marxists.org/archive/marx/works/1845/condition-working-class/ch05.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/marx/works/1845/condition-working-class/ch05.htm",
+      "expected_en_wr": "https://wikirouge.net/texts/en/The_Condition_of_the_Working_Class_in_England/05/Competition",
+      "expected_needle": "Competition is the completest expression",
+      "parallel_sections_mia": [
+        {
+          "fr": "https://www.marxists.org/francais/engels/works/1845/03/fe_18450315_3.htm",
+          "en": "https://www.marxists.org/archive/marx/works/1845/condition-working-class/ch05.htm"
+        }
+      ],
+      "note": "New held-out work. FR/EN full passage located manually; FR quote ends before paragraph ends. Wikirouge FR chapter 04 vs EN 05. Edition and rights still to review."
+    },
+    {
+      "id": "engels-letter-1846",
+      "wiki_title": "Le problème, c'est que le communisme implique toujours la violence",
+      "selector": "Je leur fournis une définition extrêmement simple",
+      "work_fr": "Activités d'organisation (1843-1847) Activité au sein de la Ligue des communistes",
+      "mia_fr": [
+        "https://www.marxists.org/francais/marx/works/00/parti/kmpc018.htm"
+      ],
+      "mia_en": [
+        "https://www.marxists.org/archive/marx/works/1846/letters/46_10_23c.htm"
+      ],
+      "expected_en_mia": "https://www.marxists.org/archive/marx/works/1846/letters/46_10_23c.htm",
+      "expected_needle": "I gave them a highly simple definition",
+      "note": "New work; letter by Engels to Communist Correspondence Committee, 23 October 1846. French anthology page may cover multiple documents: do not assert whole-page parallel alignment. Wikirouge EN letter exists; FR title uncertain."
+    },
+    {
+      "id": "marx-alienation-unconfirmed",
+      "wiki_title": "Le travail salarié aliène et déshumanise",
+      "selector": "L'aliénation commence avec la fabrication des biens",
+      "work_fr": "Le Capital",
+      "mia_fr": [],
+      "mia_en": [],
+      "note": "Unverified attribution / wording. Not a known negative ground truth. No manually selected source URLs or target anchor. Do not accept a merely related English passage."
+    }
+  ],
+  "description": "Nine real Wikidebats cases, eight manually located EN passages plus one unresolved attribution. New cases not used to construct original lexicon. Expected anchors are evaluation only; section pairs are manually seeded structural knowledge. No full-text ranking results until live run."
+}
