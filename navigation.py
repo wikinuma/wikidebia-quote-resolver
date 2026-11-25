@@ -260,6 +260,8 @@ def reciprocal_roots(client,title):
 # tâches militaires" uses both spellings for the same named author.
 AUTHOR_ALIASES=(
     ('leon trotski','leon trotsky'),
+    ('vladimir ilitch lenine','vladimir ilyich lenin'),
+    ('lenine','lenin'),
 )
 
 

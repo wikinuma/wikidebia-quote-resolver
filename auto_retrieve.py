@@ -18,9 +18,24 @@ from pilot_full import (PilotClient,WR,soup,extract_blocks,html_revision,html_ur
                         redact_text,replay_mismatches)
 from alignment import exact_occurrences, aligned_candidates
 from bibliography import catalog_route, VERIFIED_AUTHORS
+from window_rank import rank_short_windows
 from variants import source_variants
 from compare import evaluation
 from section_match import extract_headings, automatic_alignment
+
+
+def explicit_toc(body,root):
+    """Legacy MIA indices are not necessarily called index.htm."""
+    path=urlsplit(root).path
+    if path.endswith('/') or posixpath.basename(path).lower() in ('index.htm','index.html'): return True
+    s=soup(body)
+    markers={'sommaire','table des matieres','table of contents','contents'}
+    title=norm(s.title.get_text(' ',strip=True)) if s.title else ''
+    if any(' '+m+' ' in ' '+title+' ' for m in markers): return True
+    # An exact visible label, not a mention of "contents" in ordinary prose.
+    for node in s.find_all(['h1','h2','h3','h4','p','b','strong','center']):
+        if norm(node.get_text(' ',strip=True)) in markers: return True
+    return False
 
 
 def mia_toc_links(body,root):
@@ -31,7 +46,7 @@ def mia_toc_links(body,root):
     p=urlsplit(root); path=p.path
     directory=path if path.endswith('/') else posixpath.dirname(path)+'/'
     base=posixpath.basename(path)
-    index=path.endswith('/') or base.lower() in ('index.htm','index.html')
+    index=explicit_toc(body,root)
     stem=base.rsplit('.',1)[0]
     lang=path.split('/')[1] if '/' in path[1:] else ''
     links={}
@@ -42,6 +57,7 @@ def mia_toc_links(body,root):
         if not name.lower().endswith(('.htm','.html')): continue
         if index and q.path==directory+'index.htm' or index and q.path==directory+'index.html': continue
         label=norm(a.get_text(' ',strip=True))
+        if not label or label in ('home','index','accueil','sommaire','retour','previous','next','back','download','zip','pdf'): continue
         same_directory=posixpath.dirname(q.path)+'/'==directory
         same_stem=same_directory and len(stem)>=6 and name.startswith(stem) and name!=base
         preface=bool(re.match(r'^(preface|avant propos)\b',label) and re.search(r'\b(?:18|19|20)\d{2}\b',label)
@@ -182,18 +198,23 @@ class Retrieval:
             variants.extend(v['candidates'])
             if v['truncated']: stages[-1]['variant_search_truncated']=True
             return None
-        direct=nav['input']['mia_urls']
+        direct=nav['input']['mia_urls']; examined_root=None
         if len(direct)==1:
             info={'provider':'mia','scope':'explicit_citation_url','root':direct[0],'issues':[],'pages':[]}
             try:
-                d,_=mia_doc(self.client,direct[0])
+                d,body=mia_doc(self.client,direct[0])
                 info['pages']=[{'url':d.url,'sha256':d.digest,'blocks':len(d.blocks)}]
                 result=inspect([d],info)
                 if result: return {**result,'stages':stages}
+                if explicit_toc(body,d.url):
+                    docs,toc_info=self.work('mia',direct[0],'fr')
+                    examined_root=direct[0]
+                    result=inspect(docs,toc_info)
+                    if result: return {**result,'stages':stages}
             except Exception as exc:
                 stages.append({**info,'issues':[{'kind':'direct_url_error','error':error_kind(exc)}]})
         meta=nav.get('work_metadata',{}).get('fr',{}).get('mia_urls',[])
-        if len(meta)==1:
+        if len(meta)==1 and meta[0]!=examined_root:
             docs,info=self.work('mia',meta[0],'fr')
             result=inspect(docs,info)
             if result: return {**result,'stages':stages}
@@ -238,6 +259,9 @@ class Retrieval:
             row['status']='catalog_target_unavailable'; return row
         info['pages']=[{'url':doc.url,'sha256':doc.digest,'revision':doc.revision,'blocks':len(doc.blocks)}]
         candidates=rank(quote,[doc])
+        if not candidates:
+            fallback=rank_short_windows(quote,[doc]); candidates=fallback['candidates']
+            row['lexical_fallback']={k:v for k,v in fallback.items() if k!='candidates'}
         row.update(target_provider=provider,target_scope=info['scope'],candidates=candidates,
                    status='catalog_candidate_review_required' if candidates else 'catalog_no_candidate',
                    rights='unreviewed')
@@ -269,11 +293,17 @@ class Retrieval:
         if target.get('url_accessible'):
             docs,info=self.work('mia',target['final_url'],'en')
             candidates=rank(quote,docs)
+            if not candidates:
+                fallback=rank_short_windows(quote,docs); candidates=fallback['candidates']
+                row['lexical_fallback']={k:v for k,v in fallback.items() if k!='candidates'}
         else: candidates=[]; info=None
         if not candidates:
             docs,wr=self.work('wikirouge',nav['route']['en_title'],'en')
             row['target_attempts']=[x for x in (info,wr) if x is not None]
             info=wr; candidates=rank(quote,docs)
+            if not candidates:
+                fallback=rank_short_windows(quote,docs); candidates=fallback['candidates']
+                row['lexical_fallback']={k:v for k,v in fallback.items() if k!='candidates'}
         else: row['target_attempts']=[info]
         row.update(target_provider=info['provider'],target_scope=info['scope'],candidates=candidates,
                    status='candidate_review_required' if candidates and source['status']=='exact_in_examined_documents'

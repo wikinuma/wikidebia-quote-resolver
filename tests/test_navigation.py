@@ -107,3 +107,5 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(author_check('Léon Trotsky','Karl Marx'),'author_tokens_differ')
         self.assertEqual(author_check('Léon Trotsky','Léon Trotski, Karl Marx'),'partial_author_overlap')
         self.assertEqual(author_check('','Léon Trotski'),'metadata_missing')
+        self.assertEqual(author_check('Lénine','Lenin'),'same_documented_author_alias')
+        self.assertEqual(author_check('Lénine','Karl Marx'),'author_tokens_differ')

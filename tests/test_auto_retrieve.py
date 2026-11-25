@@ -58,3 +58,26 @@ class AutoRetrievalTests(unittest.TestCase):
         self.assertEqual(got['occurrences'][0]['url'],child)
         self.assertEqual([s['new_documents_examined'] for s in got['stages']],[1,1])
         w.assert_called_once_with('mia',root,'fr')
+
+    def test_legacy_table_of_contents_without_index_filename(self):
+        from auto_retrieve import explicit_toc
+        root='https://www.marxists.org/francais/book/odd.htm'
+        body='<title>Un livre - Sommaire</title><a href="part01.htm">Partie I</a><a href="part02.htm">Partie II</a><a href="../other.htm">Other</a><a href="home.htm">Accueil</a>'.encode()
+        self.assertTrue(explicit_toc(body,root))
+        self.assertEqual([x['url'] for x in mia_toc_links(body,root)],[root.rsplit('/',1)[0]+'/part01.htm',root.rsplit('/',1)[0]+'/part02.htm'])
+        self.assertFalse(explicit_toc(b'<p>The contents of this paragraph are ordinary prose.</p>',root))
+
+    def test_source_follows_legacy_index_without_wikirouge_metadata(self):
+        root='https://www.marxists.org/francais/book/odd.htm'
+        child='https://www.marxists.org/francais/book/part01.htm'
+        quote='Les archives conservent toujours des documents anciens précieux.'
+        index=Document(root,['Sommaire.'],'a'); doc=Document(child,[quote],'b')
+        r=Retrieval(Mock(),8)
+        nav={'input':{'mia_urls':[root]},'work_metadata':{'fr':{'mia_urls':[]}},'route':{'fr_title':'Book'}}
+        info={'provider':'mia','scope':'bounded_direct_toc_links_not_complete_edition','pages':[{},{}],'issues':[]}
+        with patch('auto_retrieve.mia_doc',return_value=(index,b'<title>Un livre - Sommaire</title>')), \
+             patch.object(r,'work',return_value=([index,doc],info)) as w:
+            got=r.source(quote,'documents anciens précieux',nav)
+        self.assertEqual(got['status'],'exact_in_examined_documents')
+        self.assertEqual(got['occurrences'][0]['url'],child)
+        w.assert_called_once_with('mia',root,'fr')
