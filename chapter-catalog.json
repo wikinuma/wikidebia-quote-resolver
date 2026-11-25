@@ -1,0 +1,55 @@
+{
+  "schema": "wikidebia-chapter-catalog-1",
+  "entries": [
+    {
+      "fr_url": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000a.htm",
+      "en_url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+      "authors": "Karl Marx, Friedrich Engels",
+      "fr_heading": "I. Bourgeois et prolétaires",
+      "en_heading": "I. Bourgeois and Proletarians",
+      "fr_toc": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000.htm",
+      "en_toc": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000d.htm",
+      "en_url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch04.htm",
+      "authors": "Karl Marx, Friedrich Engels",
+      "fr_heading": "IV. Position des communistes envers les différents partis d’opposition",
+      "en_heading": "IV. Position of the Communists in Relation to the Various Existing Opposition Parties",
+      "fr_toc": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000.htm",
+      "en_toc": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1917/08/er5.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1917/staterev/ch05.htm",
+      "authors": "Lénine",
+      "fr_heading": "V. Les bases économiques de l'extinction de l'État",
+      "en_heading": "V. The Economic Basis of the Withering Away of the State",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1917/08/er00t.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1917/staterev/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1917/08/er6.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1917/staterev/ch06.htm",
+      "authors": "Lénine",
+      "fr_heading": "VI. L'avilissement du marxisme par les opportunistes",
+      "en_heading": "VI. The Vulgarisation of Marxism by Opportunists",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1917/08/er00t.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1917/staterev/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp6.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch06.htm",
+      "authors": "Lénine",
+      "fr_heading": "VI. Le partage du monde entre les grandes puissances",
+      "en_heading": "VI. Division of the World Among the Great Powers",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    }
+  ]
+}

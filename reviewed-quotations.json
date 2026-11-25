@@ -1,0 +1,25 @@
+{
+  "schema": "wikidebia-reviewed-quotation-1",
+  "entries": [
+    {
+      "case_id": "inventory-842b10493dc8b5272f5c",
+      "wiki_revision": 273489,
+      "quote_sha256": "353506a649dd598400bf1aaccbc4e326d14f75678115574faef2d4320d33cfc8",
+      "fr_url": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000d.htm",
+      "fr_span_sha256": "21bf93cc7f772900301d4aacca8b22bf7503d5050c0c85883dd373548394e1dd",
+      "en_url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch04.htm",
+      "en_span_sha256": "ea79092037d590f0fd9dc03595f077d6ec61dcd83303bbf905e27a674ed5b008",
+      "decision": "equivalent_complete_passage",
+      "reviewer": "ChatGPT direct bilingual documentary review",
+      "review_method": "Both independently read MIA excerpts match the exact SHA-256 of the reported extracted spans; the two final sentences about the proletarians' chains and the world to win correspond in meaning and extent. French normalized source excludes terminal punctuation, English includes the final period.",
+      "evidence": [
+        "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000d.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch04.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/index.htm"
+      ],
+      "edition": "Samuel Moore in cooperation with Friedrich Engels, 1888; MIA transcription proofed against the 1888 English edition, 2004.",
+      "rights_notice": "English TOC declares Creative Commons Attribution-ShareAlike; compatibility and attribution not adjudicated.",
+      "reuse_authorized": false
+    }
+  ]
+}

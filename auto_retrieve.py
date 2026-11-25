@@ -25,6 +25,7 @@ from compare import evaluation
 from section_match import extract_headings, automatic_alignment
 from refinement import DirectAlignmentCache, review_packet, select_source_hit
 from source_refinement import long_variants, fragment_paths
+from chapter_routes import chapter_route, retrieve_chapter
 from alignment import OMISSION
 
 
@@ -169,10 +170,11 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=()):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
+        self.chapter_catalog=tuple(chapter_catalog)
         self.direct_cache=DirectAlignmentCache()
 
     def work(self,provider,root,lang):
@@ -362,6 +364,19 @@ class Retrieval:
                 row['automatic_attempt']={'status':row['status'],'source_status':source['status']}
                 return self.retrieve_catalog(case,row,quote)
             return row
+        if self.refined and self.chapter_catalog:
+            chapter=chapter_route(nav['input'],source,self.chapter_catalog)
+            if chapter is not None:
+                try:
+                    doc,body=mia_doc(self.client,chapter['en_url'])
+                    if explicit_toc(body,doc.url): raise ValueError('chapter_target_is_toc')
+                    row.update(retrieve_chapter(quote,source,list(self.source_documents.values()),doc,chapter,self.direct_cache))
+                    return row
+                except Exception as exc:
+                    row['chapter_route_failure']={'route':chapter,'error':error_kind(exc)}
+                    # Do not silently substitute another chapter when the known one fails.
+                    row['status']='chapter_source_or_target_unavailable'
+                    return row
         target=nav.get('mia_target',{})
         if target.get('url_accessible'):
             docs,info=self.work('mia',target['final_url'],'en')
@@ -429,8 +444,8 @@ class Retrieval:
         return row
 
 
-def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False):
-    r=Retrieval(client,max_pages,catalog,local_index,refined)
+def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=()):
+    r=Retrieval(client,max_pages,catalog,local_index,refined,chapter_catalog)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
     return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
@@ -449,6 +464,7 @@ def main():
     p.add_argument('--local-index',type=Path,help='Path to verified snapshot manifest; default is legacy live navigation')
     p.add_argument('--refined',action='store_true',help='Cache direct alignments and expose a first-pass review packet')
     p.add_argument('--catalog',type=Path,help='Optional researched bibliography')
+    p.add_argument('--chapter-catalog',type=Path,help='Optional reviewed chapter mappings; used in refined mode')
     a=p.parse_args()
     if a.budget<1 or a.max_pages<1: p.error('positive limits required')
     if a.local_index:
@@ -464,7 +480,9 @@ def execute(a,local_index):
     if not cases or set(a.case)-{c['id'] for c in cases}: p.error('unknown or empty case')
     from bibliography import load_catalog
     catalog=load_catalog(a.catalog) if a.catalog else ()
-    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined)
+    from chapter_routes import load_chapters
+    chapters=load_chapters(a.chapter_catalog) if a.chapter_catalog else ()
+    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     summary={k:report[k] for k in ('counts','requests','cache_hits','scope','auto_publish')}
@@ -485,7 +503,7 @@ def execute(a,local_index):
                 raise RuntimeError('inconsistent_live_response')
             expected[e['request_url']]=e
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
-        replay=run_auto(replay_client,cases,a.max_pages,catalog,local_index,refined=a.refined)
+        replay=run_auto(replay_client,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
         same=report['cases']==replay['cases'] and report['counts']==replay['counts']
         mismatches=replay_mismatches(expected,replay_client.events)
         integrity={'results_match':same,'response_mismatches':mismatches,'network_requests':replay_client.requests}
