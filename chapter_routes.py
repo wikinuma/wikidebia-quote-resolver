@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from navigation import canonical_mia, author_check
 from bibliography import VERIFIED_AUTHORS
-from refinement import select_source_hit
+from refinement import select_source_hit, select_hit_metadata
 from resolver import rank
 from window_rank import rank_short_windows
 
@@ -32,17 +32,22 @@ def load_chapters(path):
 
 
 def chapter_route(metadata,source,entries):
-    if source.get('status')!='exact_in_examined_documents' or source.get('occurrences_truncated'):
-        return None
-    hits=source.get('occurrences',[])
-    if len(hits)!=1:
-        return None
+    """Use a documented chapter only with a unique, bounded source hit.
+    A near-exact source variant can identify a document, not an exact quote.
+    Distinct normalized alternatives or truncated evidence cause abstention.
+    """
     links=metadata.get('mia_urls',[])
-    if not links or len(links)!=1:
+    if len(links)!=1:
         return None
-    matches=[e for e in entries if e['fr_url']==hits[0].get('url')
-             and links[0] in (e['fr_url'],e['fr_toc'])
-             and author_check(metadata.get('authors',''),e['authors']) in VERIFIED_AUTHORS]
+    matches=[]
+    for entry in entries:
+        if links[0] not in (entry['fr_url'],entry['fr_toc']):
+            continue
+        if author_check(metadata.get('authors',''),entry['authors']) not in VERIFIED_AUTHORS:
+            continue
+        hit,kind=select_hit_metadata(source,entry['fr_url'])
+        if hit is not None:
+            matches.append(entry)
     return matches[0] if len(matches)==1 else None
 
 

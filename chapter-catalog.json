@@ -50,6 +50,96 @@
       "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
       "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
       "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1915/05/19150500h.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1915/csi/vii.htm",
+      "authors": "Lénine",
+      "fr_heading": "VII",
+      "en_heading": "VII",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1915/05/19150500.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1915/csi/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp8.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch08.htm",
+      "authors": "Lénine",
+      "fr_heading": "VIII. Le parasitisme et la putréfaction du capitalisme",
+      "en_heading": "VIII. Parasitism and Decay of Capitalism",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_02.htm",
+      "en_url": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch02.htm",
+      "authors": "Karl Kautsky",
+      "fr_heading": "II. Le Prolétariat",
+      "en_heading": "II. The Proletariat",
+      "fr_toc": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+      "en_toc": "https://www.marxists.org/archive/kautsky/1892/erfurt/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp3.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch03.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "Le socialisme et l'État",
+      "en_heading": "Socialism and the State",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp7.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch07.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "La famille, la jeunesse, la culture",
+      "en_heading": "Family, Youth and Culture",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr42.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch41.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "42. Le comité militaire révolutionnaire",
+      "en_heading": "41. The Military-Revolutionary Committee",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr43.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch42.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "43. Lénine appelle à l'insurrection",
+      "en_heading": "42. Lenin Summons to Insurrection",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr44.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch43.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "44. L'art de l'insurrection",
+      "en_heading": "43. The Art of Insurrection",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/harman/1979/qcqlm/qcqlm07.htm",
+      "en_url": "https://www.marxists.org/archive/harman/1979/marxism/ch07.html",
+      "authors": "Chris Harman",
+      "fr_heading": "La classe ouvrière",
+      "en_heading": "The working class",
+      "fr_toc": "https://www.marxists.org/francais/harman/1979/qcqlm/index.htm",
+      "en_toc": "https://www.marxists.org/archive/harman/1979/marxism/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
     }
   ]
 }

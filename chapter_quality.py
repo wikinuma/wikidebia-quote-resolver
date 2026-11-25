@@ -9,7 +9,7 @@ import tempfile
 from collections import Counter
 from evidence_audit import Auditor, load_report, read_span
 from chapter_routes import load_chapters, chapter_route, retrieve_chapter
-from refinement import DirectAlignmentCache, review_packet
+from refinement import DirectAlignmentCache, review_packet, select_source_hit, select_hit_metadata
 from resolver import ROOT, norm
 from pilot_full import PilotClient, redact_text
 from benchmark_index import write
@@ -80,15 +80,22 @@ def main():
                 try:
                     inp,quote=auditor.input(c)
                     if inp['status']!='verified_pinned_citation': raise ValueError('input_unavailable')
-                    source=src['occurrences'][0]
+                    source,kind=select_hit_metadata(src,route['fr_url'])
+                    if source is None: raise ValueError('source_not_selected')
                     fr=auditor.document(route['fr_url'],'fr')
                     en=auditor.document(route['en_url'],'en')
                     if isinstance(fr,dict) or isinstance(en,dict): raise ValueError('document_unavailable')
                     _,_,actual=read_span(fr,source)
-                    if auditor.span(source,'fr')['status']!='verified_document_and_span' or norm(actual)!=norm(quote):
+                    if auditor.span(source,'fr')['status']!='verified_document_and_span':
                         raise ValueError('source_fingerprint_mismatch')
-                    # Reconstruct the source span locally; public reports never store its text.
-                    current={**src,'occurrences':[{**source,'text':actual}]}
+                    if kind=='exact_normalized_source' and norm(actual)!=norm(quote):
+                        raise ValueError('source_quote_mismatch')
+                    # Keep all competing metadata; restore only the authenticated selected span.
+                    key='occurrences' if kind=='exact_normalized_source' else 'variants'
+                    current={**src,key:[{**h,'text':actual} if h is source else h for h in src[key]]}
+                    if select_source_hit(current,[fr],route['fr_url'])[0] is None:
+                        raise ValueError('source_variant_evidence_mismatch')
+                    row['source_evidence_kind']=kind
                     updated=retrieve_chapter(quote,current,[fr],en,route,align)
                     updated['review_packet']=review_packet(updated)
                     row.update(status=updated['status'],new=redact_text(updated))

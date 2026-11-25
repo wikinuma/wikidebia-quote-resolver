@@ -46,3 +46,25 @@ class ChapterRoutesTests(unittest.TestCase):
         audit=Mock()
         self.assertEqual(review_receipt(c,{},d,audit)['status'],'review_input_mismatch')
         audit.input.assert_not_called()
+
+    def test_unique_variant_may_route_but_not_approve(self):
+        from resolver import norm
+        hit={**self.source['occurrences'][0],'match':'approximate_tokens_review','similarity':.98,
+             'normalized_sha256':sha(norm(self.q).encode())}
+        src={'status':'variant_review_required','variants':[hit]}
+        self.assertEqual(chapter_route(self.meta,src,self.entries),self.e)
+        r=retrieve_chapter(self.q,src,[self.fr],self.en,self.e,DirectAlignmentCache())
+        self.assertFalse(r['auto_publish'])
+        self.assertEqual(r['rights'],'unreviewed')
+        for invalid in ({**src,'variants':[hit,hit]},
+                        {**src,'variants':[{**hit,'similarity':.70}]},
+                        {**src,'source_evidence_diagnostics':[{'truncated':True}]},
+                        {**src,'variants':[hit,{**hit,'url':'https://other.invalid/','normalized_sha256':'different'}]}):
+            self.assertIsNone(chapter_route(self.meta,invalid,self.entries))
+        with self.assertRaises(ValueError):
+            retrieve_chapter(self.q,{'status':'variant_review_required','variants':[{**hit,'text':'altered'}]},[self.fr],self.en,self.e,DirectAlignmentCache())
+
+    def test_hrr_numbering_does_not_imply_same_chapter(self):
+        h=[e for e in self.entries if e['fr_url'].endswith('/hrr43.htm')]
+        self.assertEqual(len(h),1)
+        self.assertTrue(h[0]['en_url'].endswith('/ch42.htm'))

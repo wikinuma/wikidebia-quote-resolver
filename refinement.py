@@ -8,7 +8,7 @@ from alignment import align_sections, text_and_starts
 from resolver import norm, sha
 
 
-def select_source_hit(source, docs, expected_url):
+def select_hit_metadata(source, expected_url):
     if source.get('status')=='exact_in_examined_documents':
         hits=source.get('occurrences',[])
         if len(hits)!=1 or source.get('occurrences_truncated'):
@@ -41,6 +41,13 @@ def select_source_hit(source, docs, expected_url):
         elif kind not in ('approximate_tokens_review','multi_anchor_variant_review') or (hit.get('similarity') or 0)<.95:
             return None,None
     else:
+        return None,None
+    return hit,kind
+
+
+def select_source_hit(source, docs, expected_url):
+    hit,kind=select_hit_metadata(source,expected_url)
+    if hit is None:
         return None,None
     matches=[d for d in docs if d.url==expected_url and d.digest==hit.get('sha256')]
     if len(matches)!=1:
