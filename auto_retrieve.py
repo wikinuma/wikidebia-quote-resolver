@@ -23,6 +23,7 @@ from variants import source_variants
 from source_evidence import omission_candidates,multi_anchor_candidates
 from compare import evaluation
 from section_match import extract_headings, automatic_alignment
+from refinement import DirectAlignmentCache, review_packet
 
 
 def explicit_toc(body,root):
@@ -166,9 +167,11 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
+        self.refined=refined
+        self.direct_cache=DirectAlignmentCache()
 
     def work(self,provider,root,lang):
         key=(provider,root,lang)
@@ -270,6 +273,18 @@ class Retrieval:
         provider,url=entry['target_provider'],entry['target_url']
         info={'provider':provider,'scope':'researched_single_target_page_not_complete_edition','root':url,'issues':[],'pages':[]}
         row['target_attempts']=[info]
+        if entry.get('target_toc'):
+            docs,info=self.work('mia',url,'en')
+            row['target_attempts']=[info]
+            candidates=rank(quote,docs)
+            if not candidates:
+                fallback=rank_short_windows(quote,docs); candidates=fallback['candidates']
+                row['lexical_fallback']={k:v for k,v in fallback.items() if k!='candidates'}
+            aligned=automatic_alignment(quote,source,list(self.source_documents.values()),docs,
+                                      (entry['source_title'],entry['target_title']),(entry['authors'],))
+            row.update(target_provider='mia',target_scope=info['scope'],candidates=candidates,section_alignment=aligned,
+                       status='catalog_candidate_review_required' if candidates or aligned['candidates'] else 'catalog_no_candidate')
+            return row
         try:
             if provider=='mia':
                 doc,_=mia_doc(self.client,url)
@@ -292,13 +307,24 @@ class Retrieval:
                    rights='unreviewed')
         expected_source=entry.get('source_document',entry['source_url'])
         actual_source=source['occurrences'][0]['url'] if len(source['occurrences'])==1 else None
-        if entry.get('whole_document_parallel') and actual_source and canonical_mia(actual_source)==expected_source:
-            aligned=document_alignment(quote,source,list(self.source_documents.values()),[doc],'researched_bibliographic_catalog')
+        if entry.get('whole_document_parallel'):
+            if self.refined:
+                aligned=self.direct_cache.candidate(source,list(self.source_documents.values()),[doc],expected_source,'researched_bibliographic_catalog')
+            elif actual_source and canonical_mia(actual_source)==expected_source:
+                aligned=document_alignment(quote,source,list(self.source_documents.values()),[doc],'researched_bibliographic_catalog')
+            else:
+                aligned={'status':'not_applicable','candidates':[]}
             row['section_alignment']=aligned
             if aligned['candidates'] and not candidates: row['status']='catalog_candidate_review_required'
         return row
 
     def retrieve(self,case):
+        row=self._retrieve(case)
+        if self.refined:
+            row['review_packet']=review_packet(row)
+        return row
+
+    def _retrieve(self,case):
         # Route construction receives only actual input page and selector.
         query={k:case[k] for k in ('id','wiki_title')}
         if 'citation_ref' in case: query['citation_ref']=case['citation_ref']
@@ -347,9 +373,11 @@ class Retrieval:
         # candidate uses heading evidence independent of the quotation.
         fr_docs=list(self.source_documents.values())
         route=nav['route']; meta=nav['work_metadata']
-        aligned=automatic_alignment(quote,source,fr_docs,docs,
-                                    (route['fr_title'],route['en_title'],nav['input'].get('work','')),
-                                    (meta['fr'].get('authors',''),meta['en'].get('authors','')))
+        aligned={'status':'not_applicable','candidates':[]}
+        if not self.refined:
+            aligned=automatic_alignment(quote,source,fr_docs,docs,
+                                        (route['fr_title'],route['en_title'],nav['input'].get('work','')),
+                                        (meta['fr'].get('authors',''),meta['en'].get('authors','')))
         # Direct, independently crosslinked single-document editions may
         # align without translated chapter titles. Require source and target
         # exact metadata URLs, reciprocal roots, matched authors, and no TOC.
@@ -361,11 +389,20 @@ class Retrieval:
                          and not info.get('links') and (route.get('reciprocal') is True or indexed_direct)
                          and nav.get('author_check') in VERIFIED_AUTHORS
                          and author_check(meta['fr'].get('authors',''),meta['en'].get('authors','')) in VERIFIED_AUTHORS
-                         and source_url is not None and [canonical_mia(source_url)]==meta['fr'].get('mia_urls')
+                         and len(meta['fr'].get('mia_urls',[]))==1
+                         and (self.refined or (source_url is not None and [canonical_mia(source_url)]==meta['fr'].get('mia_urls')))
                          and [canonical_mia(docs[0].url)]==meta['en'].get('mia_urls'))
         if not aligned['candidates'] and direct_parallel:
-            aligned=document_alignment(quote,source,fr_docs,docs,
-                                       'indexed_native_link_direct_documents' if indexed_direct else 'reciprocal_work_metadata_direct_documents')
+            method='indexed_native_link_direct_documents' if indexed_direct else 'reciprocal_work_metadata_direct_documents'
+            if self.refined:
+                aligned=self.direct_cache.candidate(source,fr_docs,docs,meta['fr']['mia_urls'][0],method)
+            else:
+                aligned=document_alignment(quote,source,fr_docs,docs,method)
+        if self.refined and not aligned['candidates']:
+            structural=automatic_alignment(quote,source,fr_docs,docs,
+                                        (route['fr_title'],route['en_title'],nav['input'].get('work','')),
+                                        (meta['fr'].get('authors',''),meta['en'].get('authors','')))
+            if structural['candidates'] or aligned['status']=='not_applicable': aligned=structural
         if aligned['candidates']:
             aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
         else: aligned['evaluation']={'state':'not_executed_or_unresolved'}

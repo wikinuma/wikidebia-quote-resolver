@@ -119,6 +119,89 @@
       "bibliography": "French contents explicitly link Programme minimum et programme de transition; English part 1 includes corresponding section. French chapter could not be decoded by web search; runner must verify actual source. The target contains other sections.",
       "rights_note": "Translation edition and reuse rights unreviewed.",
       "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/rakovsky/works/kr28dang.htm",
+      "source_title": "Les dangers professionnels du pouvoir",
+      "authors": "Christian Rakovski",
+      "target_url": "https://www.marxists.org/archive/rakovsky/1928/08/prodanger.htm",
+      "target_title": "The Professional Dangers of Power",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/rakovsky/works/kr28dang.htm",
+        "https://www.marxists.org/archive/rakovsky/1928/08/prodanger.htm",
+        "https://www.marxists.org/archive/rakovsky/1928/08/power.htm"
+      ],
+      "bibliography": "Letter to Valentinov, August 1928. French source credits Bulletin of the Opposition no. 6; English target reprints 1980 Selected Writings, edited by Gus Fagan, with the same Russian publication attribution. Alternative English translation in New International, November 1934, at power.htm.",
+      "rights_note": "1980 edition explicitly copyrighted by Allison & Busby and Gus Fagan; permission to reproduce on MIA does not establish permission for Wikidebats. Locate only; reuse unapproved.",
+      "target_provider": "mia",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/harman/1979/qcqlm/index.htm",
+      "source_title": "Qu'est-ce que le marxisme ?",
+      "authors": "Chris Harman",
+      "target_url": "https://www.marxists.org/archive/harman/1979/marxism/",
+      "target_title": "How Marxism Works",
+      "whole_document_parallel": false,
+      "target_toc": true,
+      "evidence": [
+        "https://www.marxists.org/francais/harman/1979/qcqlm/index.htm",
+        "https://www.marxists.org/archive/harman/1979/marxism/"
+      ],
+      "bibliography": "1979 work. French and English contents have corresponding introduction and thirteen chapters in the same order, with corresponding subjects. English source Bookmarks Publications, May 1979, sixth edition July 2000.",
+      "rights_note": "Explicit Bookmarks Publications copyright; no reuse permission established.",
+      "target_provider": "mia",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/lafargue/works/1900/06/pl19000603.htm",
+      "source_title": "Le socialisme et les intellectuels",
+      "authors": "Paul Lafargue",
+      "target_url": "https://www.marxists.org/archive/lafargue/1900/03/socint.htm",
+      "target_title": "Socialism and the Intellectuals",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/lafargue/works/1900/06/pl19000603.htm",
+        "https://www.marxists.org/archive/lafargue/1900/03/socint.htm"
+      ],
+      "bibliography": "Both sources identify the Paris address of 23 March 1900 to the collectivist students. French publication serialized April-June 1900; English version from The Right To Be Lazy and Other Studies, translated by Charles Kerr.",
+      "rights_note": "Historic translation; determine edition/publication date and applicable rights before reuse.",
+      "target_provider": "mia",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/boukharine/works/1921/nbsocio_12.htm",
+      "source_title": "Déterminisme et Indéterminisme (Nécessité et libre arbitre)",
+      "authors": "Nicolas Boukharine",
+      "target_url": "https://www.marxists.org/archive/bukharin/works/1921/histmat/2.htm",
+      "target_title": "Determinism and Indeterminism (Necessity and Free Will)",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/boukharine/works/1921/index.htm",
+        "https://www.marxists.org/archive/bukharin/works/1921/histmat/index.htm",
+        "https://www.marxists.org/archive/bukharin/works/1921/histmat/2.htm"
+      ],
+      "bibliography": "French contents place item 12 in chapter II, corresponding to English chapter 2 subsection a; English source International Publishers, 1925. French leaf decoding must be confirmed by runner; English page contains the entire chapter.",
+      "rights_note": "1925 English edition identified; translator and applicable reuse rights require review.",
+      "target_provider": "mia",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/engels/works/1883/06/fe18830628.htm",
+      "source_title": "Préface à l'édition allemande du Manifeste du parti communiste",
+      "authors": "Friedrich Engels",
+      "target_url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm",
+      "target_title": "The 1883 German Edition",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/engels/works/1883/06/fe18830628.htm",
+        "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm"
+      ],
+      "bibliography": "Both prefaces are signed by Engels at London on 28 June 1883. English target aggregates several prefaces; only the 1883 German edition is the corresponding section.",
+      "rights_note": "Translation edition and reuse rights not yet established.",
+      "target_provider": "mia",
+      "researched_on": "2026-11-25"
     }
   ]
 }
