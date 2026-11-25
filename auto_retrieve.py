@@ -160,23 +160,27 @@ class Retrieval:
         return self.works[key]
 
     def source(self,quote,selector,nav):
-        stages=[]; variants=[]; self.source_documents={}
+        stages=[]; variants=[]; self.source_documents={}; inspected=set()
         def inspect(docs,info):
             stages.append(info)
+            fresh=[]
             for d in docs:
                 key=(d.url,d.digest)
                 if key in self.source_documents:
                     d.headings=tuple(dict.fromkeys((*self.source_documents[key].headings,*d.headings)))
                 self.source_documents[key]=d
+                if key not in inspected:
+                    fresh.append(d); inspected.add(key)
+            stages[-1]={**info,'new_documents_examined':len(fresh)}
             hits=[]; truncated=False
-            for d in docs:
+            for d in fresh:
                 m,t=exact_occurrences(quote,d); hits+=m; truncated|=t
             if hits or truncated:
                 return {'status':'exact_in_examined_documents' if len(hits)==1 and not truncated else 'ambiguous_exact_source',
                         'occurrences':hits,'occurrences_truncated':truncated}
-            v=source_variants(quote,selector,docs)
+            v=source_variants(quote,selector,fresh)
             variants.extend(v['candidates'])
-            if v['truncated']: stages[-1]={**info,'variant_search_truncated':True}
+            if v['truncated']: stages[-1]['variant_search_truncated']=True
             return None
         direct=nav['input']['mia_urls']
         if len(direct)==1:
@@ -189,7 +193,7 @@ class Retrieval:
             except Exception as exc:
                 stages.append({**info,'issues':[{'kind':'direct_url_error','error':error_kind(exc)}]})
         meta=nav.get('work_metadata',{}).get('fr',{}).get('mia_urls',[])
-        if len(meta)==1 and meta!=direct:
+        if len(meta)==1:
             docs,info=self.work('mia',meta[0],'fr')
             result=inspect(docs,info)
             if result: return {**result,'stages':stages}

@@ -140,8 +140,15 @@ def automatic_alignment(quote,source,fr_docs,en_docs,work_titles,authors,max_cel
     target,pair=find_section_pair(fr,en_docs,work_titles,authors,fr_docs)
     result['pair']=pair
     if target is None: return {**result,'status':pair['status']}
-    aligned=aligned_candidates(quote,fr,target,'sentence',max_cells=max_cells)
+    # A long chapter may exceed the sentence DP budget. Fall back to
+    # paragraph alignment without increasing the maximum matrix size.
+    attempts=[]
+    for kind in ('sentence','paragraph'):
+        aligned=aligned_candidates(quote,fr,target,kind,max_cells=max_cells)
+        attempts.append({'kind':kind,'status':aligned['status'],'alignment':aligned.get('alignment')})
+        if aligned['status']!='alignment_budget_exceeded': break
+    result['attempts']=attempts
     result['alignment']=aligned.get('alignment')
     result['status']=aligned['status']
-    result['candidates']=[{**c,'pair_route':'heading_pair_hypothesis','boundary_verified':False,'rights':'unreviewed'} for c in aligned['candidates']]
+    result['candidates']=[{**c,'pair_route':'heading_pair_hypothesis','boundary_verified':False,'rights':'unreviewed','alignment_unit':kind} for c in aligned['candidates']]
     return result

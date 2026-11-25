@@ -62,3 +62,15 @@ class SectionMatchTests(unittest.TestCase):
         self.assertIn('The workers are united',r['candidates'][0]['text'])
         self.assertFalse(r['candidates'][0]['boundary_verified'])
         self.assertFalse(r['auto_publish'])
+
+    def test_large_sentence_matrix_falls_back_to_paragraphs(self):
+        q='Les travailleurs sont unis dans cette lutte.'
+        f=doc('fr',['Lutte de classe'],[q,' '.join(['Une phrase de contexte.']*30)])
+        e=doc('en',['Class struggle'],['The workers are united in this struggle.',' '.join(['A sentence of context.']*30)])
+        hits,_=exact_occurrences(q,f)
+        r=automatic_alignment(q,{'status':'exact_in_examined_documents','occurrences':hits},[f],[e],(),(),max_cells=20)
+        self.assertEqual(r['attempts'][0]['status'],'alignment_budget_exceeded')
+        self.assertEqual(r['attempts'][1]['kind'],'paragraph')
+        self.assertEqual(r['status'],'review_required')
+        self.assertEqual(r['candidates'][0]['alignment_unit'],'paragraph')
+        self.assertFalse(r['auto_publish'])

@@ -40,3 +40,21 @@ class AutoRetrievalTests(unittest.TestCase):
             row=r.retrieve({'id':'x','wiki_title':'Argument','selector':'une phrase utile'})
         self.assertEqual(row['status'],'source_needs_review')
         w.assert_not_called()
+
+    def test_direct_index_still_searches_children_and_no_duplicate_inspection(self):
+        from alignment import exact_occurrences
+        root='https://www.marxists.org/francais/book/index.htm'
+        child='https://www.marxists.org/francais/book/one.htm'
+        quote='Les archives conservent toujours des documents anciens précieux.'
+        index_doc=Document(root,['Sommaire uniquement.'],'a')
+        child_doc=Document(child,[quote],'b')
+        r=Retrieval(Mock(),8)
+        nav={'input':{'mia_urls':[root]},'work_metadata':{'fr':{'mia_urls':[root]}},'route':{'fr_title':'Book'}}
+        info={'provider':'mia','scope':'bounded_direct_toc_links_not_complete_edition','pages':[{},{}],'issues':[]}
+        with patch('auto_retrieve.mia_doc',return_value=(index_doc,b'index')), \
+             patch.object(r,'work',return_value=([index_doc,child_doc],info)) as w:
+            got=r.source(quote,'documents anciens précieux',nav)
+        self.assertEqual(got['status'],'exact_in_examined_documents')
+        self.assertEqual(got['occurrences'][0]['url'],child)
+        self.assertEqual([s['new_documents_examined'] for s in got['stages']],[1,1])
+        w.assert_called_once_with('mia',root,'fr')
