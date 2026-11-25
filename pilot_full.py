@@ -438,3 +438,217 @@ def wr_hybrid_work(client,work,max_pages,native_attempt):
     return docs,info,links
 
 
+def wr_section_pairs(wid,docs,links):
+    """Candidate routes independent of gold quote data; no chapter-number guess."""
+    pairs=[]
+    def leaf(d,ds):
+        return d.title and not any(x.title.startswith(d.title+'/') for x in ds if x.title!=d.title)
+    fr=[d for d in docs['fr'] if d.blocks and leaf(d,docs['fr'])]
+    en=[d for d in docs['en'] if d.blocks and leaf(d,docs['en'])]
+    for f in fr:
+        targets={wr_title(u,'en') for u in links.get(f.url,[])}
+        hits=[e for e in en if e.title in targets]
+        if len(targets)==1 and len(hits)==1:
+            pairs.append((f,hits[0],'public_leaf_langlink_candidate'))
+    if wid=='engels-condition':
+        # Existing work-level mapping from MIA TOCs also matches these titles.
+        for a,b in ENGELS_SECTION_LABELS:
+            fs=[f for f in fr if '/' in f.title and norm(f.title.rsplit('/',1)[-1])==norm(a)]
+            es=[e for e in en if '/' in e.title and norm(e.title.rsplit('/',1)[-1])==norm(b)]
+            if len(fs)==len(es)==1 and not any(p[0]==fs[0] for p in pairs):
+                pairs.append((fs[0],es[0],'work_level_bilingual_section_labels_candidate'))
+    return pairs
+
+
+def source_diagnostics(quote_text,selector,docs,limit=5):
+    """Show bounded source contexts around exact selector hits, even when the
+    full quote is not contiguous. Never promotes fuzzy/omitted source text.
+    """
+    q=norm(quote_text).split(); needle=norm(selector).split(); rows=[]
+    if len(needle)<3 or not q: return {'has_ellipsis':bool(OMISSION.search(quote_text)),'selector_hits':[]}
+    for doc in docs:
+        text,_=text_and_starts(doc); ts=tokens_with_offsets(text)
+        words=[t[0] for t in ts]
+        # The selector is chosen before the test, not a gold source location.
+        for i in range(len(words)-len(needle)+1):
+            if words[i:i+len(needle)]!=needle: continue
+            a=max(0,i-len(q)); b=min(len(ts),i+len(needle)+len(q))
+            lo,hi=ts[a][1],ts[b-1][2]
+            context=text[lo:hi]
+            # Heuristic overlap; the context is longer than the quote.
+            ratio=SequenceMatcher(None,q,words[a:b],autojunk=False).ratio()
+            rows.append({'url':doc.url,'sha256':doc.digest,'revision':doc.revision,
+                         'char_start':lo,'char_end':hi,'context_similarity':round(ratio,4),
+                         'text':context,'boundary_verified':False})
+    rows.sort(key=lambda r:(-r['context_similarity'],r['url'],r['char_start']))
+    return {'has_ellipsis':bool(OMISSION.search(quote_text)),'selector_hits':rows[:limit],
+            'selector_hit_count':len(rows),'selector_hits_truncated':len(rows)>limit}
+
+def probe_api(client,endpoint):
+    try:
+        r=client.api(endpoint,action='query',meta='siteinfo',siprop='general')
+        g=r['query']['general']
+        return {'status':'available','sitename':g.get('sitename'),'generator':g.get('generator'),'lang':g.get('lang'),'server':g.get('server')}
+    except Exception as exc: return {'status':'unavailable','error':str(exc)}
+
+
+def redact_text(obj):
+    """Default report contains fingerprints and coordinates, not long source extracts."""
+    if isinstance(obj,list): return [redact_text(x) for x in obj]
+    if not isinstance(obj,dict): return obj
+    out={}
+    for k,v in obj.items():
+        if k=='text' and isinstance(v,str):
+            out['text_sha256']=sha(v.encode()); out['text_words']=len(norm(v).split())
+        else: out[k]=redact_text(v)
+    return out
+
+
+def run_pilot(client,cases,providers,max_pages,encoder=None,max_cells=250000,max_windows=6000,include_text=False,review_cases=()):
+    started=time.monotonic()
+    probes={'wikidebats':probe_api(client,WD_API)}
+    if 'wikirouge' in providers:
+        for lang in ('fr','en'): probes['wikirouge_'+lang]=probe_api(client,API[lang])
+    report={'schema':'wikidebia-full-work-pilot-0.4','offline':client.offline,'api_probes':probes,
+            'auto_publish':False,'works':{},'cases':[],'evaluation_contract':'short manually verified anchors only; not full quote fidelity; no automatic acceptance'}
+    inputs={}
+    for c in cases:
+        try: inputs[c['id']]=wiki_input(client,c,probes['wikidebats']['status']=='available')
+        except Exception as exc: inputs[c['id']]=(None,{'error':str(exc)})
+    # Do not crawl entire works if the input wiki is unavailable. Explicitly
+    # distinguish input failure from a negative match or a tested work.
+    work_cache={}
+    for c in cases:
+        q,prov=inputs[c['id']]; wid=CASES[c['id']]
+        for provider in providers:
+            row={'id':c['id'],'work':wid,'provider':provider,'input':prov,'auto_publish':False,'rights':'unreviewed'}; report['cases'].append(row)
+            if q is None: row['status']='input_unavailable'; continue
+            key=(wid,provider)
+            if key not in work_cache:
+                if provider=='mia': docs,info=mia_work(client,WORKS[wid],max_pages); links={}
+                else:
+                    if all(probes['wikirouge_'+l]['status']=='available' for l in ('fr','en')):
+                        docs,info,links=wr_api_work(client,WORKS[wid],max_pages)
+                        if not info['scope_complete']:
+                            docs,info,links=wr_hybrid_work(client,WORKS[wid],max_pages,info)
+                    else: docs,info,links=wr_public_work(client,WORKS[wid],max_pages)
+                work_cache[key]=docs,info,links; report['works'][wid+':'+provider]=info
+            docs,info,links=work_cache[key]; fr,en=docs['fr'],docs['en']; pairs=[]; pair_issues=[]
+            if provider=='mia':
+                pairs=mia_pairs(wid,docs,info)
+            elif info['scope']=='api_prefix_enumeration' and info['scope_complete']:
+                found={d.url for d in fr if exact_occurrences(q,d)[0]}
+                pairs=page_pairs(client,fr,en,found,pair_issues)
+            elif info['scope']=='html_roots_api_prefix_enumeration' and info['scope_complete']:
+                pairs=wr_section_pairs(wid,docs,links)
+            # HTML discovery alone is useful for retrieval, not proof of a
+            # complete parallel section. No alignment from an unverified TOC.
+            start=time.monotonic()
+            try:
+                result=compare_methods(q,fr,en,pairs,encoder,max_cells,max_windows)
+                if result['source_status']=='unconfirmed':
+                    result['source_diagnostics']=source_diagnostics(q,c['selector'],fr)
+                for m in result['methods'].values():
+                    if m.get('status') in ('not_requested','not_applicable_or_unresolved','error','embedding_window_budget_exceeded') or not en:
+                        m['evaluation']={'state':'not_executed_or_unresolved'}
+                    else: m['evaluation']=evaluation(m['candidates'],c,provider)
+                candidate_count=sum(len(m['candidates']) for m in result['methods'].values())
+                row.update(result,documents={l:len(docs[l]) for l in docs},scope_complete=info['scope_complete'],pair_issues=pair_issues,
+                           status='review_required' if info['scope_complete'] and result['source_status']=='normalized_contiguous' and en and candidate_count and not pair_issues else 'incomplete_or_unconfirmed',ranking_seconds=round(time.monotonic()-start,4))
+            except Exception as exc: row.update(status='ranking_error',error=str(exc))
+    report.update(status='review_required' if report['cases'] and all(r['status']=='review_required' for r in report['cases']) else 'incomplete',
+                  requests=client.requests,cache_hits=client.hits,cache_bytes_read=client.cache_bytes_read,
+                  elapsed_seconds=round(time.monotonic()-started,3),http_events=client.events)
+    if encoder: report['embedding']={'model_id':encoder.model_id,**encoder.stats}
+    report['metrics']=metrics(report['cases'])
+    if include_text: return report
+    redacted=redact_text(report)
+    if review_cases:
+        for i,row in enumerate(report['cases']):
+            if row['id'] in review_cases: redacted['cases'][i]=row
+    return redacted
+
+
+def metrics(rows):
+    out={}
+    for row in rows:
+        provider=row['provider']
+        group=out.setdefault(provider,{'cases':0,'input_unavailable':0,'complete_toc_scope':0,'source_contiguous_unique':0,'methods':{}})
+        group['cases']+=1
+        group['input_unavailable']+=int(row['status']=='input_unavailable')
+        group['complete_toc_scope']+=int(bool(row.get('scope_complete')))
+        group['source_contiguous_unique']+=int(row.get('source_status')=='normalized_contiguous')
+        for method,m in row.get('methods',{}).items():
+            counts=group['methods'].setdefault(method,{'anchor_evaluable_complete_scope':0,'anchor_top1':0,'anchor_top5':0,'anchor_evaluable_partial_scope':0,'partial_scope_top1':0,'partial_scope_top5':0,'candidate_words':0})
+            counts['candidate_words']+=sum(len(norm(x['text']).split()) for x in m['candidates'])
+            e=m.get('evaluation',{})
+            if e.get('state')!='short_anchor_only': continue
+            rank=e['rank']; complete=row.get('scope_complete') and row.get('source_status')=='normalized_contiguous'
+            if complete:
+                counts['anchor_evaluable_complete_scope']+=1; counts['anchor_top1']+=int(rank==1); counts['anchor_top5']+=int(rank is not None and rank<=5)
+            else:
+                counts['anchor_evaluable_partial_scope']+=1; counts['partial_scope_top1']+=int(rank==1); counts['partial_scope_top5']+=int(rank is not None and rank<=5)
+    return out
+
+def replay_events(path):
+    r=json.loads(path.read_text())
+    if r.get('schema')!='wikidebia-full-work-pilot-0.4': raise ValueError('unsupported replay report')
+    out={}
+    for e in r['http_events']:
+        key=e['request_url']
+        if not valid_url(key): raise ValueError('invalid replay URL')
+        old=out.get(key)
+        if old and (old['status']!=e['status'] or old.get('sha256')!=e.get('sha256') or old.get('final_url')!=e.get('final_url')):
+            raise ValueError('response changed during original run')
+        out[key]=e
+    return out
+
+def replay_mismatches(expected,actual):
+    observed={e['request_url']:e for e in actual}
+    return [k for k in sorted(set(expected)|set(observed)) if k not in expected or k not in observed or any(expected[k].get(f)!=observed[k].get(f) for f in ('status','sha256','final_url'))]
+
+
+def replay_results(report):
+    """Compare editorial/algorithmic outputs, not execution timing or cache stats."""
+    return {**{k:report.get(k) for k in ('schema','status','api_probes','works','metrics','evaluation_contract','auto_publish')},
+            'cases':[{k:v for k,v in c.items() if k!='ranking_seconds'} for c in report.get('cases',[])]}
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--provider',choices=['both','mia','wikirouge'],default='both')
+    p.add_argument('--case',choices=list(CASES),action='append')
+    p.add_argument('--cache',type=Path,default=ROOT/'.pilot-cache')
+    p.add_argument('--out',type=Path,default=ROOT/'reports-live'/'full-work.json')
+    p.add_argument('--offline',action='store_true'); p.add_argument('--replay-report',type=Path); p.add_argument('--include-text',action='store_true')
+    p.add_argument('--budget',type=int,default=220); p.add_argument('--max-pages',type=int,default=40)
+    p.add_argument('--delay',type=float,default=.5); p.add_argument('--max-cells',type=int,default=250000); p.add_argument('--max-windows',type=int,default=6000)
+    p.add_argument('--model-dir',type=Path)
+    p.add_argument('--review-case',choices=list(CASES),action='append',default=[],help='Include local source/candidate texts only for selected cases; review rights before sharing')
+    a=p.parse_args()
+    if min(a.budget,a.max_pages,a.max_cells,a.max_windows)<1 or a.delay<.25: p.error('positive limits, delay >= .25 s')
+    allcases=json.loads((ROOT/'cases-v02.json').read_text())['cases']
+    cases=[c for c in allcases if c['id'] in CASES and (not a.case or c['id'] in a.case)]
+    if a.replay_report and not a.offline: p.error('--replay-report requires --offline')
+    if a.replay_report and a.replay_report.resolve()==a.out.resolve(): p.error('use a separate output for replay')
+    client=PilotClient(a.cache,a.budget,a.delay,a.offline,replay_events(a.replay_report) if a.replay_report else None); encoder=None
+    try:
+        if a.model_dir: encoder=LocalEncoder(a.model_dir,a.cache/'vectors.sqlite3')
+        r=run_pilot(client,cases,['mia','wikirouge'] if a.provider=='both' else [a.provider],a.max_pages,encoder,a.max_cells,a.max_windows,a.include_text,a.review_case)
+        r['config']={'provider':a.provider,'cases':[c['id'] for c in cases],'budget':a.budget,'max_pages':a.max_pages,'max_cells':a.max_cells,'max_windows':a.max_windows,'embedding_requested':bool(a.model_dir),'include_text':a.include_text,'review_cases':sorted(set(a.review_case))}
+        if a.replay_report:
+            original=json.loads(a.replay_report.read_text())
+            mismatches=replay_mismatches(client.expected_events,client.events)
+            config_matches=original.get('config')==r['config']
+            model_matches=original.get('embedding',{}).get('model_id')==r.get('embedding',{}).get('model_id')
+            results_match=replay_results(original)==replay_results(r)
+            r.update(replay_of_sha256=sha(a.replay_report.read_bytes()),replay_integrity={'config_matches':config_matches,'model_matches':model_matches,'response_mismatches':mismatches,'results_match':results_match})
+            if mismatches or not config_matches or not model_matches or not results_match: r['status']='replay_mismatch'
+    except Exception as exc:
+        r={'schema':'wikidebia-full-work-pilot-0.4','status':'error','error':str(exc),'auto_publish':False,'http_events':client.events}
+    finally:
+        if encoder: encoder.close()
+    a.out.parent.mkdir(parents=True,exist_ok=True); a.out.write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    print(json.dumps({'report':str(a.out),'status':r['status'],'requests':client.requests,'cache_hits':client.hits,'cases':len(r.get('cases',[]))},ensure_ascii=False))
+    return int(r['status']!='review_required')
+
+if __name__=='__main__': raise SystemExit(main())
