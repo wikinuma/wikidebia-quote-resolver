@@ -7,7 +7,7 @@ caches. No model calls. No unverified candidate is counted as an exact quote.
 from __future__ import annotations
 
 import argparse
-from collections import Counter, defaultdict
+from collections import Counter
 import json
 from pathlib import Path
 import tempfile
@@ -56,7 +56,7 @@ def scan_mia_pages(client, linked, max_pages):
         batch=selected[i:i+10]
         try:
             result=client.api(WD_API,action='query',titles='|'.join(batch),redirects=1,
-                              prop='revisions',rvprop='ids|content',rvslots='main',rvlimit=1)
+                              prop='revisions',rvprop='ids|content',rvslots='main')
             pages=result.get('query',{}).get('pages',[])
             if not isinstance(pages,list) or len(pages)>len(batch):
                 raise ValueError('invalid_revision_batch')
