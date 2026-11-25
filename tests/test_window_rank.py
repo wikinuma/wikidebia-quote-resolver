@@ -21,5 +21,5 @@ class WindowRankTests(unittest.TestCase):
         self.assertFalse(r['candidates'])
 
     def test_budget_is_visible(self):
-        r=rank_short_windows('La démocratie garantit la participation',[Document('x',['Democracy encourages participation. Democracy guarantees participation.'],'d')],max_windows=1)
+        r=rank_short_windows('La démocratie garantit la participation',[Document('x',['Democracy encourages popular participation. Democracy guarantees broad participation.'],'d')],max_windows=1)
         self.assertTrue(r['truncated']); self.assertEqual(r['status'],'partial_window_budget')
