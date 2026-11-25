@@ -5,6 +5,11 @@ on:
     paths:
       - 'refinement.py'
       - 'benchmark_refine.py'
+      - 'holdout_mia.py'
+      - 'source_refinement.py'
+      - 'source_evidence.py'
+      - 'tests/test_source_refinement.py'
+      - 'tests/test_holdout_mia.py'
       - 'bibliographic-catalog.json'
       - 'auto_retrieve.py'
       - 'bibliography.py'
@@ -22,7 +27,7 @@ jobs:
   refined:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,13 +53,17 @@ jobs:
       - name: Compare indexed and refined retrieval on same 50 MIA citations
         timeout-minutes: 35
         run: python benchmark_refine.py --baseline-report baseline-report/paired-index.json
-      - name: Preserve redacted development reports
+      - name: Compare both methods on 50 fresh MIA quotations
+        timeout-minutes: 30
+        run: python benchmark_refine.py --baseline-report baseline-report/paired-index.json --fresh-holdout --out reports-live/holdout-index.json
+      - name: Preserve redacted development and holdout reports
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: wikirouge-refined-mia-comparison
           path: |
             reports-live/refined-index.json
+            reports-live/holdout-index.json
             baseline-report/paired-index.json
           if-no-files-found: warn
           retention-days: 30

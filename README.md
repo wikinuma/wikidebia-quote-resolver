@@ -125,3 +125,11 @@ The refinement comparison is a development recheck, not an independent holdout. 
 The refined path may retry long quotations up to 600 normalized words using banded prefix edit distance, or explicit omission fragments using ordered same-document spans. Edge ellipses and approximate fragments remain review-only evidence. Each retained fragment keeps actual source coordinates. No implicit gap, cross-document join, or fabricated English text is allowed. The older comparison arm retains the original search limits.
 
 The catalog can record explicit title aliases on the same exact source URL. Refined catalog routes restricted to a particular source document require that the French quotation is actually located there before retrieving the target. This guards the new 1859 Marx preface mapping against a misleading whole-book citation link. The 1881 Engels Trades Unions route covers both articles on the English archive page; verify the French passage and edition before reuse.
+
+### Fresh MIA quotation holdout
+
+```sh
+python benchmark_refine.py --baseline-report paired-index.json --fresh-holdout --out reports-live/holdout-index.json
+```
+
+This excludes the exact quotation and template fingerprints of all 50 frozen development cases, selects at least 50 new MIA-linked quotation records without using retrieval outcomes, and prioritizes previously unseen pages, work labels and exact source URLs. It reports results separately for unseen and familiar-document groups. Bibliographic aliases and researched catalogue URLs are part of the known set. It does not claim semantic deduplication of paraphrased quotations, a fully work-disjoint sample when insufficient records exist, or verified translation accuracy. It fails rather than silently lowering the requested sample size or adding non-MIA records.

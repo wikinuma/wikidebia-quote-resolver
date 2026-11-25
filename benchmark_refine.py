@@ -51,17 +51,31 @@ def main():
     p.add_argument('--case-budget',type=int,default=32)
     p.add_argument('--max-work-pages',type=int,default=16)
     p.add_argument('--out',type=Path,default=ROOT/'reports-live'/'refined-index.json')
+    p.add_argument('--fresh-holdout',action='store_true')
+    p.add_argument('--holdout-sample',type=int,default=50)
+    p.add_argument('--scan-pages',type=int,default=1200)
     a=p.parse_args()
-    if not 1<=a.case_budget<=60 or not 1<=a.max_work_pages<=24:
+    if not 1<=a.case_budget<=60 or not 1<=a.max_work_pages<=24 or not 50<=a.holdout_sample<=80 or not 1<=a.scan_pages<=3000:
         p.error('bounded positive limits required')
     with tempfile.TemporaryDirectory(prefix='refined-index-') as tmp, open_snapshot(a.manifest) as index:
         cases=pinned_cases(a.baseline_report,a.baseline_sha,index.fingerprint)
         catalog=load_catalog(a.catalog)
+        discovery=None
+        if a.fresh_holdout:
+            from holdout_mia import discover_holdout
+            discover=PilotClient(Path(tmp)/'discover',budget=400+(a.scan_pages+9)//10+50)
+            started=time.monotonic()
+            cases,diag=discover_holdout(discover,a.manifest,cases,catalog,a.holdout_sample,a.scan_pages)
+            discovery={**diag,'network_requests':discover.requests,'decoded_network_body_bytes':discover.network_body_bytes,
+                       'elapsed_seconds':round(time.monotonic()-started,4)}
+            print(json.dumps({k:v for k,v in discovery.items() if k!='inventory'}),flush=True)
         clients={arm:PilotClient(Path(tmp)/arm,budget=len(cases)*a.case_budget) for arm in ARMS}
         engines={arm:Retrieval(c,a.max_work_pages,catalog=catalog if arm=='refined' else (),
                               local_index=index,refined=arm=='refined') for arm,c in clients.items()}
-        report={'schema':'wikidebia-refined-index-1','scope':'explicit_mia_only',
-                'evaluation_scope':'development recheck on frozen 50 citations; catalog derived after baseline inspection',
+        report={'schema':'wikidebia-mia-holdout-1' if a.fresh_holdout else 'wikidebia-refined-index-1','scope':'explicit_mia_only',
+                'evaluation_scope':('fresh quotation fingerprints; report overlap with development works/pages/URLs' if a.fresh_holdout else
+                                    'development recheck on frozen 50 citations; catalog derived after baseline inspection'),
+                'discovery':discovery,
                 'baseline_report_sha256':a.baseline_sha,'snapshot_sha256':index.fingerprint,
                 'sample':cases,'catalog_sha256':hashlib.sha256(a.catalog.read_bytes()).hexdigest(),
                 'bounds':{'case_requests':a.case_budget,'max_work_pages':a.max_work_pages},
@@ -70,9 +84,13 @@ def main():
                     'work_candidate':'local/live work route or researched bibliographic lead; not verified passage'},
                 'pairs':[],'auto_publish':False,'status':'running'}
         write(a.out,report)
+        if a.fresh_holdout and len(cases)<a.holdout_sample:
+            report['status']='insufficient_fresh_sample'; write(a.out,report)
+            return 1
         start=time.monotonic()
         for i,c in enumerate(cases):
             pair={'id':c['id'],'stratum':c['stratum']}
+            if a.fresh_holdout: pair['holdout_group']=c['holdout_group']
             for arm in (ARMS if i%2==0 else tuple(reversed(ARMS))):
                 pair[arm]=one_case(engines[arm],c,a.case_budget)
             report['pairs'].append(pair)
@@ -87,9 +105,12 @@ def main():
              p[arm]['result'].get('navigation',{}).get('status')=='input_unavailable']
         report['input_or_execution_failures']=bad
         report['elapsed_seconds']=round(time.monotonic()-start,3)
-        report['status']='development_comparison_complete' if not bad else 'comparison_incomplete'
+        report['status']=('holdout_candidate_comparison_complete' if a.fresh_holdout else 'development_comparison_complete') if not bad else 'comparison_incomplete'
+        if a.fresh_holdout:
+            report['by_novelty']={g:aggregate([p for p in report['pairs'] if p['holdout_group']==g],ARMS)
+                                  for g in discovery['by_novelty']}
         write(a.out,report)
-        print(json.dumps({k:report[k] for k in ('status','aggregate','alignment_cache','input_or_execution_failures','elapsed_seconds')},indent=2),flush=True)
+        print(json.dumps({k:report[k] for k in ('status','aggregate','alignment_cache','input_or_execution_failures','elapsed_seconds','by_novelty') if k in report},indent=2),flush=True)
         return int(bool(bad))
 
 
