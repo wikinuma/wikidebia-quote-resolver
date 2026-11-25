@@ -8,10 +8,27 @@ jobs:
   probe:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Read public external-link metadata only
-        run: python3 probe_public_extlinks.py
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install requests
+        run: python -m pip install 'requests>=2.31,<3'
+      - name: Offline regression tests
+        run: python -m unittest -v test_export_semantique_v2.py
+      - name: Actual seven-page combined metadata probe
+        run: python export_semantique_v2.py --probe --budget 30
+      - name: Bounded real category batches (25 each)
+        run: python probe_export_batches.py
+      - name: Preserve metadata-only probe
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: semantic-metadata-v2-probe
+          path: export-semantique-v2/wikirouge-semantic-probe.json
+          if-no-files-found: warn
+          retention-days: 7
