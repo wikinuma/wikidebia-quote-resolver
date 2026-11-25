@@ -1,0 +1,50 @@
+name: MIA encrypted bilingual review packet
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'review_export.py'
+      - 'review-recipient.crt'
+      - 'tests/test_review_export.py'
+      - '.github/workflows/mia-review-packet.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: mia-review-packet-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  packet:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - run: python -m unittest discover -s tests -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: wikirouge-refined-mia-comparison
+          run-id: 45715249856
+          github-token: ${{ github.token }}
+          path: frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: mia-chapter-quality
+          run-id: 45718562215
+          github-token: ${{ github.token }}
+          path: chapter
+      - name: Encrypt independently verified review excerpts
+        run: |
+          python review_export.py --development frozen/reports-live/refined-index.json --development-sha 368a2ad617ab504838634dbf328ef4776a25bda9b45ae13d9c7061d6c24bedfd --holdout frozen/reports-live/holdout-index.json --holdout-sha 0a1d137fa16b1ff15e897e8d75fe6d37aa89a02adad32f9b5c8f24799f5ed18b --chapter-report chapter/chapter-quality.json --chapter-sha $(sha256sum chapter/chapter-quality.json | cut -d' ' -f1) --certificate review-recipient.crt --out private-review/packet.cms
+      - uses: actions/upload-artifact@v6
+        with:
+          name: encrypted-mia-review-packet
+          path: private-review/packet.cms
+          if-no-files-found: error
+          retention-days: 1
