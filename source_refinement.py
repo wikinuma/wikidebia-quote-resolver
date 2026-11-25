@@ -5,7 +5,6 @@ nor an omission envelope proves an exact citation or authorizes its reuse.
 """
 from __future__ import annotations
 
-from collections import defaultdict
 from bisect import bisect_left
 from resolver import norm, sha
 from alignment import tokens_with_offsets, text_and_starts
@@ -80,7 +79,7 @@ def fragment_paths(quote, docs, max_gap=500, max_paths=100):
             if not spans and len(frag)>=8:
                 v=long_variants(' '.join(frag),[doc])
                 out['truncated']|=v['truncated']
-                if v['qualifying_hits']>len(v['candidates']):
+                if v.get('qualifying_hits',0)>len(v['candidates']):
                     # Overlapping seed clusters may collapse; we still refuse
                     # a unique-fragment claim when alternatives are hidden.
                     out['truncated']=True
@@ -105,13 +104,13 @@ def fragment_paths(quote, docs, max_gap=500, max_paths=100):
                     gap=span[0]-path[-1][1]
                     if not 0<=gap<=max_gap:
                         continue
-                    if len(new)>=max_paths:
+                    new.append(path+(span,))
+                    if len(new)>max_paths:
                         out['truncated']=True
                         break
-                    new.append(path+(span,))
-                if len(new)>=max_paths:
+                if len(new)>max_paths:
                     break
-            paths=new
+            paths=new[:max_paths]
             if not paths:
                 break
         for path in paths:
