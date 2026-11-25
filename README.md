@@ -133,3 +133,12 @@ python benchmark_refine.py --baseline-report paired-index.json --fresh-holdout -
 ```
 
 This excludes the exact quotation and template fingerprints of all 50 frozen development cases, selects at least 50 new MIA-linked quotation records without using retrieval outcomes, and prioritizes previously unseen pages, work labels and exact source URLs. It reports results separately for unseen and familiar-document groups. Bibliographic aliases and researched catalogue URLs are part of the known set. It does not claim semantic deduplication of paraphrased quotations, a fully work-disjoint sample when insufficient records exist, or verified translation accuracy. It fails rather than silently lowering the requested sample size or adding non-MIA records.
+
+### Independent evidence audit
+
+```sh
+python evidence_audit.py --report refined-index.json --sha256 <pinned-report-sha256>
+```
+
+The evidence auditor uses a new empty HTTP cache. It reopens the actual pinned French Citation template, checks its fingerprints and MIA URLs, rereads every distinct retrieved source document once, and reconstructs each French and English candidate from recorded character or block coordinates. Document hash, revision and extracted-text hash are checked separately. An identical excerpt in changed HTML is distinguished from strict document-and-span verification. No candidate text is printed or stored in the public audit artifact. Labelled bibliographic fields and page-level license signals are collected once per document. A license signal is not an authorization to reuse a translation; bilingual equivalence, precise English quotation boundaries and license compatibility remain separate unreviewed decisions. Audit completeness means the checks were performed, not that every check passed.
+
