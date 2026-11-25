@@ -27,6 +27,9 @@ def load_catalog(path):
         seen.add(source)
         if not norm(row['source_title']) or not norm(row['authors']) or not row.get('evidence') or not row.get('rights_note'):
             raise ValueError('incomplete_catalog_evidence')
+        aliases=row.get('source_titles',[])
+        if not isinstance(aliases,list) or any(not isinstance(t,str) or not norm(t) or generic_work_name(t) for t in aliases):
+            raise ValueError('invalid_catalog_title_aliases')
         provider=row.get('target_provider')
         target=row.get('target_url')
         if provider=='mia':
@@ -53,7 +56,7 @@ def match_catalog(metadata,entries):
     if len(urls)!=1: return None
     titles={norm(metadata.get(k,'')) for k in ('work','article') if metadata.get(k) and not generic_work_name(metadata[k])}
     matches=[r for r in entries if r['source_url']==canonical_mia(urls[0])
-             and norm(r['source_title']) in titles
+             and bool(titles & {norm(t) for t in [r['source_title'],*r.get('source_titles',[])]})
              and author_check(metadata.get('authors',''),r['authors']) in VERIFIED_AUTHORS]
     return matches[0] if len(matches)==1 else None
 

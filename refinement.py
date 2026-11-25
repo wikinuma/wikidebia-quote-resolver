@@ -33,7 +33,10 @@ def select_source_hit(source, docs, expected_url):
             return None,None
         kind=hit.get('match')
         if kind=='explicit_omission_review':
-            if hit.get('token_edits')!=0 or len(hit.get('fragment_ranges',[]))<2:
+            if hit.get('token_edits')!=0 or len(hit.get('fragment_ranges',[]))<1:
+                return None,None
+        elif kind=='fragment_variant_omission_review':
+            if (hit.get('similarity') or 0)<.95 or not hit.get('fragment_ranges'):
                 return None,None
         elif kind not in ('approximate_tokens_review','multi_anchor_variant_review') or (hit.get('similarity') or 0)<.95:
             return None,None
@@ -104,7 +107,7 @@ class DirectAlignmentCache:
             if not max(3,source_words*.25)<=words<=max(30,source_words*3):
                 result['status']='implausible_aligned_span'
                 continue
-            omitted=hit['evidence_kind']=='explicit_omission_review'
+            omitted=hit['evidence_kind'] in ('explicit_omission_review','fragment_variant_omission_review')
             result['status']='review_required'
             result['candidates']=[{'url':en.url,'sha256':en.digest,'revision':en.revision,'char_start':lo,'char_end':hi,
                                   'text':etext[lo:hi],'links':relevant,'pair_route':route_method,

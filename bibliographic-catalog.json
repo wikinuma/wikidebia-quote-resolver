@@ -202,6 +202,47 @@
       "rights_note": "Translation edition and reuse rights not yet established.",
       "target_provider": "mia",
       "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/marx/works/1859/01/index.htm",
+      "source_title": "Critique de l'économie politique",
+      "authors": "Karl Marx",
+      "source_document": "https://www.marxists.org/francais/marx/works/1859/01/km18590100b.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1859/critique-pol-economy/preface.htm",
+      "target_title": "A Contribution to the Critique of Political Economy: Preface",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/marx/works/1859/01/index.htm",
+        "https://www.marxists.org/francais/marx/works/1859/01/km18590100b.htm",
+        "https://www.marxists.org/archive/marx/works/1859/critique-pol-economy/",
+        "https://www.marxists.org/archive/marx/works/1859/critique-pol-economy/preface.htm"
+      ],
+      "bibliography": "Both prefaces are signed Karl Marx, London, January 1859. English contents credit S. W. Ryazanskaya; target identifies Progress Publishers, Moscow, 1977. This is a preface-only route, not a mapping of all chapters.",
+      "rights_note": "1977 English translation; reuse rights not established. Source localization must establish the actual preface.",
+      "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/engels/works/1881/05/fe_28%20mai%201881.htm",
+      "source_title": "Les syndicats (I)",
+      "source_titles": [
+        "Les syndicats (II)",
+        "Les syndicats (1881)"
+      ],
+      "authors": "Friedrich Engels",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1881/05/28.htm",
+      "target_title": "Trades Unions (Parts I and II)",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://wikirouge.net/texts/fr/Les_syndicats_(1881)",
+        "https://www.marxists.org/archive/marx/works/1881/05/28.htm",
+        "https://www.marxists.org/archive/marx/works/subject/newspapers/labour-standard.htm",
+        "https://www.marxists.org/francais/marx/works.htm"
+      ],
+      "bibliography": "English MIA contains both original English articles from The Labour Standard, 28 May and 4 June 1881. French Wikirouge identifies the French translation in La Revue Socialiste, March 1955. The French MIA leaf could not be decoded by the web reader; runner must confirm the actual French passage before retrieval.",
+      "rights_note": "English originals published in 1881, not modern translations. Record exact transcription provenance and review applicable reuse rights; do not auto-authorize.",
+      "researched_on": "2026-11-25"
     }
   ]
 }

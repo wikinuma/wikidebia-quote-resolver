@@ -119,3 +119,9 @@ python benchmark_refine.py --baseline-report paired-index.json
 ```
 
 The refinement comparison is a development recheck, not an independent holdout. The baseline artifact can expire on GitHub; keep a local copy of the original paired-index.json or use the preserved copy from the refinement artifact. The first-pass metric measures English words offered initially, not correctness, total review effort, or AI quota; all deferred candidates remain accessible. Separate exact-quotation adjudication and a fresh holdout are still necessary.
+
+### Long French passages and explicit omissions (experimental refinement)
+
+The refined path may retry long quotations up to 600 normalized words using banded prefix edit distance, or explicit omission fragments using ordered same-document spans. Edge ellipses and approximate fragments remain review-only evidence. Each retained fragment keeps actual source coordinates. No implicit gap, cross-document join, or fabricated English text is allowed. The older comparison arm retains the original search limits.
+
+The catalog can record explicit title aliases on the same exact source URL. Refined catalog routes restricted to a particular source document require that the French quotation is actually located there before retrieving the target. This guards the new 1859 Marx preface mapping against a misleading whole-book citation link. The 1881 Engels Trades Unions route covers both articles on the English archive page; verify the French passage and edition before reuse.

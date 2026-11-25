@@ -88,7 +88,8 @@ def omission_candidates(quote,docs,max_gap=500,max_paths=100):
     return result
 
 
-def multi_anchor_candidates(quote,docs,max_seed_hits=10000,max_alignments=32,max_cells=2500000):
+def multi_anchor_candidates(quote,docs,max_seed_hits=10000,max_alignments=32,max_cells=2500000,
+                            max_words=250,max_token_edits=24,distance=prefix_distance):
     """Use several independent unique four-token seeds instead of one
     preselected phrase. Group approximately co-located seeds before bounded
     edit distance. Reject unsupported matches; never reinterpret long gaps.
@@ -97,13 +98,13 @@ def multi_anchor_candidates(quote,docs,max_seed_hits=10000,max_alignments=32,max
             'status':'no_candidate','seed_hits':0,'alignments':0,'cells':0,
             'truncated':False,'auto_publish':False}
     q=norm(quote).split()
-    if len(q)<8 or len(q)>250 or OMISSION.search(quote):
+    if len(q)<8 or len(q)>max_words or OMISSION.search(quote):
         result['status']='unsupported_length_or_omission'; return result
-    if min(max_seed_hits,max_alignments,max_cells)<1: raise ValueError('invalid_multi_anchor_budget')
+    if min(max_seed_hits,max_alignments,max_cells,max_words,max_token_edits)<1: raise ValueError('invalid_multi_anchor_budget')
     size=4; counts=Counter(tuple(q[i:i+size]) for i in range(len(q)-size+1))
     seeds={tuple(q[i:i+size]):i for i in range(len(q)-size+1) if counts[tuple(q[i:i+size])]==1}
     if not seeds: return result
-    budget=min(24,max(2,len(q)//4)); rows=[]; pending=[]
+    budget=min(max_token_edits,max(2,len(q)//4)); rows=[]; pending=[]
     for doc in docs:
         text,_=text_and_starts(doc); ts=tokens_with_offsets(text); ws=[t[0] for t in ts]
         groups=defaultdict(list)
@@ -134,8 +135,8 @@ def multi_anchor_candidates(quote,docs,max_seed_hits=10000,max_alignments=32,max
         if result['cells']+cells>max_cells:
             result['truncated']=True; break
         result['cells']+=cells; result['alignments']+=1
-        lc,ln,la=prefix_distance(q[:pos][::-1],left,budget)
-        rc,rn,ra=prefix_distance(q[pos+size:],right,budget)
+        lc,ln,la=distance(q[:pos][::-1],left,budget)
+        rc,rn,ra=distance(q[pos+size:],right,budget)
         edits=lc+rc
         if edits>budget: continue
         start,end=i-ln,j+rn

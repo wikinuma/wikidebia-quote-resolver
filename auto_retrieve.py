@@ -23,7 +23,9 @@ from variants import source_variants
 from source_evidence import omission_candidates,multi_anchor_candidates
 from compare import evaluation
 from section_match import extract_headings, automatic_alignment
-from refinement import DirectAlignmentCache, review_packet
+from refinement import DirectAlignmentCache, review_packet, select_source_hit
+from source_refinement import long_variants, fragment_paths
+from alignment import OMISSION
 
 
 def explicit_toc(body,root):
@@ -251,6 +253,11 @@ class Retrieval:
             multi=multi_anchor_candidates(quote,docs)
             diagnostics.append({k:v for k,v in multi.items() if k!='candidates'})
             variants.extend(multi['candidates'])
+        if self.refined and (not variants or (OMISSION.search(quote) and not omitted['candidates'])):
+            extra=fragment_paths(quote,docs) if OMISSION.search(quote) else long_variants(quote,docs)
+            diagnostics.append({k:v for k,v in extra.items() if k!='candidates'})
+            if extra['candidates']:
+                variants=extra['candidates']
         variants=list({(c['url'],c['sha256'],c['char_start'],c['char_end']):c for c in variants}.values())
         variants.sort(key=lambda c:(c['token_edits'],c['url'],c['char_start']))
         return {'status':'variant_review_required' if variants else 'source_unconfirmed_in_bounded_scope',
@@ -266,10 +273,17 @@ class Retrieval:
             row['status']='bibliographic_lead_only'; return row
         selector=case.get('selector') or automatic_selector(quote)
         # A catalog route is grounded in the exact cited source URL only.
-        source=self.source(quote,selector,{'input':row['navigation']['input']},preferred_source=entry.get('source_document'))
+        source_nav=row['navigation'] if self.refined else {'input':row['navigation']['input']}
+        source=self.source(quote,selector,source_nav,preferred_source=entry.get('source_document'))
         row['source']=source
         if source['status'] not in ('exact_in_examined_documents','variant_review_required'):
             row['status']='source_needs_review'; return row
+        if self.refined and entry.get('source_document'):
+            # A specific chapter mapping must not be used for another chapter
+            # merely because the encompassing work contains the quotation.
+            doc,_=select_source_hit(source,list(self.source_documents.values()),entry['source_document'])
+            if doc is None:
+                row['status']='catalog_source_document_unconfirmed'; return row
         provider,url=entry['target_provider'],entry['target_url']
         info={'provider':provider,'scope':'researched_single_target_page_not_complete_edition','root':url,'issues':[],'pages':[]}
         row['target_attempts']=[info]
