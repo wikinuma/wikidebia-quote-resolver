@@ -19,12 +19,13 @@ from pilot_full import PilotClient
 from prepare_citations import build_campaign_packet, COMPACT, FALLBACK
 from resolver import ROOT, sha
 from review_bundle import write_bundle, read_packet
+from reviewed_boundaries import load_references, reviewed_boundary_summary
 
 REPORT = ROOT/'data/mia/benchmarks/20261126/report.json'
 REPORT_SHA = '04b035052345d0ce86b45d52a20344fcd6a4e9ab1af0a1258109011687715e86'
 
 
-def load_items():
+def load_items(*, include_without_candidates=False):
     data = REPORT.read_bytes()
     if sha(data) != REPORT_SHA:
         raise ValueError('frozen_report_changed')
@@ -34,7 +35,7 @@ def load_items():
     if len(cases) != 50 or len(report['pairs']) != 50 or set(cases) != set(results):
         raise ValueError('frozen_cohort_mismatch')
     return [(c, results[cid]) for cid,c in cases.items()
-            if candidate_queue(results[cid])]
+            if include_without_candidates or candidate_queue(results[cid])]
 
 
 def seed_inventory(packet):
@@ -55,7 +56,7 @@ def seed_inventory(packet):
     return result
 
 
-def progressive_cost(items, baseline_pairs, load_raw, audit):
+def progressive_cost(items, baseline_pairs, load_raw, audit, *, compact_packets_out=None):
     """Measure actual serialized review sizes under hypothetical abstentions.
 
     No linguistic decisions or positive registry receipts are manufactured.
@@ -95,6 +96,8 @@ def progressive_cost(items, baseline_pairs, load_raw, audit):
                 raise ValueError('compact_replay_seed_mismatch')
         elif seeds != expected:
             raise ValueError('fallback_replay_seed_mismatch')
+        if stage == COMPACT and compact_packets_out is not None:
+            compact_packets_out.extend(packets)
         return {'occurrences':len(ids),'packets':len(packets),'verified_seeds':len(seeds),
                 'review_utf8_bytes':sum(len(encode(review_view(p)).encode('utf-8'))
                                          for p in packets),
@@ -120,7 +123,7 @@ def progressive_cost(items, baseline_pairs, load_raw, audit):
             'hosted_model_calls':0,'auto_publish':False}
 
 
-def run(items, load_raw, audit, directory):
+def run(items, load_raw, audit, directory, *, references=None, reference_items=None):
     arms = {'original': [], 'expanded': [], 'adaptive': []}
     skipped = {arm: Counter() for arm in arms}
     overflow = 0
@@ -183,7 +186,10 @@ def run(items, load_raw, audit, directory):
         if stats['occurrences'] + sum(stats['skipped'].values()) + overflow != len(items):
             raise ValueError('total_occurrence_accounting_mismatch')
         summary[arm] = stats
-    return {'frozen_report_sha256':REPORT_SHA,'frozen_cohort':50,
+    compact_packets = []
+    costs = progressive_cost(items,arms['expanded'],load_raw,audit,
+                             compact_packets_out=compact_packets)
+    result = {'frozen_report_sha256':REPORT_SHA,'frozen_cohort':50,
             'selected_with_candidates':len(items),'single_packet_overflow':overflow,
             'arms':summary,'ready_in_both':len(ready['original'] & ready['expanded']),
             'ready_in_all':len(set.intersection(*ready.values())),
@@ -193,9 +199,16 @@ def run(items, load_raw, audit, directory):
             'gained_after_expansion':len(ready['expanded'] - ready['original']),
             'boundary_stress':measure_boundary_recovery(
                 [packet for _,packet in arms['original']],audit),
-            'progressive_cost':progressive_cost(items,arms['expanded'],load_raw,audit),
+            'progressive_cost':costs,
             'semantic_equivalence':None,'rights_approved':0,
             'hosted_model_calls':0,'auto_publish':False}
+    if references is not None:
+        windows = {mode:[p for _,p in pairs] for mode,pairs in arms.items()}
+        windows['compact'] = compact_packets
+        result['reviewed_boundaries'] = reviewed_boundary_summary(
+            references,reference_items if reference_items is not None else items,
+            audit,windows)
+    return result
 
 
 def main():
@@ -206,7 +219,11 @@ def main():
         directory = Path(tmp)
         client = PilotClient(directory/'http',budget=500,delay=.25)
         audit = Auditor(client)
-        summary = run(load_items(),pinned_loader(client),audit,directory)
+        all_items = load_items(include_without_candidates=True)
+        references = load_references(REPORT.with_name('reviewed-boundaries.json'),REPORT_SHA)
+        summary = run([(c,r) for c,r in all_items if candidate_queue(r)],
+                      pinned_loader(client),audit,directory,
+                      references=references,reference_items=all_items)
         summary['fresh_requests'] = client.requests
         summary['request_errors'] = sum(e.get('status')=='error' for e in client.events)
     # Whitelisted aggregate output only. Do not write packets or local state.

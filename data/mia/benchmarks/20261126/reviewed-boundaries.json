@@ -1,0 +1,69 @@
+{
+  "schema": "wikidebia-reviewed-boundary-references-1",
+  "report_sha256": "04b035052345d0ce86b45d52a20344fcd6a4e9ab1af0a1258109011687715e86",
+  "scope": "convenience_selected_positive_documentary_diagnostics_not_independent_holdout",
+  "entries": [
+    {
+      "case_id": "inventory-72c475efd80ad29e0e0c",
+      "citation_ref": {
+        "revision": 276953,
+        "template_index": 2,
+        "template_sha256": "8c23c446ef79f6685293f24880cf81fc5052bfce9c13994ba8f1246bd33da72a",
+        "quote_sha256": "bfac9a22e0a94d9acdffda0268a3c871558395f5d5a9ed2b020a5a8bd9f48ce0"
+      },
+      "fr": {
+        "url": "https://www.marxists.org/francais/marx/works/1847/00/kmfe18470000a.htm",
+        "sha256": "103fae0def676364084f8acd3c1d01c455dd103e9cc496192017798ad89b3506",
+        "revision": null,
+        "char_start": 25391,
+        "char_end": 25673,
+        "text_sha256": "e3acf3f3d3790608bdbccdf62851e4723e60ce7d23bc39561380d190b11e653d"
+      },
+      "en": {
+        "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+        "sha256": "adcc9801c01581c62d3688402b15ee41205798d4f76d5bc289cf2803be120459",
+        "revision": null,
+        "char_start": 24663,
+        "char_end": 24987,
+        "text_sha256": "072bea38d322cb0b0840b5a987191fc4af1b3fcacbca6b3e1edc28caf36d600c"
+      },
+      "reviewer": "ChatGPT direct bilingual documentary reading",
+      "decision": "equivalent_contiguous_extent",
+      "review_note": "Both public archive passages were read directly and their exact extracted-span digests reproduced. The whole sentence about the lumpenproletariat corresponds in both languages, including its possible participation and susceptibility to reaction; French token matching excludes the final period. The English editorial gloss belongs to the published archive text.",
+      "text_integrity": "no_visible_transcription_defect",
+      "rights": "unreviewed",
+      "reuse_authorized": false
+    },
+    {
+      "case_id": "inventory-ee9d0641106f5909c7e1",
+      "citation_ref": {
+        "revision": 276179,
+        "template_index": 0,
+        "template_sha256": "5ccc54bf3de79d5e9131ab2b86b39a4d656f8bde52db3dfffe9646596b8c9b9f",
+        "quote_sha256": "09d43ebae38d05a21bdae28d6490b4c176a6cae6002decdf303ec786085d4076"
+      },
+      "fr": {
+        "url": "https://www.marxists.org/francais/lenin/works/1919/07/19190711.htm",
+        "sha256": "cc28701834d21fd8bdfd8e9295b452e93cf99abefd11c4c1e01698a5c9f4fc0f",
+        "revision": null,
+        "char_start": 12428,
+        "char_end": 12941,
+        "text_sha256": "241669d0ca6b9ac58bae0bb8b8f2c83a141396482ad61d3e5c11d569f4049033"
+      },
+      "en": {
+        "url": "https://www.marxists.org/archive/lenin/works/1919/jul/11.htm",
+        "sha256": "358f925c3bc77b8b0e1acd7019aeebf78c589c2324b569bc676ad0a30f01a511",
+        "revision": null,
+        "char_start": 12481,
+        "char_end": 13012,
+        "text_sha256": "6e210ffe078b538a7531083cafb4475dba6d7a874ad2c6b7e116e649961d5222"
+      },
+      "reviewer": "ChatGPT direct bilingual documentary reading",
+      "decision": "equivalent_contiguous_extent",
+      "review_note": "Both public archive passages were read directly, with matching extracted French and English candidate hashes. The French ends at the statement that modern Europe underwent the same stage; the English reference stops at that same clause, before the additional statement about slavery two thousand years ago. The exact English subspan hash was computed from the verified candidate. Several words in the English archive transcription are joined without spaces; semantic equivalence of the extent does not make this text suitable for reuse.",
+      "text_integrity": "transcription_defect_observed",
+      "rights": "unreviewed",
+      "reuse_authorized": false
+    }
+  ]
+}
