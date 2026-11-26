@@ -17,6 +17,7 @@ from pathlib import Path
 import tempfile
 import time
 import uuid
+import sys
 
 from alignment_store import encode
 from auto_retrieve import Retrieval
@@ -30,6 +31,7 @@ from grouped_review import (apply_review, build_packet, candidate_queue,
 from navigation import error_kind
 from pilot_full import PilotClient, redact_text
 from resolver import Client, ROOT
+from review_bundle import write_bundle
 from wikirouge_incremental import open_current
 from work_library import WorkLibrary
 
@@ -170,21 +172,24 @@ class Campaign:
             self.record(cid, RETRY, {'reason': error_kind(exc)})
             return RETRY
 
-    def open_packet(self):
-        row = self.db.execute("SELECT digest,packet FROM campaign_packets_v1 "
-                              "WHERE state='open' ORDER BY rowid LIMIT 1").fetchone()
-        if row is None:
-            return None
-        digest, body = row
-        packet = json.loads(body)
-        if fingerprint(packet) != digest:
-            raise ValueError('stored_packet_digest_mismatch')
-        return digest, packet
+    def open_packets(self):
+        rows = self.db.execute("SELECT digest,packet FROM campaign_packets_v1 "
+                               "WHERE state='open' ORDER BY rowid")
+        for digest, body in rows:
+            packet = json.loads(body)
+            if fingerprint(packet) != digest:
+                raise ValueError('stored_packet_digest_mismatch')
+            yield digest, packet
 
-    def prepare(self, load_raw, audit, limit=20, max_payload_chars=120000):
-        existing = self.open_packet()
-        if existing is not None:
-            return existing
+    def open_packet(self):
+        return next(self.open_packets(), None)
+
+    def prepare(self, load_raw, audit, limit=20, max_payload_chars=120000,
+                *, allow_multiple=False):
+        if not allow_multiple:
+            existing = self.open_packet()
+            if existing is not None:
+                return existing
         selected = self.select({CANDIDATES}, limit)
         while selected:
             items = [(c, self.latest(c['id'])[1]['result']) for c in selected]
@@ -220,6 +225,69 @@ class Campaign:
                         self._append(cid, AWAITING, {'packet_sha256': digest})
             return (digest, packet) if included else None
         return None
+
+    def prepare_many(self, load_raw, audit, packets=8, limit=20,
+                     max_payload_chars=120000):
+        """A bounded wave. Re-export pending packets after interruptions;
+        never create duplicate open occurrences. One auditor per wave."""
+        if packets < 1 or limit < 1:
+            raise ValueError('invalid_wave_limits')
+        existing = list(self.open_packets())
+        if existing:
+            return existing[:packets]
+        result = []
+        while len(result) < packets:
+            client = getattr(audit,'client',None)
+            if client is not None and client.requests >= client.budget:
+                break
+            before = len(self.select({CANDIDATES}))
+            if not before:
+                break
+            batch = self.prepare(load_raw,audit,limit,max_payload_chars,
+                                 allow_multiple=True)
+            if batch:
+                result.append(batch)
+            if len(self.select({CANDIDATES})) >= before:
+                break
+        return result
+
+    def apply_many(self, replies, load_raw, audit):
+        """Validate the batch envelope before processing. Each packet is
+        committed independently; successful siblings survive a rejected or
+        stale packet. Resubmitting an identical reply is idempotent."""
+        if not isinstance(replies,list) or not replies:
+            raise ValueError('nonempty_reply_array_required')
+        seen = set()
+        for reply in replies:
+            if (not isinstance(reply,dict)
+                    or set(reply) != {'schema','packet_sha256','reviewer','decisions'}
+                    or not isinstance(reply['packet_sha256'],str)
+                    or reply['packet_sha256'] in seen):
+                raise ValueError('invalid_or_duplicate_bulk_reply')
+            digest = reply['packet_sha256']
+            if not self.db.execute('SELECT 1 FROM campaign_packets_v1 WHERE digest=?',
+                                   (digest,)).fetchone():
+                raise ValueError('unknown_campaign_packet')
+            seen.add(digest)
+        results = []
+        counts = Counter()
+        for reply in replies:
+            digest = reply['packet_sha256']
+            try:
+                result = self.apply(reply,load_raw,audit)
+            except (ValueError,KeyError,TypeError,RuntimeError,OSError) as exc:
+                results.append({'packet_sha256':digest,'status':'rejected',
+                                'error':error_kind(exc)})
+                continue
+            counts.update(result.get('counts',{}))
+            results.append({'packet_sha256':digest,
+                            'status':result.get('status','applied'),
+                            'recorded':result.get('recorded',0)})
+        statuses = Counter(r['status'] for r in results)
+        return {'packets':len(results),'statuses':dict(statuses),
+                'recorded':sum(r.get('recorded',0) for r in results),
+                'counts':dict(counts),'results':results,
+                'auto_publish':False,'rights':'unreviewed'}
 
     def apply(self, reply, load_raw, audit):
         digest = reply['packet_sha256']
@@ -317,11 +385,13 @@ class Campaign:
                 counts['requeued'] += 1
         return dict(counts)
 
-    def cancel_review(self, reason):
-        existing = self.open_packet()
-        if existing is None or not reason.strip():
-            raise ValueError('open_packet_and_cancellation_reason_required')
-        digest, packet = existing
+    def cancel_review(self, reason, packet_sha=None):
+        pending = list(self.open_packets())
+        if packet_sha is not None:
+            pending = [p for p in pending if p[0] == packet_sha]
+        if len(pending) != 1 or not reason.strip():
+            raise ValueError('one_open_packet_and_cancellation_reason_required')
+        digest, packet = pending[0]
         with self.db:
             for source in packet['sources'].values():
                 for occurrence in source['occurrences']:
@@ -415,7 +485,7 @@ def execute(args, state, library):
         show(campaign.summary())
         return 0
     if args.command == 'cancel-review':
-        campaign.cancel_review(args.reason)
+        campaign.cancel_review(args.reason, args.packet_sha)
         show(campaign.summary())
         return 0
     if args.command == 'close-negative':
@@ -461,9 +531,30 @@ def execute(args, state, library):
                       'occurrences': sum(len(s['occurrences']) for s in packet['sources'].values()),
                       'context_stats': packet['payload'].get('context_stats')})
             show(campaign.summary())
-        elif args.command == 'apply':
-            reply = json.loads(args.reply.read_text(encoding='utf-8'))
-            show(campaign.apply(reply, fresh, audit))
+        elif args.command == 'review-many':
+            pairs = campaign.prepare_many(fresh,audit,args.packets,args.limit,
+                                          args.max_payload_chars)
+            if pairs:
+                wave = fingerprint([digest for digest,_ in pairs])[:16]
+                out = state/'outgoing'/('review-wave-'+wave+'.zip')
+                index = write_bundle(out,pairs,campaign.inventory['manifest_sha256'])
+                show({'review_archive':str(out),'packets':len(pairs),
+                      'occurrences':index['occurrences'],
+                      'english_chars_before_sharing':index['english_chars_before_sharing'],
+                      'english_chars_after_sharing':index['english_chars_after_sharing'],
+                      'shared_windows':index['shared_windows'],
+                      'fresh_audit_requests':audit.client.requests})
+            show(campaign.summary())
+        elif args.command in {'apply','apply-many'}:
+            reply = json.load(sys.stdin) if str(args.reply) == '-' else json.loads(
+                args.reply.read_text(encoding='utf-8'))
+            if args.command == 'apply':
+                show(campaign.apply(reply, fresh, audit))
+            else:
+                result = campaign.apply_many(reply,fresh,audit)
+                show(result)
+                show(campaign.summary())
+                return int(bool(result['statuses'].get('rejected')))
             show(campaign.summary())
     return 0
 
@@ -483,6 +574,7 @@ def main():
     listing.add_argument('--limit', type=int, default=0)
     cancel = sub.add_parser('cancel-review')
     cancel.add_argument('--reason', required=True)
+    cancel.add_argument('--packet-sha', help='Required when several reviews are open')
     run = sub.add_parser('search')
     run.add_argument('--limit', type=int, default=50, help='0 means all matching occurrences')
     run.add_argument('--budget', type=int, default=2500)
@@ -495,15 +587,22 @@ def main():
     review = sub.add_parser('review')
     review.add_argument('--limit', type=int, default=20)
     review.add_argument('--max-payload-chars', type=int, default=120000)
+    many = sub.add_parser('review-many', help='Prepare or re-export a private ZIP of independent reviews')
+    many.add_argument('--packets',type=int,default=8)
+    many.add_argument('--limit',type=int,default=20,help='Max occurrences per packet')
+    many.add_argument('--max-payload-chars',type=int,default=120000)
     apply = sub.add_parser('apply')
-    apply.add_argument('reply', type=Path)
+    apply.add_argument('reply', type=Path, help='JSON path or - for stdin')
+    bulk = sub.add_parser('apply-many',help='Import an array of complete per-packet replies')
+    bulk.add_argument('reply',type=Path,help='JSON path or - for stdin')
     negative = sub.add_parser('close-negative')
     negative.add_argument('occurrence')
     negative.add_argument('--reason', required=True)
     a = p.parse_args()
     if (any(getattr(a, k, 1) < 1 for k in
-            ('budget', 'audit_budget', 'case_budget', 'max_pages', 'max_payload_chars'))
-            or getattr(a, 'limit', 0) < 0):
+            ('budget', 'audit_budget', 'case_budget', 'max_pages', 'max_payload_chars', 'packets'))
+            or getattr(a, 'limit', 0) < 0
+            or (a.command == 'review-many' and a.limit < 1)):
         p.error('invalid processing limits')
     os.umask(0o077)
     state = private_dir(a.state)

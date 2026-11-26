@@ -179,3 +179,47 @@ class CampaignTests(unittest.TestCase):
         self.assertIn('context_stats', packet['payload'])
         self.c.apply(self.reply(digest, packet, 'uncertain'), self.raw, self.audit)
         self.assertEqual(self.c.requeue_legacy_abstentions(), {})
+
+
+    def test_multi_packet_resume_and_independent_import(self):
+        self.stage('1','2','3')
+        pairs = self.c.prepare_many(self.raw,self.audit,packets=3,limit=1)
+        self.assertEqual(len(pairs),3)
+        self.assertEqual(self.c.summary()['states'][AWAITING],3)
+        self.assertEqual(self.c.prepare_many(self.raw,self.audit,packets=3),pairs)
+        with WorkLibrary(self.lib.path) as lib:
+            c = Campaign(lib,self.inv)
+            self.assertEqual(c.prepare_many(self.raw,self.audit),pairs)
+            with self.assertRaises(ValueError):
+                c.cancel_review('ambiguous cancellation')
+            replies = [self.reply(d,p,'uncertain') for d,p in pairs]
+            bad = dict(replies[1],decisions=[])
+            with self.assertRaises(ValueError):
+                c.apply_many([replies[0],replies[0]],self.raw,self.audit)
+            self.assertEqual(c.summary()['states'][AWAITING],3)
+            with self.assertRaises(ValueError):
+                c.apply_many([replies[0],dict(replies[1],packet_sha256='0'*64)],
+                             self.raw,self.audit)
+            self.assertEqual(c.summary()['states'][AWAITING],3)
+            out = c.apply_many([replies[0],bad,replies[2]],self.raw,self.audit)
+            self.assertEqual(out['statuses'],{'applied':2,'rejected':1})
+            self.assertEqual(c.summary()['states'][AWAITING],1)
+            self.assertEqual(c.prepare_many(self.raw,self.audit),[pairs[1]])
+            out = c.apply_many(replies,self.raw,self.audit)
+            self.assertEqual(out['statuses'],{'already_applied':2,'applied':1})
+            self.assertEqual(c.summary()['states'][AWAITING],0)
+            self.assertEqual(c.summary()['states'][INSUFFICIENT],3)
+
+    def test_multi_wave_stops_when_audit_budget_used(self):
+        self.stage('1')
+        self.audit.client = SimpleNamespace(requests=1,budget=1)
+        self.assertEqual(self.c.prepare_many(self.raw,self.audit),[])
+        self.assertEqual(self.c.latest('1')[0],CANDIDATES)
+
+    def test_cancel_one_of_multiple_packets(self):
+        self.stage('1','2')
+        pairs = self.c.prepare_many(self.raw,self.audit,limit=1)
+        self.c.cancel_review('stale',pairs[1][0])
+        self.assertEqual(list(self.c.open_packets()),[pairs[0]])
+        self.assertEqual(self.c.latest('2')[0],RETRY)
+        self.assertEqual(self.c.latest('1')[0],AWAITING)

@@ -109,3 +109,47 @@ ne sont pas modifiés par requeue-context. La commande est idempotente ; les
 abstentions des nouveaux paquets ne sont pas automatiquement remises en file.
 Les compteurs context_stats mesurent le volume de caractères des fenêtres
 avant/après mutualisation, pas les tokens IA ni la qualité linguistique.
+
+
+## Revue par vagues, sans transferts individuels
+
+    python prepare_citations.py --state "$STATE" review-many --packets 8
+
+La commande prépare jusqu'à huit paquets, avec un seul auditeur frais,
+et crée une archive ZIP privée review-wave-*.zip. La transmettre à ChatGPT
+classique seulement si les droits de partage des extraits le permettent.
+Le fichier index.json donne l'ordre des paquets et leurs empreintes ;
+texts.json mutualise les fenêtres qui se chevauchent sur le même document
+exact, y compris entre paquets. Les fichiers packets/<empreinte>.json
+contiennent des références vers ces fenêtres. Pour reconstituer le paquet
+autonome numéro 1 sans extraction :
+
+    python review_bundle.py /chemin/review-wave.zip --packet 1
+
+Chaque sélection conserve les offsets Unicode relatifs au passage original
+reconstitué, et non à la fenêtre commune. L'empreinte du paquet local ne
+change pas. Les textes ne sont pas inclus dans les réponses.
+
+Importer un tableau JSON de réponses ordinaires (une par paquet complet),
+éventuellement directement depuis le terminal :
+
+    python prepare_citations.py --state "$STATE" apply-many - <<'EOF'
+    [ ... réponses JSON complètes ... ]
+    EOF
+
+Une réponse invalide n'empêche pas l'import des autres paquets valides.
+La commande affiche le résultat par empreinte et retourne un code non nul
+si un paquet a été rejeté. Les réponses identiques déjà importées sont
+idempotentes. Il n'est pas nécessaire de répondre à toute la vague d'un
+coup. review-many réexporte d'abord les paquets encore ouverts ; elle ne
+crée pas de nouveaux paquets tant qu'une vague précédente reste ouverte.
+Le mode review/apply individuel reste utilisable. Pour annuler un paquet
+périmé quand plusieurs sont ouverts, préciser son empreinte :
+
+    python prepare_citations.py --state "$STATE" cancel-review --packet-sha EMPREINTE --reason "Preuves obsolètes"
+
+Les lectures et le partage des fenêtres sont mutualisés dans la vague,
+pas dans la totalité du corpus. Les économies en caractères de l'archive
+ne sont pas une mesure du coût IA. Les paquets restent bornés pour ne pas
+confondre la capacité à transférer un fichier avec la capacité à vérifier
+correctement tous ses passages.
