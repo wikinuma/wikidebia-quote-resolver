@@ -19,7 +19,8 @@ from pilot_full import PilotClient
 from prepare_citations import build_campaign_packet, COMPACT, FALLBACK
 from resolver import ROOT, sha
 from review_bundle import write_bundle, read_packet
-from reviewed_boundaries import load_references, reviewed_boundary_summary
+from reviewed_boundaries import load_references, reviewed_boundary_summary, revalidate_reference
+from transcription_compare import supplement_packet, summarize_transcriptions
 
 REPORT = ROOT/'data/mia/benchmarks/20261126/report.json'
 REPORT_SHA = '04b035052345d0ce86b45d52a20344fcd6a4e9ab1af0a1258109011687715e86'
@@ -123,6 +124,40 @@ def progressive_cost(items, baseline_pairs, load_raw, audit, *, compact_packets_
             'hosted_model_calls':0,'auto_publish':False}
 
 
+def transcription_replay(packets, audit, directory, mode):
+    """Exercise the optional packet path with the same verified ordinary seeds."""
+    counts = Counter()
+    extra_offers = extra_chars = 0
+    pairs = []
+    old_bytes = new_bytes = 0
+    for packet in packets:
+        supplemented = supplement_packet(packet,audit.document)
+        if not seed_inventory(packet) <= seed_inventory(supplemented):
+            raise ValueError('transcription_replay_original_seed_lost')
+        if any(supplemented['targets'].get(pid) != target or
+               supplemented['payload']['passages'].get(pid) != packet['payload']['passages'][pid]
+               for pid,target in packet['targets'].items()):
+            raise ValueError('transcription_replay_original_target_changed')
+        stats = supplemented['payload'].get('transcription_comparison',{})
+        counts.update(stats.get('statuses',{}))
+        extra_offers += stats.get('additional_candidate_offers',0)
+        extra_chars += stats.get('additional_english_characters',0)
+        old_bytes += len(encode(review_view(packet)).encode('utf-8'))
+        new_bytes += len(encode(review_view(supplemented)).encode('utf-8'))
+        pairs.append((fingerprint(supplemented),supplemented))
+    if pairs:
+        path = directory/('transcription-'+mode+'.zip')
+        write_bundle(path,pairs,REPORT_SHA)
+        for i,(_,packet) in enumerate(pairs,1):
+            if read_packet(path,i) != review_view(packet):
+                raise ValueError('transcription_replay_bundle_changed')
+        path.unlink()
+    return {'statuses':dict(counts),'additional_candidate_offers':extra_offers,
+            'additional_english_characters':extra_chars,'original_review_utf8_bytes':old_bytes,
+            'supplemented_review_utf8_bytes':new_bytes,'verified_roundtrips':len(pairs),
+            'semantic_equivalence':None,'rights_approved':0,'auto_publish':False}
+
+
 def run(items, load_raw, audit, directory, *, references=None, reference_items=None):
     arms = {'original': [], 'expanded': [], 'adaptive': []}
     skipped = {arm: Counter() for arm in arms}
@@ -208,6 +243,14 @@ def run(items, load_raw, audit, directory, *, references=None, reference_items=N
         result['reviewed_boundaries'] = reviewed_boundary_summary(
             references,reference_items if reference_items is not None else items,
             audit,windows)
+        cases = {c['id']:(c,r) for c,r in
+                 (reference_items if reference_items is not None else items)}
+        targets = [revalidate_reference(e,*cases[e['case_id']],audit) for e in references]
+        result['transcription_comparison'] = {
+            'reference_intervals':summarize_transcriptions(targets,audit.document),
+            'compact':transcription_replay(compact_packets,audit,directory,'compact'),
+            'expanded':transcription_replay(windows['expanded'],audit,directory,'expanded'),
+        }
     return result
 
 
