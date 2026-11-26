@@ -49,7 +49,8 @@ def candidate_queue(result):
 
 
 def build_packet(items, load_raw, load_document, *, max_candidates=4,
-                 max_passage_chars=15000, max_payload_chars=120000):
+                 max_passage_chars=15000, max_payload_chars=120000,
+                 distinct_occurrences=False):
     """items: (case, retrieval_result) pairs; loaders return pinned raw page
     and verified-parser Document respectively. Failures remain unresolved.
     All text is private; the caller must keep the manifest locally.
@@ -81,9 +82,10 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
             continue
         source_key = source['source_key']
         occurrence = {'case_id': cid, 'wiki_title': case['wiki_title'], 'ref': ref}
-        if source_key not in source_ids:
+        review_key = cid if distinct_occurrences else source_key
+        if review_key not in source_ids:
             qid = 'q' + str(len(source_ids) + 1)
-            source_ids[source_key] = qid
+            source_ids[review_key] = qid
             # Exact verified bibliographic fields; absent titles cannot
             # accidentally merge unrelated works. Chapter URL stays literal
             # to the routing policy, not a guessed title or root.
@@ -94,11 +96,13 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
             chapter = group.setdefault(chapter_key, [])
             row = {'id': qid, 'fr': meta['text'], 'date': meta['date'],
                    'candidates': [], 'source_statuses': []}
+            if distinct_occurrences:
+                row['wiki_title'] = case['wiki_title']
             chapter.append(row)
             sources[qid] = {'source_key': source_key, 'occurrences': [],
                             'candidates': [], 'unavailable_candidates': 0}
         else:
-            qid = source_ids[source_key]
+            qid = source_ids[review_key]
         local = sources[qid]
         local['occurrences'].append(occurrence)
         status = result.get('source', {}).get('status', 'unconfirmed')
