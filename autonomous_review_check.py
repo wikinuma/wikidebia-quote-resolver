@@ -9,9 +9,10 @@ from collections import Counter
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 from alignment_store import encode
-from citation_registry import fingerprint
+from citation_registry import CitationRegistry, fingerprint
 from boundary_stress import measure_boundary_recovery
 from evidence_audit import Auditor
 from grouped_review import build_packet, candidate_queue, pinned_loader, review_view
@@ -21,6 +22,9 @@ from resolver import ROOT, sha
 from review_bundle import write_bundle, read_packet
 from reviewed_boundaries import load_references, reviewed_boundary_summary, revalidate_reference
 from transcription_compare import supplement_packet, summarize_transcriptions
+from translation_handoff import REQUEST, prepare_handoff
+from navigation import templates
+from work_library import WorkLibrary
 
 REPORT = ROOT/'data/mia/benchmarks/20261126/report.json'
 REPORT_SHA = '04b035052345d0ce86b45d52a20344fcd6a4e9ab1af0a1258109011687715e86'
@@ -158,6 +162,74 @@ def transcription_replay(packets, audit, directory, mode):
             'semantic_equivalence':None,'rights_approved':0,'auto_publish':False}
 
 
+def translation_handoff_replay(items, baseline_pairs, load_raw, audit, directory):
+    """Exercise exact kit-shaped parameter binding on pinned real sources.
+
+    The source lock here is a test digest, not a kit Work. Retrieval results
+    are frozen, not searched anew. No synthetic semantic receipts are made.
+    """
+    baseline = set().union(*(seed_inventory(p) for _,p in baseline_pairs))
+    ready = {row[0] for row in baseline}
+    selected = [(c,r) for c,r in items if c['id'] in ready]
+    request_items = []
+    expected = {}
+    for case,result in selected:
+        ref = case['citation_ref']
+        raw = load_raw(case['wiki_title'],ref['revision'])
+        t = list(templates(raw,{'citation'}))[ref['template_index']]
+        request_items.append({'id':case['id'],'wiki_title':case['wiki_title'],
+                              'revision':ref['revision'],'source_template':str(t.name).strip(),
+                              'source_parameters':[{'name':str(p.name).strip(),
+                                                    'value':str(p.value).strip()} for p in t.params]})
+        expected[case['id']] = (case,result)
+    request = {'schema':REQUEST,
+               'source_lock_sha256':fingerprint({'test_source_lock':request_items}),
+               'items':request_items}
+    calls = []
+    def retrieve(case):
+        original,result = expected[case['id']]
+        if case['citation_ref'] != original['citation_ref'] or case['wiki_title'] != original['wiki_title']:
+            raise ValueError('handoff_replay_wrong_pinned_occurrence')
+        calls.append(case['id'])
+        return result
+    retrieval = SimpleNamespace(client=SimpleNamespace(events=[]),retrieve=retrieve)
+    with WorkLibrary(directory/'translation-replay.sqlite3') as lib:
+        registry = CitationRegistry(lib.db)
+        lookup = prepare_handoff(request,registry,retrieval,load_raw,audit,search_missing=False)
+        if calls or lookup['packets'] or any('published_passage' in r for r in lookup['rows']):
+            raise ValueError('empty_registry_lookup_unexpected_result')
+        handoff = prepare_handoff(request,registry,retrieval,load_raw,audit)
+        if lib.db.execute('SELECT count(*) FROM prepared_citations_v1').fetchone()[0]:
+            raise ValueError('replay_manufactured_receipt')
+    if any('published_passage' in r for r in handoff['rows']):
+        raise ValueError('replay_manufactured_reviewed_passage')
+    pairs = [(p['packet_sha256'],p['packet']) for p in handoff['packets']]
+    offered = set().union(*(seed_inventory(p) for _,p in pairs))
+    offered_ids = {row[0] for row in offered}
+    if offered != {row for row in baseline if row[0] in offered_ids}:
+        raise ValueError('translation_handoff_seed_parity_failed')
+    if len(handoff['rows']) != len(ready) or len(calls) != len(set(calls)):
+        raise ValueError('translation_handoff_replay_accounting')
+    if {r['id'] for r in handoff['rows'] if r.get('packet_sha256')} != offered_ids:
+        raise ValueError('translation_handoff_replay_packet_accounting')
+    if pairs:
+        path = directory/'translation-handoff-replay.zip'
+        write_bundle(path,pairs,fingerprint(request))
+        for i,(_,p) in enumerate(pairs,1):
+            if read_packet(path,i) != review_view(p):
+                raise ValueError('translation_handoff_replay_bundle_roundtrip')
+        path.unlink()
+    return {'scope':'real_pinned_source_parameters_frozen_retrieval_empty_registry',
+            'requested_occurrences':len(ready),'replayed_searches':len(calls),
+            'prepared_occurrences':len(offered_ids),'retained_verified_seeds':len(offered),
+            'baseline_verified_seeds':len(baseline),
+            'states':dict(Counter(r['state'] for r in handoff['rows'])),
+            'unresolved_reasons':dict(Counter(r.get('reason','other')
+                                              for r in handoff['rows'] if not r.get('packet_sha256'))),
+            'verified_roundtrips':len(pairs),'model_calls':0,'rights_approved':0,
+            'auto_publish':False}
+
+
 def run(items, load_raw, audit, directory, *, references=None, reference_items=None):
     arms = {'original': [], 'expanded': [], 'adaptive': []}
     skipped = {arm: Counter() for arm in arms}
@@ -251,6 +323,8 @@ def run(items, load_raw, audit, directory, *, references=None, reference_items=N
             'compact':transcription_replay(compact_packets,audit,directory,'compact'),
             'expanded':transcription_replay(windows['expanded'],audit,directory,'expanded'),
         }
+        result['translation_handoff'] = translation_handoff_replay(
+            items,arms['expanded'],load_raw,audit,directory)
     return result
 
 

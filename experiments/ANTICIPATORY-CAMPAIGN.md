@@ -233,3 +233,49 @@ règle générique de correction automatique des mots.
 Le replay autonome mesure séparément les comparaisons d'intervalles relus,
 les ajouts aux paquets réels et leur coût en octets, en vérifiant les
 ancres d'origine et la reconstruction des archives privées.
+
+
+## Interface privee pour une traduction en cours
+
+`translation_handoff.py` partage le registre `works.sqlite3`, le verrou
+`campaign.lock`, la recherche documentaire et le constructeur de paquets
+avec `prepare_citations.py`. Il ne touche pas l'inventaire ni les evenements
+de la campagne exhaustive. L'interface est experimentale et ne modifie pas
+les fichiers du kit principal.
+
+Le contrat d'entree `wikidebia-translation-citation-request-1` contient
+`source_lock_sha256` (empreinte SHA-256 du verrou francais a verifier par
+l'appelant) et une liste `items` de 200 occurrences au maximum. Chaque
+occurrence contient exactement `id`, `wiki_title`, `revision`,
+`source_template` et `source_parameters` (liste des couples nom/valeur
+litteraux du kit). Les identifiants ne sont pas des preuves documentaires :
+pour un lien MIA, le moteur exige une correspondance unique des parametres
+complets dans la revision epinglee. Une source locale modifiee, non publiee,
+ambiguë ou sans revision reste a rattacher. Aucune revision n'est inventee.
+Les autres domaines n'entrainent aucune lecture ou recherche documentaire.
+
+Exemples d'utilisation locale (les entrees et sorties restent privees) :
+
+    python translation_handoff.py --state "$STATE" prepare --request "$REQUEST"
+    python translation_handoff.py --state "$STATE" apply --handoff-sha "$SHA" --reply "$REPLY"
+    python translation_handoff.py --state "$STATE" prepare --request "$REQUEST" --lookup-only
+
+Le premier appel revalide les correspondances deja relues, puis recherche
+les absentes. La sortie standard contient seulement les compteurs et
+empreintes. La sortie privee est dans
+`$STATE/translation-handoffs/<empreinte>/handoff.json`, accompagnee de
+`review.zip` lorsque necessaire. Les decisions de revue rejoignent le
+registre partage par le chemin existant de validation exacte des preuves.
+Une relance en mode lookup-only permet de reconstruire les fragments
+retenus sans relancer de recherche documentaire. La lecture reelle du
+verrou et sa verification au moment de la consommation par le kit
+restent a integrer : l'empreinte fournie n'est pas a elle seule une preuve
+de provenance du verrou. Les sources francaises ne sont pas modifiees.
+
+Le statut `reviewed_receipt_rights_unreviewed` ne constitue pas une
+autorisation de publication. Les citations retrouvees ne sont jamais
+approuvees automatiquement dans une revue de traduction. Il faudra
+distinguer les citations publiees des traductions IA dans les normes,
+les attestations, le verrou anglais et son validateur. La politique
+actuelle du kit, qui impose l'avertissement AI-translated quote et
+preserve les references francaises, n'est pas modifiee ici.
