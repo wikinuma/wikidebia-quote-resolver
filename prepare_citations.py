@@ -29,7 +29,9 @@ from evidence_audit import Auditor
 from grouped_review import (apply_review, build_packet, candidate_queue,
                             pinned_loader, private_dir, review_view)
 from navigation import error_kind
-from pilot_full import PilotClient, redact_text
+from pilot_full import PilotClient
+from prepared_resolution import (CANDIDATES, REVIEWED, RETRY, INSUFFICIENT,
+                                 classify, resolve_occurrence)
 from resolver import Client, ROOT
 from review_bundle import write_bundle
 from transcription_compare import supplement_packet
@@ -37,11 +39,7 @@ from wikirouge_incremental import open_current
 from work_library import WorkLibrary
 
 QUEUED = 'queued'
-CANDIDATES = 'review_pending'
 AWAITING = 'awaiting_review'
-REVIEWED = 'reviewed_receipt_rights_unreviewed'
-RETRY = 'retry_documentary'
-INSUFFICIENT = 'insufficient_evidence'
 CLOSED = 'closed_without_result'
 STATES = (QUEUED, CANDIDATES, AWAITING, REVIEWED, RETRY, INSUFFICIENT, CLOSED)
 COMPACT = 'compact'
@@ -66,18 +64,6 @@ def duplicate_groups(inventory):
                              for c in rows]}
             for key, rows in sorted(groups.items())
             if len({c['wiki_title'] for c in rows}) > 1]
-
-
-def classify(row, events=()):
-    if candidate_queue(row):
-        return CANDIDATES
-    # The resolver's inventories are bounded. Neither a missing route nor
-    # exhausting the current candidates proves absence of a translation.
-    if (any(e.get('status') == 'error' for e in events)
-            or row.get('navigation_status') == 'input_unavailable'
-            or row.get('status', '').endswith('_unavailable')):
-        return RETRY
-    return INSUFFICIENT
 
 
 def build_campaign_packet(items, load_raw, load_document, stage=None,
@@ -160,45 +146,10 @@ class Campaign:
                 'hosted_model_calls': 0, 'auto_publish': False}
 
     def search_one(self, case, retrieval, load_raw, audit):
-        cid = case['id']
-        ref = case['citation_ref']
-        start = len(retrieval.client.events)
-        try:
-            raw = load_raw(case['wiki_title'], ref['revision'])
-            if source_identity(raw, ref)['source_key'] != case['source_key']:
-                raise ValueError('inventory_source_identity_mismatch')
-            found = self.registry.lookup(raw, ref)
-            if found['status'] == 'ambiguous_reviewed_passages':
-                self.record(cid, INSUFFICIENT, {'reason': 'conflicting_reviewed_passages'})
-                return INSUFFICIENT
-            if found['status'] == 'reviewed_receipt_found':
-                url = found['receipt']['target']['document']['url']
-                doc = audit.document(url, 'en')
-                restored = self.registry.reconstruct(raw, ref, doc)
-                if restored['status'] == 'reviewed_passage_reconstructed':
-                    self.record(cid, REVIEWED, {
-                        'origin': 'revalidated_existing_receipt',
-                        'receipt_sha256': restored['receipt']['entry_sha256'],
-                        'publication': audit.publication.get(('en', url), {}),
-                        'rights': 'unreviewed'})
-                    return REVIEWED
-            row = retrieval.retrieve(case)
-            if row.get('id') != cid or row.get('status') == 'ai_translation_required':
-                raise ValueError('retrieval_inventory_mismatch')
-            events = retrieval.client.events[start:]
-            state = classify(row, events)
-            if found['status'] == 'reviewed_receipt_found' and state == INSUFFICIENT:
-                state = RETRY
-            evidence = {'result': redact_text(row),
-                        'request_error_kinds': dict(Counter(
-                            e.get('error_kind', 'unknown') for e in events
-                            if e.get('status') == 'error')),
-                        'prior_registry_status': found['status']}
-            self.record(cid, state, evidence)
-            return state
-        except Exception as exc:
-            self.record(cid, RETRY, {'reason': error_kind(exc)})
-            return RETRY
+        state, evidence, _ = resolve_occurrence(
+            case, self.registry, retrieval, load_raw, audit)
+        self.record(case['id'], state, evidence)
+        return state
 
     def open_packets(self):
         rows = self.db.execute("SELECT digest,packet FROM campaign_packets_v1 "
