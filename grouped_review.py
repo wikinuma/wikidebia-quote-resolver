@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import tempfile
 
+from alignment import text_and_starts
 from alignment_store import encode
 from citation_registry import (CitationRegistry, DECISIONS, fingerprint,
                                source_identity, target_identity, selected_fragments)
@@ -19,6 +20,7 @@ from evidence_audit import Auditor, load_report, read_span
 from navigation import extract_citation_ref, raw_parse, error_kind
 from pilot_full import PilotClient
 from resolver import ROOT, WD_API
+from review_context import expand_target, coalesce_contexts
 from work_library import WorkLibrary
 
 PACKET = 'wikidebia-grouped-citation-review-1'
@@ -50,7 +52,7 @@ def candidate_queue(result):
 
 def build_packet(items, load_raw, load_document, *, max_candidates=4,
                  max_passage_chars=15000, max_payload_chars=120000,
-                 distinct_occurrences=False):
+                 distinct_occurrences=False, expanded_context=False):
     """items: (case, retrieval_result) pairs; loaders return pinned raw page
     and verified-parser Document respectively. Failures remain unresolved.
     All text is private; the caller must keep the manifest locally.
@@ -61,6 +63,7 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
     groups, passage_view, source_ids, target_ids, doc_ids = {}, {}, {}, {}, {}
     skipped, seen = [], set()
     docs = {}
+    expanded_count = 0
     for case, result in items:
         cid = case['id']
         if cid in seen or result.get('id') != cid:
@@ -121,10 +124,17 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
                 if url not in docs:
                     docs[url] = load_document(url, 'en')
                 doc = docs[url]
-                target = target_identity(doc, candidate)
+                seed = target_identity(doc, candidate)
+                target = seed
                 _, _, passage = read_span(doc, candidate)
                 if len(passage) > max_passage_chars:
                     raise ValueError('target_length_limit')
+                if expanded_context:
+                    target = expand_target(doc, seed, len(meta['text']), max_passage_chars)
+                    if target != seed:
+                        expanded_count += 1
+                        text, _ = text_and_starts(doc)
+                        passage = text[target['char_start']:target['char_end']]
             except Exception:
                 local['unavailable_candidates'] += 1
                 continue
@@ -144,6 +154,16 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
             pid = target_ids[key]
             if pid not in local['candidates']:
                 local['candidates'].append(pid)
+            if expanded_context:
+                ranges = local.setdefault('seed_hints', {}).setdefault(pid, [])
+                span = [seed['char_start'], seed['char_end']]
+                if span not in ranges:
+                    ranges.append(span)
+    context_stats = None
+    if expanded_context:
+        context_stats = coalesce_contexts(targets, passage_view, sources, docs,
+                                          max_passage_chars)
+        context_stats['expanded_seed_attempts'] = expanded_count
     work_view = []
     for (authors, work, _), chapters in groups.items():
         chapter_view = []
@@ -155,8 +175,11 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
                     skipped.extend({'case_id': o['case_id'], 'status': 'no_verified_candidate'}
                                    for o in local['occurrences'])
                     continue
-                ready.append({**row, 'candidates': local['candidates'],
-                              'source_statuses': local['source_statuses']})
+                view = {**row, 'candidates': local['candidates'],
+                        'source_statuses': local['source_statuses']}
+                if expanded_context:
+                    view['seed_ranges'] = local['seed_ranges']
+                ready.append(view)
             if ready:
                 chapter_view.append({'fr_url': url, 'article': article, 'citations': ready})
         if chapter_view:
@@ -164,6 +187,8 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
     sources = {q: s for q, s in sources.items() if s['candidates']}
     payload = {'groups': work_view, 'passages': passage_view,
                'documents': {k: v['url'] for k, v in documents.items()}}
+    if context_stats is not None:
+        payload['context_stats'] = context_stats
     if len(encode(payload)) > max_payload_chars:
         raise ValueError('review_payload_limit_split_input')
     return {'schema': PACKET, 'payload': payload, 'sources': sources,
@@ -186,7 +211,11 @@ def review_view(packet):
                              'explicit French ellipsis. For uncertainty or no equivalent use '
                              'uncertain or no_equivalent, candidate=null, ranges=[]. '
                              'Never copy or translate the passage in the reply. '
-                             'Compare full meaning, attribution and boundaries; no publication approval.'),
+                             'Compare full meaning, attribution and boundaries; no publication approval.'
+                             + (' Seed ranges are original search anchors, not selection limits. '
+                                'Review the full expanded passage for missing beginnings or endings; '
+                                'select only the exact equivalent ranges.'
+                                if 'context_stats' in packet['payload'] else '')),
             **packet['payload']}
 
 

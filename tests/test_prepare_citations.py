@@ -153,3 +153,29 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(c.latest('new-1')[1]['carried_from'], '1')
         self.assertEqual(c.latest('new-2')[0], QUEUED)
         self.assertEqual(c.carry_unchanged(old), 0)
+
+
+    def test_requeue_only_legacy_abstentions_from_saved_candidates(self):
+        from unittest.mock import patch
+        from grouped_review import build_packet
+        self.stage('1','2','3')
+        # Reproduce a packet from the previous code while keeping all
+        # original result evidence in campaign_events_v1.
+        def legacy(*args, **kwargs):
+            kwargs['expanded_context'] = False
+            return build_packet(*args, **kwargs)
+        with patch('prepare_citations.build_packet', side_effect=legacy):
+            digest, packet = self.c.prepare(self.raw, self.audit, limit=2)
+        rv = self.reply(digest, packet)
+        rv['decisions'][0].update(decision='uncertain',candidate=None,ranges=[])
+        self.c.apply(rv, self.raw, self.audit)
+        self.assertEqual(self.c.latest('1')[0], INSUFFICIENT)
+        self.assertEqual(self.c.latest('2')[0], REVIEWED)
+        self.assertEqual(self.c.requeue_legacy_abstentions(), {'requeued':1})
+        self.assertEqual(self.c.latest('1')[0], CANDIDATES)
+        self.assertEqual(self.c.latest('2')[0], REVIEWED)
+        self.assertEqual(self.c.requeue_legacy_abstentions(), {})
+        digest, packet = self.c.prepare(self.raw, self.audit)
+        self.assertIn('context_stats', packet['payload'])
+        self.c.apply(self.reply(digest, packet, 'uncertain'), self.raw, self.audit)
+        self.assertEqual(self.c.requeue_legacy_abstentions(), {})

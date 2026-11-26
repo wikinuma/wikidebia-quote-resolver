@@ -85,3 +85,27 @@ Aucun transfert entre pages. Les reçus positifs sont relus avant réutilisation
 
 La première commande liste les identifiants et diagnostics sans texte de
 citation ; la seconde réévalue explicitement les reçus déjà retrouvés.
+
+
+## Revue des passages élargis
+
+Le moteur de recherche n'est pas relancé : la préparation relit le document
+anglais exact, vérifie l'empreinte du passage initial, puis ajoute du contexte
+des deux côtés selon la longueur de la citation française, dans le même
+document. Les fenêtres se chevauchant sur le même document exact sont
+mutualisées si leur union respecte la limite. Les coordonnées seed_ranges
+rappellent les ancres d'origine, sans limiter la sélection à ces ancres.
+Les offsets du retour restent relatifs au passage partagé complet. Les
+bornes de sécurité, l'abstention et la revalidation avant import restent
+inchangées. Les anciennes preuves non reproductibles ne sont pas élargies.
+
+Pour reprendre les abstentions des anciens paquets sans nouvelle recherche :
+
+    python prepare_citations.py --state "$STATE" requeue-context
+    python prepare_citations.py --state "$STATE" review
+
+Les reçus acceptés, les échecs documentaires et les recherches sans candidat
+ne sont pas modifiés par requeue-context. La commande est idempotente ; les
+abstentions des nouveaux paquets ne sont pas automatiquement remises en file.
+Les compteurs context_stats mesurent le volume de caractères des fenêtres
+avant/après mutualisation, pas les tokens IA ni la qualité linguistique.

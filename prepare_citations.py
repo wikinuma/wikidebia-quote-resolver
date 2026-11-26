@@ -190,7 +190,7 @@ class Campaign:
             items = [(c, self.latest(c['id'])[1]['result']) for c in selected]
             try:
                 packet = build_packet(items, load_raw, audit.document,
-                                      distinct_occurrences=True,
+                                      distinct_occurrences=True, expanded_context=True,
                                       max_payload_chars=max_payload_chars)
             except ValueError as exc:
                 if str(exc) != 'review_payload_limit_split_input':
@@ -275,6 +275,47 @@ class Campaign:
             self.db.execute("UPDATE campaign_packets_v1 SET state='applied',reply=? "
                             'WHERE digest=?', (encode(reply), digest))
         return result
+
+    def requeue_legacy_abstentions(self):
+        """Resume old narrow-context reviews from their existing candidate
+        evidence, never from a new search or an accepted receipt."""
+        if self.open_packet() is not None:
+            raise ValueError('apply_or_cancel_open_review_first')
+        counts = Counter()
+        with self.db:
+            for case in self.select({INSUFFICIENT}):
+                cid = case['id']
+                _, latest = self.latest(cid)
+                if latest.get('reason') != 'review_abstention_not_exhaustive':
+                    continue
+                digest = latest.get('packet_sha256')
+                row = self.db.execute('SELECT packet,state FROM campaign_packets_v1 '
+                                      'WHERE digest=?', (digest,)).fetchone()
+                if not row or row[1] != 'applied':
+                    raise ValueError('abstention_packet_missing')
+                packet = json.loads(row[0])
+                if fingerprint(packet) != digest:
+                    raise ValueError('stored_packet_digest_mismatch')
+                if 'context_stats' in packet['payload']:
+                    continue
+                if not any(o['case_id'] == cid and o['ref'] == case['citation_ref']
+                           for source in packet['sources'].values()
+                           for o in source['occurrences']):
+                    counts['not_same_occurrence'] += 1
+                    continue
+                history = self.db.execute(
+                    'SELECT evidence FROM campaign_events_v1 '
+                    'WHERE occurrence=? AND state=? ORDER BY seq DESC LIMIT 1',
+                    (cid, CANDIDATES)).fetchone()
+                previous = json.loads(history[0]) if history else {}
+                result = previous.get('result', {})
+                if result.get('id') != cid or not candidate_queue(result):
+                    counts['no_saved_candidate'] += 1
+                    continue
+                self._append(cid, CANDIDATES, {**previous, 'requeued_from': digest,
+                                                'reason': 'expanded_context_review'})
+                counts['requeued'] += 1
+        return dict(counts)
 
     def cancel_review(self, reason):
         existing = self.open_packet()
@@ -369,6 +410,10 @@ def execute(args, state, library):
                   'reason': evidence.get('reason'),
                   'retrieval_status': evidence.get('result', {}).get('status')})
         return 0
+    if args.command == 'requeue-context':
+        show(campaign.requeue_legacy_abstentions())
+        show(campaign.summary())
+        return 0
     if args.command == 'cancel-review':
         campaign.cancel_review(args.reason)
         show(campaign.summary())
@@ -413,7 +458,8 @@ def execute(args, state, library):
                 out = state/'outgoing'/('review-'+digest[:16]+'.json')
                 atomic_private(out, review_view(packet))
                 show({'review_file': str(out), 'packet_sha256': digest,
-                      'occurrences': sum(len(s['occurrences']) for s in packet['sources'].values())})
+                      'occurrences': sum(len(s['occurrences']) for s in packet['sources'].values()),
+                      'context_stats': packet['payload'].get('context_stats')})
             show(campaign.summary())
         elif args.command == 'apply':
             reply = json.loads(args.reply.read_text(encoding='utf-8'))
@@ -431,6 +477,7 @@ def main():
     inv = sub.add_parser('inventory')
     inv.add_argument('--budget', type=int, default=1200)
     sub.add_parser('status')
+    sub.add_parser('requeue-context', help='Requeue abstentions from old narrow-context packets without retrieval')
     listing = sub.add_parser('cases')
     listing.add_argument('--filter', choices=STATES, action='append')
     listing.add_argument('--limit', type=int, default=0)
