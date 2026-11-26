@@ -1,0 +1,38 @@
+name: Experimental checks and targeted receipt diagnostics
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: experiment-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Targeted document receipt diagnostic (only on explicit fixture or diagnostic changes)
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || git diff --name-only HEAD^1 HEAD | grep -Eq '^(diagnose_receipts.py|experiments/mia-nonreproduced-receipts.json|.github/workflows/experiment-checks.yml)$'; then
+            python diagnose_receipts.py
+          fi
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: mia-receipt-diagnostic
+          path: reports-live/mia-receipt-diagnostic.json
+          if-no-files-found: ignore
+          retention-days: 90
