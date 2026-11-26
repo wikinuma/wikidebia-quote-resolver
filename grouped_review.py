@@ -20,7 +20,7 @@ from evidence_audit import Auditor, load_report, read_span
 from navigation import extract_citation_ref, raw_parse, error_kind
 from pilot_full import PilotClient
 from resolver import ROOT, WD_API
-from review_context import expand_target, coalesce_contexts
+from review_context import adaptive_target, expand_target, coalesce_contexts
 from work_library import WorkLibrary
 
 PACKET = 'wikidebia-grouped-citation-review-1'
@@ -52,14 +52,18 @@ def candidate_queue(result):
 
 def build_packet(items, load_raw, load_document, *, max_candidates=4,
                  max_passage_chars=15000, max_payload_chars=120000,
-                 distinct_occurrences=False, expanded_context=False):
+                 distinct_occurrences=False, expanded_context=False, adaptive_context=False):
     """items: (case, retrieval_result) pairs; loaders return pinned raw page
     and verified-parser Document respectively. Failures remain unresolved.
     All text is private; the caller must keep the manifest locally.
     """
     if min(max_candidates, max_passage_chars, max_payload_chars) < 1:
         raise ValueError('invalid_packet_limits')
+    if expanded_context and adaptive_context:
+        raise ValueError('conflicting_context_modes')
+    with_context = expanded_context or adaptive_context
     sources, targets, documents = {}, {}, {}
+    seed_keys = {}
     groups, passage_view, source_ids, target_ids, doc_ids = {}, {}, {}, {}, {}
     skipped, seen = [], set()
     docs = {}
@@ -107,13 +111,14 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
         else:
             qid = source_ids[review_key]
         local = sources[qid]
+        verified_seeds = seed_keys.setdefault(qid, set())
         local['occurrences'].append(occurrence)
         status = result.get('source', {}).get('status', 'unconfirmed')
         local.setdefault('source_statuses', [])
         if status not in local['source_statuses']:
             local['source_statuses'].append(status)
         for candidate in candidate_queue(result):
-            if len(local['candidates']) >= max_candidates:
+            if len(verified_seeds) >= max_candidates:
                 local['candidate_limit_reached'] = True
                 break
             try:
@@ -125,12 +130,16 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
                     docs[url] = load_document(url, 'en')
                 doc = docs[url]
                 seed = target_identity(doc, candidate)
+                if seed['candidate_key'] in verified_seeds:
+                    continue
                 target = seed
                 _, _, passage = read_span(doc, candidate)
                 if len(passage) > max_passage_chars:
                     raise ValueError('target_length_limit')
-                if expanded_context:
-                    target = expand_target(doc, seed, len(meta['text']), max_passage_chars)
+                if with_context:
+                    target = (adaptive_target(doc, seed, meta['text'], max_passage_chars)
+                              if adaptive_context else
+                              expand_target(doc, seed, len(meta['text']), max_passage_chars))
                     if target != seed:
                         expanded_count += 1
                         text, _ = text_and_starts(doc)
@@ -138,6 +147,7 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
             except Exception:
                 local['unavailable_candidates'] += 1
                 continue
+            verified_seeds.add(seed['candidate_key'])
             key = target['candidate_key']
             if key not in target_ids:
                 pid = 'p' + str(len(target_ids) + 1)
@@ -154,13 +164,13 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
             pid = target_ids[key]
             if pid not in local['candidates']:
                 local['candidates'].append(pid)
-            if expanded_context:
+            if with_context:
                 ranges = local.setdefault('seed_hints', {}).setdefault(pid, [])
                 span = [seed['char_start'], seed['char_end']]
                 if span not in ranges:
                     ranges.append(span)
     context_stats = None
-    if expanded_context:
+    if with_context:
         context_stats = coalesce_contexts(targets, passage_view, sources, docs,
                                           max_passage_chars)
         context_stats['expanded_seed_attempts'] = expanded_count
@@ -177,7 +187,7 @@ def build_packet(items, load_raw, load_document, *, max_candidates=4,
                     continue
                 view = {**row, 'candidates': local['candidates'],
                         'source_statuses': local['source_statuses']}
-                if expanded_context:
+                if with_context:
                     view['seed_ranges'] = local['seed_ranges']
                 ready.append(view)
             if ready:
