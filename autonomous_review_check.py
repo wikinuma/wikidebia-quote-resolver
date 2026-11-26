@@ -16,6 +16,7 @@ from boundary_stress import measure_boundary_recovery
 from evidence_audit import Auditor
 from grouped_review import build_packet, candidate_queue, pinned_loader, review_view
 from pilot_full import PilotClient
+from prepare_citations import build_campaign_packet, COMPACT, FALLBACK
 from resolver import ROOT, sha
 from review_bundle import write_bundle, read_packet
 
@@ -52,6 +53,71 @@ def seed_inventory(packet):
                     result.add((occurrence['case_id'],
                                 fingerprint(target['document']), base+lo, base+hi))
     return result
+
+
+def progressive_cost(items, baseline_pairs, load_raw, audit):
+    """Measure actual serialized review sizes under hypothetical abstentions.
+
+    No linguistic decisions or positive registry receipts are manufactured.
+    Escalation subsets are nested and selected by a stable hash of case ID,
+    independent of candidate text/rank/size. Rates are scenarios, not forecasts.
+    """
+    baseline_seeds = set().union(*(seed_inventory(p) for _,p in baseline_pairs))
+    eligible = {seed[0] for seed in baseline_seeds}
+    cases = [(c,r) for c,r in items if c['id'] in eligible]
+    baseline_bytes = sum(len(encode(review_view(p)).encode('utf-8'))
+                         for _,p in baseline_pairs)
+
+    def measure(selected, stage):
+        packets = []
+
+        def prepare(batch):
+            try:
+                packet = build_campaign_packet(batch,load_raw,audit.document,stage)
+            except ValueError as exc:
+                if str(exc) != 'review_payload_limit_split_input' or len(batch) < 2:
+                    raise
+                mid = len(batch)//2
+                prepare(batch[:mid])
+                prepare(batch[mid:])
+                return
+            if packet['skipped']:
+                raise ValueError('progressive_replay_lost_verified_occurrence')
+            packets.append(packet)
+
+        for i in range(0,len(selected),6):
+            prepare(selected[i:i+6])
+        seeds = set().union(*(seed_inventory(p) for p in packets))
+        ids = {c['id'] for c,_ in selected}
+        expected = {seed for seed in baseline_seeds if seed[0] in ids}
+        if stage == COMPACT:
+            if not seeds <= expected or Counter(x[0] for x in seeds) != Counter(ids):
+                raise ValueError('compact_replay_seed_mismatch')
+        elif seeds != expected:
+            raise ValueError('fallback_replay_seed_mismatch')
+        return {'occurrences':len(ids),'packets':len(packets),'verified_seeds':len(seeds),
+                'review_utf8_bytes':sum(len(encode(review_view(p)).encode('utf-8'))
+                                         for p in packets),
+                'english_characters':sum(v['length'] for p in packets
+                                           for v in p['payload']['passages'].values())}
+
+    compact = measure(cases,COMPACT)
+    order = sorted(eligible,key=lambda cid:(sha(cid.encode()),cid))
+    scenarios = []
+    for pct in (0,25,50,75,100):
+        n = (len(order)*pct+50)//100
+        subset = set(order[:n])
+        fallback = measure([(c,r) for c,r in cases if c['id'] in subset],FALLBACK)
+        total = compact['review_utf8_bytes']+fallback['review_utf8_bytes']
+        scenarios.append({'nominal_abstention_pct':pct,'fallback':fallback,
+                          'total_review_utf8_bytes':total,
+                          'saving_vs_expanded_pct':round(100*(1-total/baseline_bytes),2)
+                          if baseline_bytes else None})
+    return {'scope':'hypothetical_abstention_rates_on_same_verified_occurrences',
+            'baseline_expanded_review_utf8_bytes':baseline_bytes,
+            'compact':compact,'scenarios':scenarios,
+            'observed_abstention_rate':None,'semantic_equivalence':None,
+            'hosted_model_calls':0,'auto_publish':False}
 
 
 def run(items, load_raw, audit, directory):
@@ -127,6 +193,7 @@ def run(items, load_raw, audit, directory):
             'gained_after_expansion':len(ready['expanded'] - ready['original']),
             'boundary_stress':measure_boundary_recovery(
                 [packet for _,packet in arms['original']],audit),
+            'progressive_cost':progressive_cost(items,arms['expanded'],load_raw,audit),
             'semantic_equivalence':None,'rights_approved':0,
             'hosted_model_calls':0,'auto_publish':False}
 
