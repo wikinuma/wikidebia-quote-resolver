@@ -1,0 +1,351 @@
+{
+  "schema": "wikidebia-paired-blind-review-compact-1",
+  "report_run_id": 45831925252,
+  "report_artifact_id": 15123201287,
+  "report_sha256": "92d8d79ee43ec2ed5b5604e5175bbc3b8d9deb96fa206ea0720aae5ac941c7ca",
+  "packet_run_id": 45833742340,
+  "packet_sha256": "2c31e7d28773c17c0a1a475b931cee4ba59a9882e5dc097fc93b3d1b0cc3dccc",
+  "full_local_blind_decisions_sha256": "7e26a254766a2e1c42fd67794bcd215b62984cd1f32a9c88194b58dc23a5c9c7",
+  "full_local_unblinded_ledger_sha256": "34b21b3362678cf98484f5bb4ac8642879e81dff7d296c6a41aab2f08a75c69f",
+  "reviewer": "ChatGPT",
+  "blinding": "X/Y order based on last hex digit parity of sha256('paired-review-20261126:'+case_id); odd baseline/integrated, even integrated/baseline. Partial blinding: model has prior experimental context. Decisions recorded before arm restoration.",
+  "labels": {
+    "C": "complete_equivalent",
+    "T": "boundary_adjustment",
+    "V": "edition_or_translation_difference",
+    "P": "incomplete_corresponding_passage",
+    "W": "wrong_passage"
+  },
+  "no_candidate_in_both": 11,
+  "counts": {
+    "baseline": {
+      "C": 1,
+      "T": 0,
+      "V": 1,
+      "P": 0,
+      "W": 37,
+      "no_candidate": 11
+    },
+    "integrated": {
+      "C": 9,
+      "T": 4,
+      "V": 5,
+      "P": 5,
+      "W": 16,
+      "no_candidate": 11
+    }
+  },
+  "paired_transitions": {
+    "both_accepted": 1,
+    "baseline_only_accepted": 0,
+    "integrated_only_accepted": 12,
+    "neither_accepted_among_reviewed": 26
+  },
+  "early_route": {
+    "cases": 16,
+    "baseline_accepted": 0,
+    "integrated_accepted": 10
+  },
+  "scope": "Conservative model-assisted assessment of the first authenticated candidates only. No new search. C or T counts as recoverable, not approved for reuse.",
+  "cases": [
+    {
+      "review_number": 1,
+      "id": "inventory-902828746e1397b576d4",
+      "X": "V",
+      "Y": "W",
+      "note": "X omits the mercenary-soldier comparison and the explicit compromising of revolutions."
+    },
+    {
+      "review_number": 2,
+      "id": "inventory-92d3ef2122d767d0a194",
+      "X": "W",
+      "Y": "P",
+      "note": "Y covers the second quoted fragment but not the first."
+    },
+    {
+      "review_number": 3,
+      "id": "inventory-a07218fbe6affeedcb13",
+      "X": "P",
+      "Y": "V",
+      "note": "X lacks the final sentence. Y has the whole paragraph but omits the consciousness component of the final task and compresses other clauses."
+    },
+    {
+      "review_number": 4,
+      "id": "inventory-a32458168e84fc0f4c40",
+      "X": "W",
+      "Y": "C",
+      "note": "Y covers the argument throughout; bracketed French editorial clarification excluded."
+    },
+    {
+      "review_number": 10,
+      "id": "inventory-382c3e9d5100f12870e3",
+      "X": "W",
+      "Y": "T",
+      "note": "Y contains the full proposition after a removable introductory phrase.",
+      "trim": {
+        "label": "Y",
+        "relative_start": 58,
+        "relative_end": 180,
+        "text_sha256": "26fda57ece695936e1dd7cbbd4f8dd22dcdae9ad36d8b09b5a89dd45cfa27352"
+      }
+    },
+    {
+      "review_number": 11,
+      "id": "inventory-3a9c3c09ec486940d8b4",
+      "X": "V",
+      "Y": "W",
+      "note": "X reverses the stated relation of the state and productive forces and uses economist for employer."
+    },
+    {
+      "review_number": 12,
+      "id": "inventory-3b071fd5b2a11fb7371b",
+      "X": "C",
+      "Y": "C",
+      "note": "Same full passage; dry is the figurative equivalent of relatively bloodless."
+    },
+    {
+      "review_number": 14,
+      "id": "inventory-7468320d908945725874",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the general proposition about opposing violence until defending the existing order."
+    },
+    {
+      "review_number": 15,
+      "id": "inventory-dcc2269db4655827b0ec",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the mechanical analogy or conclusion."
+    },
+    {
+      "review_number": 16,
+      "id": "inventory-36e79d5dee425af053d1",
+      "X": "W",
+      "Y": "C",
+      "note": "Y contains all claims; force versus state is an idiomatic difference in reference to political authority, retained as a note."
+    },
+    {
+      "review_number": 18,
+      "id": "inventory-7f906f4e175d20148841",
+      "X": "W",
+      "Y": "C",
+      "note": "Y contains the full argument and both analogies."
+    },
+    {
+      "review_number": 19,
+      "id": "inventory-487f613d34c707d3013a",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the statement about tactical cooperation without concessions."
+    },
+    {
+      "review_number": 20,
+      "id": "inventory-796e8797fb2081a97f9f",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the account of former Mensheviks after October."
+    },
+    {
+      "review_number": 21,
+      "id": "inventory-7ad178f091af6077e498",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither discusses the central committee election vote."
+    },
+    {
+      "review_number": 22,
+      "id": "inventory-b953ce1a1dee3324d032",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither includes the recollection or July admission."
+    },
+    {
+      "review_number": 24,
+      "id": "inventory-3bbc87b119684ca2164c",
+      "X": "C",
+      "Y": "W",
+      "note": "X contains both introduction and full memoir excerpt."
+    },
+    {
+      "review_number": 26,
+      "id": "inventory-6d3428ff595e45aeb04f",
+      "X": "P",
+      "Y": "W",
+      "note": "X lacks the final sentence about the dying government."
+    },
+    {
+      "review_number": 27,
+      "id": "inventory-7e361f4338b8958a21c7",
+      "X": "P",
+      "Y": "W",
+      "note": "X begins after the first two French sentences and includes trailing unrelated text."
+    },
+    {
+      "review_number": 29,
+      "id": "inventory-7cb610bfce759b56d514",
+      "X": "V",
+      "Y": "W",
+      "note": "X contains the full corresponding passage but characterizes the monk as pious instead of old; conservatively held out."
+    },
+    {
+      "review_number": 30,
+      "id": "inventory-c2fc451de1317ecba324",
+      "X": "W",
+      "Y": "T",
+      "note": "Y contains the complete quotation after one preceding sentence.",
+      "trim": {
+        "label": "Y",
+        "relative_start": 78,
+        "relative_end": 280,
+        "text_sha256": "5f74e9c2abc7d1f80f345140acff40d4ce745fc0ead9b2cd40dc8837a6de8b13"
+      }
+    },
+    {
+      "review_number": 31,
+      "id": "inventory-088701152917ccd0a914",
+      "X": "W",
+      "Y": "W",
+      "note": "Both discuss international comprador relations, not the quoted relations between peripheral and ruling bourgeoisies."
+    },
+    {
+      "review_number": 32,
+      "id": "inventory-26d99acefa24f57a9cf4",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the criticism of the stated policy in China."
+    },
+    {
+      "review_number": 33,
+      "id": "inventory-75a95ada31b74aa70f5e",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the Ukrainian quotation or national policy argument."
+    },
+    {
+      "review_number": 34,
+      "id": "inventory-a5f6554e2b6b25c03690",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the April conference argument."
+    },
+    {
+      "review_number": 35,
+      "id": "inventory-14053d6ef65660586776",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the quoted Sukhanov recollection."
+    },
+    {
+      "review_number": 36,
+      "id": "inventory-8e5bc02f073cc69f2208",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the reported Soviet congress elections."
+    },
+    {
+      "review_number": 37,
+      "id": "inventory-de966cbae493b9f94cee",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the account of municipal services and the emergence of Soviet power; Y is a table of contents."
+    },
+    {
+      "review_number": 38,
+      "id": "inventory-fdcf365f29511e16c517",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the claim about Stalin as agitator and speaker."
+    },
+    {
+      "review_number": 39,
+      "id": "inventory-080cb37ed565fa4e5bd8",
+      "X": "W",
+      "Y": "T",
+      "note": "Y contains the complete quoted paragraph after a removable preceding sentence.",
+      "trim": {
+        "label": "Y",
+        "relative_start": 55,
+        "relative_end": 1011,
+        "text_sha256": "5da1928a566a0289235e0499564128b6898a66d4c73a171f9ac70ffd1bab29ed"
+      }
+    },
+    {
+      "review_number": 40,
+      "id": "inventory-63b3e48145a7f6f74539",
+      "X": "W",
+      "Y": "C",
+      "note": "Y contains the complete reported statement and explanation."
+    },
+    {
+      "review_number": 41,
+      "id": "inventory-7ad789ce41c594afeca5",
+      "X": "W",
+      "Y": "P",
+      "note": "Y omits the opening two sentences and adds following material."
+    },
+    {
+      "review_number": 42,
+      "id": "inventory-bf7e3dd98abf77eaa6e7",
+      "X": "T",
+      "Y": "W",
+      "note": "X contains the full quoted paragraph and one removable following paragraph.",
+      "trim": {
+        "label": "X",
+        "relative_start": 0,
+        "relative_end": 952,
+        "text_sha256": "7f911a9a48a0cdf688399507e50ff11b95a4ab29f315fc57098c661663d25775"
+      }
+    },
+    {
+      "review_number": 43,
+      "id": "inventory-cbcd1a3cfd03a4dc2d2d",
+      "X": "V",
+      "Y": "W",
+      "note": "X contains the corresponding paragraph but the final causal claim differs materially; revolution versus insurrection also differs."
+    },
+    {
+      "review_number": 44,
+      "id": "inventory-459e9c4e9687cfe4939b",
+      "X": "C",
+      "Y": "W",
+      "note": "X contains the complete quoted speech; bracketed attribution is editorial and punctuation differs."
+    },
+    {
+      "review_number": 45,
+      "id": "inventory-8dacdb1ac58f8abe10b6",
+      "X": "V",
+      "Y": "W",
+      "note": "X contains the complete corresponding paragraph but reactionary slovenliness differs from editorial negligence; held out conservatively."
+    },
+    {
+      "review_number": 46,
+      "id": "inventory-a8b607ba5c6469d28749",
+      "X": "W",
+      "Y": "C",
+      "note": "Y contains all quoted claims; attribution and ellipses positioned differently."
+    },
+    {
+      "review_number": 47,
+      "id": "inventory-f54157d78ba99e1172ab",
+      "X": "W",
+      "Y": "C",
+      "note": "Y contains the whole excerpt and concluding rhetorical question."
+    },
+    {
+      "review_number": 48,
+      "id": "inventory-b26b3fcb2ce092cfca2e",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the questions challenging the justification of war."
+    },
+    {
+      "review_number": 49,
+      "id": "inventory-c7ae2cd4278a221d55a0",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the argument about the fifteen-year timescale."
+    }
+  ],
+  "rights": "unreviewed",
+  "auto_publish": false
+}

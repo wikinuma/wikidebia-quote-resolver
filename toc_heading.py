@@ -99,7 +99,7 @@ def root_key(u):
 
 class TocMatcher:
     def __init__(self,client,encoder):
-        self.client=client;self.encoder=encoder;self.tocs={};self.matches={};self.docs={}
+        self.client=client;self.encoder=encoder;self.tocs={};self.matches={};self.docs={};self.content_probes={}
 
     def toc(self,root,lang):
         key=(root,lang)
@@ -129,9 +129,16 @@ class TocMatcher:
         return self.docs[url]
 
     def content_probe(self,pair):
+        """Reuse corroboration only for the same retrieved document digests."""
+        fr=self.document(pair['fr']['url']);en=self.document(pair['en']['url'])
+        key=(fr.url,fr.digest,en.url,en.digest)
+        if key not in self.content_probes:
+            self.content_probes[key]=self._content_probe(fr,en)
+        return self.content_probes[key]
+
+    def _content_probe(self,fr,en):
         """Independent sampled text agreement, not bilingual equivalence."""
         import numpy as np
-        fr=self.document(pair['fr']['url']);en=self.document(pair['en']['url'])
         fw=' '.join(fr.blocks).split();ew=' '.join(en.blocks).split()
         base={'fr_document_sha256':fr.digest,'en_document_sha256':en.digest,
               'fr_words':len(fw),'en_words':len(ew),'scope':'sampled_content_hypothesis',
