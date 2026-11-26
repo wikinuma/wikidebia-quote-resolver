@@ -127,7 +127,7 @@ def find_section_pair(fr,en_docs,work_titles=(),authors=(),fr_inventory=()):
     return target,result
 
 
-def automatic_alignment(quote,source,fr_docs,en_docs,work_titles,authors,max_cells=250000):
+def automatic_alignment(quote,source,fr_docs,en_docs,work_titles,authors,max_cells=250000,alignment_cache=None):
     result={'status':'not_applicable','candidates':[],'auto_publish':False,
             'rights':'unreviewed','method':'heading_hypothesis_sentence_alignment_v1'}
     hits=source.get('occurrences',[])
@@ -144,7 +144,7 @@ def automatic_alignment(quote,source,fr_docs,en_docs,work_titles,authors,max_cel
     # paragraph alignment without increasing the maximum matrix size.
     attempts=[]
     for kind in ('sentence','paragraph'):
-        aligned=aligned_candidates(quote,fr,target,kind,max_cells=max_cells)
+        aligned=aligned_candidates(quote,fr,target,kind,max_cells=max_cells,alignment_cache=alignment_cache)
         attempts.append({'kind':kind,'status':aligned['status'],'alignment':aligned.get('alignment')})
         if aligned['status']!='alignment_budget_exceeded': break
     result['attempts']=attempts

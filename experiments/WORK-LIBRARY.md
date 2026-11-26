@@ -60,3 +60,21 @@ citations per documented work before querying, runs both arms with fresh
 HTTP sessions, and compares work routes. It separates indexed and live
 navigation. This does not establish end-to-end passage accuracy or quota
 savings; a separate benchmark will be needed for those.
+
+
+## Persistent document alignments
+
+Refined retrieval with `--work-library` now reuses the deterministic alignment
+matrix result across citations and process restarts. Direct, reviewed chapter
+and structural routes share the same cache. The cache key binds both exact
+URLs, body digests, revisions, extracted block boundaries, alignment granularity,
+cell budget, and implementation identity. Changed inputs are misses; corrupt
+rows are recomputed. Only offsets and alignment costs are stored, not source
+or target text, citation hashes, or semantic decisions. The ordinary work
+metadata export is unchanged. The cached alignment never substitutes for
+current documentary pairing or quote-level semantic review.
+
+Run `python benchmark_alignment_store.py` to compare cold and reopened
+SQLite results on existing MIA chapter pairs, using distinct unique source
+sentences. This isolates alignment computations, not quotation equivalence,
+whole-corpus coverage or model/quota savings.
