@@ -234,7 +234,13 @@ def review_view(packet):
                              + (' This is a wide fallback after an earlier abstention. '
                                 'A negative decision applies only to the supplied material, '
                                 'not to the existence of a published translation.'
-                                if packet['payload'].get('progressive_review', {}).get('stage') == 'expanded_fallback' else '')),
+                                if packet['payload'].get('progressive_review', {}).get('stage') == 'expanded_fallback' else '')
+                             + (' A documented transcription variant preserves all non-whitespace characters '
+                                'but has different word spacing. Both published readings remain candidates. '
+                                'Check the complete French meaning and exact boundaries; prefer the better '
+                                'supported intact transcription only when established. Never silently correct '
+                                'either text or infer that its edition or reuse rights have been approved.'
+                                if 'transcription_comparison' in packet['payload'] else '')),
             **packet['payload']}
 
 
