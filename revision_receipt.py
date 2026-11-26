@@ -18,7 +18,7 @@ from alignment import text_and_starts
 from evidence_audit import Auditor, read_span, span_receipt, valid_digest
 from navigation import error_kind
 from pilot_full import PilotClient, extract_blocks, wr_title
-from resolver import API, ROOT, Document, sha
+from resolver import API, ROOT, Document, sha, RequestBudgetExceeded
 
 
 def title_key(value):
@@ -56,6 +56,8 @@ class RevisionRefresher:
                 text,_ = text_and_starts(document)
                 self.parsed[key] = (text,sha(body),None)
             except Exception as exc:
+                if isinstance(exc, RequestBudgetExceeded):
+                    return (None,None,error_kind(exc))
                 self.parsed[key] = (None,None,error_kind(exc))
         return self.parsed[key]
 

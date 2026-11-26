@@ -180,8 +180,13 @@ class Retrieval:
     def work(self,provider,root,lang):
         key=(provider,root,lang)
         if key not in self.works:
-            self.works[key]=(collect_mia(self.client,root,self.max_pages) if provider=='mia'
-                              else collect_wr(self.client,root,lang,self.max_pages))
+            result=(collect_mia(self.client,root,self.max_pages) if provider=='mia'
+                    else collect_wr(self.client,root,lang,self.max_pages))
+            # Successful raw responses are cached by the HTTP client. Retry
+            # the incomplete collection at the next case's fresh budget.
+            if any(i.get('error')=='RequestBudgetExceeded' for i in result[1].get('issues',[])):
+                return result
+            self.works[key]=result
         return self.works[key]
 
     def source(self,quote,selector,nav,preferred_source=None):

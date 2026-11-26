@@ -18,7 +18,7 @@ from alignment import text_and_starts
 from benchmark_index import write
 from navigation import canonical_mia, raw_parse, extract_citation_ref, error_kind
 from pilot_full import PilotClient, extract_blocks, html_revision, soup, wr_title
-from resolver import Document, ROOT, WD_API, clean, norm, sha, valid_url
+from resolver import Document, ROOT, WD_API, clean, norm, sha, valid_url, RequestBudgetExceeded
 
 SCHEMAS={'wikidebia-refined-index-1','wikidebia-mia-holdout-1','wikidebia-paired-index-1'}
 HEX=re.compile(r'[0-9a-f]{64}')
@@ -148,7 +148,10 @@ class Auditor:
                                        **publication_metadata(body,provider)}
                 self.docs[key]=doc
             except Exception as exc:
-                self.docs[key]={'status':'document_unavailable','error':error_kind(exc),'url':url}
+                failure={'status':'document_unavailable','error':error_kind(exc),'url':url}
+                if isinstance(exc, RequestBudgetExceeded):
+                    return failure
+                self.docs[key]=failure
         return self.docs[key]
 
     def span(self,entry,lang):

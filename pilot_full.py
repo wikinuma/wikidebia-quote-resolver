@@ -12,7 +12,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
 import requests
 from bs4 import BeautifulSoup,NavigableString
-from resolver import API, WD_API, ROOT, Client, Document, norm, clean, sha, valid_url, MAX_BYTES
+from resolver import API, WD_API, ROOT, Client, Document, norm, clean, sha, valid_url, MAX_BYTES, RequestBudgetExceeded
 from alignment import exact_occurrences, text_and_starts, tokens_with_offsets, OMISSION
 from compare import compare_methods, evaluation, page_pairs
 from embedding import LocalEncoder
@@ -125,7 +125,10 @@ class PilotClient(Client):
             return body,final
         except Exception as exc:
             event.update(status='error',error=str(exc))
-            self.failed_urls.setdefault(prepared,str(exc))
+            # A per-case budget is restored before the next case. Never turn
+            # this local limit into a permanent negative URL cache entry.
+            if not isinstance(exc, RequestBudgetExceeded):
+                self.failed_urls.setdefault(prepared,str(exc))
             raise
 
 
