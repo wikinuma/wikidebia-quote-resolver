@@ -153,3 +153,31 @@ pas dans la totalité du corpus. Les économies en caractères de l'archive
 ne sont pas une mesure du coût IA. Les paquets restent bornés pour ne pas
 confondre la capacité à transférer un fichier avec la capacité à vérifier
 correctement tous ses passages.
+
+
+## Revue progressive expérimentale (optionnelle)
+
+    python prepare_citations.py --state "$STATE" review-many --progressive
+
+Le premier paquet propose une seule ancre vérifiée par occurrence, dans
+l'ordre de recherche existant, avec contexte adaptatif. La revue doit
+s'abstenir dès qu'une limite ou l'équivalence reste incertaine. Une abstention
+(uncertain ou no_equivalent) remet automatiquement l'occurrence en attente
+de revue élargie à partir du résultat de recherche conservé et scellé.
+La prochaine préparation donne priorité à ces reprises, même après
+redémarrage ou sans l'option --progressive. Elle rétablit jusqu'à quatre
+ancres vérifiées et le contexte élargi. Une nouvelle abstention reste une
+preuve insuffisante : aucune boucle automatique, aucune clôture négative,
+aucune suppression de citation. Une erreur documentaire demeure distincte.
+
+Les paquets ouverts sont toujours restitués à l'identique, même si l'option
+change. Les décisions positives sont conservées avec leurs gardes existantes
+et les droits restent non examinés. L'option est disponible aussi pour review.
+Le mode par défaut reste la revue élargie. Aucun appel IA ou transfert
+supplémentaire n'est réalisé automatiquement par ce script.
+
+Le replay autonome compare les octets UTF-8 des vues de revue réellement
+construites pour les mêmes occurrences et plusieurs taux hypothétiques
+d'abstention (0, 25, 50, 75, 100 %). Il ne mesure ni le taux réel d'abstention,
+ni les tokens, ni la fidélité linguistique. Une économie dépend du taux
+effectif et du coût des cas renvoyés à la seconde passe.
