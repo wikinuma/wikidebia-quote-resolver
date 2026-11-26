@@ -6,6 +6,7 @@ full documents. Original candidate coordinates and reply format are unchanged.
 """
 import argparse
 from collections import defaultdict
+from copy import deepcopy
 import json
 from pathlib import Path
 import tempfile
@@ -33,7 +34,7 @@ def build_bundle(pairs, inventory_sha, max_shared_chars=30000):
     for digest, packet in pairs:
         if fingerprint(packet) != digest or digest in views:
             raise ValueError('bundle_packet_digest_mismatch')
-        view = review_view(packet)
+        view = deepcopy(review_view(packet))
         views[digest] = view
         ids = [o['case_id'] for source in packet['sources'].values()
                for o in source['occurrences']]

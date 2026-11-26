@@ -31,6 +31,9 @@ class BundleTests(unittest.TestCase):
         pairs = [a,b,c]
         index,views,shared = build_bundle(pairs,'a'*64)
         self.assertEqual(index['occurrences'],3)
+        for digest,packet in pairs:
+            self.assertEqual(fingerprint(packet),digest)
+            self.assertIn('text',next(iter(packet['payload']['passages'].values())))
         self.assertEqual(index['windows_before_sharing'],3)
         self.assertEqual(index['shared_windows'],1)
         self.assertEqual(index['english_chars_after_sharing'],35)
@@ -53,10 +56,22 @@ class BundleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_bundle([a,a],'a'*64)
 
-    def test_inconsistent_overlap_rejected(self):
+    def test_distinct_extracted_text_not_merged(self):
         a = self.make(document(blocks=['A'*40]),'1',0,20)
         b = self.make(document(blocks=['B'*40]),'2',10,30)
         # Document identity includes a parser fingerprint, so independently
         # differing extracted text is not merged even if body hashes agree.
         index,_,_ = build_bundle([a,b],'a'*64)
         self.assertEqual(index['shared_windows'],2)
+
+
+    def test_inconsistent_overlap_rejected(self):
+        a = self.make(document(blocks=['A'*40]),'1',0,20)
+        _,packet = self.make(document(blocks=['A'*40]),'2',10,30)
+        pid = next(iter(packet['targets']))
+        passage = packet['payload']['passages'][pid]
+        passage['text'] = 'B'*20
+        packet['targets'][pid]['text_sha256'] = sha(passage['text'].encode())
+        b = fingerprint(packet),packet
+        with self.assertRaisesRegex(ValueError,'inconsistent_document_overlap'):
+            build_bundle([a,b],'a'*64)
