@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import tempfile
 import time
+from urllib.parse import urlsplit, unquote
 
 from alignment import text_and_starts
 from benchmark_index import write
@@ -38,6 +39,19 @@ def valid_digest(s):
     return isinstance(s,str) and HEX.fullmatch(s) is not None
 
 
+STATE_MIRROR_TITLE = 'The State: A Lecture Delivered at the Sverdlov University'
+STATE_MIRROR_PATH = '/texts/en/' + STATE_MIRROR_TITLE.replace(' ', '_')
+STATE_MIRROR_LABELS = ('11 july 1919', 'lenin collected works', '4th english edition',
+                       'progress publishers', '1972', 'volume 29', '470 488')
+
+
+def documented_state_mirror(url):
+    p = urlsplit(url)
+    return (valid_url(url) and p.hostname == 'wikirouge.net'
+            and not p.query and not p.fragment
+            and unquote(p.path) == STATE_MIRROR_PATH)
+
+
 def document_provider(url,lang):
     if not valid_url(url):
         raise ValueError('unexpected_document_url')
@@ -45,7 +59,7 @@ def document_provider(url,lang):
         if lang=='en' and '/francais/' in url:
             raise ValueError('french_target_url')
         return 'mia'
-    if wr_title(url,lang):
+    if (lang == 'en' and documented_state_mirror(url)) or wr_title(url,lang):
         return 'wikirouge'
     raise ValueError('unexpected_document_provider')
 
@@ -140,8 +154,13 @@ class Auditor:
                 if final!=url or document_provider(final,lang)!=provider:
                     raise ValueError('document_url_changed')
                 s=soup(body)
+                mirror = lang == 'en' and documented_state_mirror(final)
+                if mirror:
+                    header = norm(s.get_text(' ', strip=True))
+                    if any(label not in header for label in STATE_MIRROR_LABELS):
+                        raise ValueError('mirror_edition_metadata_unconfirmed')
                 doc=Document(final,extract_blocks(body,provider=='wikirouge'),sha(body),
-                             wr_title(final,lang) or '',html_revision(s) if provider=='wikirouge' else None)
+                             (STATE_MIRROR_TITLE if mirror else wr_title(final,lang) or ''),html_revision(s) if provider=='wikirouge' else None)
                 if not doc.blocks:
                     raise ValueError('empty_document')
                 self.publication[key]={'url':final,'lang':lang,'document_sha256':doc.digest,
