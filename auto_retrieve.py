@@ -14,6 +14,7 @@ from collections import Counter
 
 from navigation import canonical_mia,discover_case,error_kind,author_check
 from resolver import ROOT,Document,subpages,rank,norm,sha
+from pilot_full import recorded_events
 from pilot_full import (PilotClient,WR,soup,extract_blocks,html_revision,html_url,wr_title,
                         redact_text,replay_mismatches)
 from alignment import exact_occurrences, aligned_candidates
@@ -501,12 +502,7 @@ def execute(a,local_index):
                       'alignment_candidate_words':sum(c.get('text_words',0) for c in r.get('section_alignment',{}).get('candidates',[]))} for r in report['cases']]
     rc=int(not any(r['status']=='candidate_review_required' for r in report['cases']))
     if a.replay:
-        expected={}
-        for e in c.events:
-            old=expected.get(e['request_url'])
-            if old and any(old.get(k)!=e.get(k) for k in ('status','sha256','final_url')):
-                raise RuntimeError('inconsistent_live_response')
-            expected[e['request_url']]=e
+        expected=recorded_events(c.events)
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
         replay=run_auto(replay_client,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
         same=report['cases']==replay['cases'] and report['counts']==replay['counts']

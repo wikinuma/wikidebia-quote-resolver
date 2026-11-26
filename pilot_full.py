@@ -80,6 +80,48 @@ def html_url(base, title):
     return base+quote(title.replace(' ','_'),safe='/()')
 
 
+class RecordedRequestError(RuntimeError):
+    """Offline reproduction of a recorded request failure (no remote code)."""
+    def __init__(self,message,kind):
+        super().__init__(message)
+        self.kind=kind
+
+
+def request_error_kind(exc):
+    if isinstance(exc,RecordedRequestError):
+        return exc.kind
+    if isinstance(exc,ValueError) and re.fullmatch(r'[a-z_]+(?:=\d+)?',str(exc)):
+        return str(exc)
+    return type(exc).__name__
+
+
+def recorded_events(events):
+    """Ordered request evidence. A local failure followed by a successful
+    retry is valid; different successful bodies for one cached URL are not."""
+    result=[]; successful={}
+    for e in events:
+        url=e['request_url']
+        if not valid_url(url) or e.get('status') not in ('ok','error'):
+            raise ValueError('invalid_replay_event')
+        if e['status']=='ok':
+            identity=(e['sha256'],e['final_url'])
+            if url in successful and successful[url]!=identity:
+                raise ValueError('response changed during original run')
+            successful[url]=identity
+        result.append(e.copy())
+    return result
+
+
+def recorded_exception(event):
+    message=event['error']
+    kind=event.get('error_kind','RuntimeError')
+    if not isinstance(kind,str) or not re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]*(?:=\d+)?',kind):
+        raise ValueError('invalid_recorded_error_kind')
+    if kind=='RequestBudgetExceeded':
+        return RequestBudgetExceeded(message)
+    return RecordedRequestError(message,kind)
+
+
 class PilotClient(Client):
     """Audit every lookup; optional strict offline replay of the existing HTTP cache."""
     def __init__(self,cache,budget=220,delay=.5,offline=False,expected_events=None):
@@ -89,6 +131,7 @@ class PilotClient(Client):
         self.failed_urls={}
         self.cache_bytes_read=0
         self.expected_events=expected_events
+        self.replay_position=0
         if expected_events is not None and not offline: raise ValueError('replay requires offline mode')
 
     def get(self,url,params=None):
@@ -100,10 +143,22 @@ class PilotClient(Client):
         try:
             expected=None
             if self.expected_events is not None:
-                if prepared not in self.expected_events: raise RuntimeError('replay_unrecorded_request')
-                expected=self.expected_events[prepared]
-                if expected['status']=='error': raise RuntimeError(expected['error'])
-            if prepared in self.failed_urls:
+                if isinstance(self.expected_events,list):
+                    if self.replay_position>=len(self.expected_events):
+                        raise RuntimeError('replay_unrecorded_request')
+                    expected=self.expected_events[self.replay_position]
+                    self.replay_position+=1
+                    if expected['request_url']!=prepared:
+                        raise RuntimeError('replay_request_order_mismatch')
+                else:
+                    if prepared not in self.expected_events:
+                        raise RuntimeError('replay_unrecorded_request')
+                    expected=self.expected_events[prepared]
+                if expected['status']=='error':
+                    if expected.get('memoized_failure'):
+                        event['memoized_failure']=True
+                    raise recorded_exception(expected)
+            if self.expected_events is None and prepared in self.failed_urls:
                 event['memoized_failure']=True
                 raise RuntimeError(self.failed_urls[prepared])
             if self.offline:
@@ -124,10 +179,10 @@ class PilotClient(Client):
             if event['cache_hit']: self.cache_bytes_read+=len(body)
             return body,final
         except Exception as exc:
-            event.update(status='error',error=str(exc))
+            event.update(status='error',error=str(exc),error_kind=request_error_kind(exc))
             # A per-case budget is restored before the next case. Never turn
             # this local limit into a permanent negative URL cache entry.
-            if not isinstance(exc, RequestBudgetExceeded):
+            if self.expected_events is None and not isinstance(exc, RequestBudgetExceeded):
                 self.failed_urls.setdefault(prepared,str(exc))
             raise
 
@@ -602,20 +657,24 @@ def metrics(rows):
 def replay_events(path):
     r=json.loads(path.read_text())
     if r.get('schema')!='wikidebia-full-work-pilot-0.4': raise ValueError('unsupported replay report')
-    out={}
-    for e in r['http_events']:
-        key=e['request_url']
-        if not valid_url(key): raise ValueError('invalid replay URL')
-        old=out.get(key)
-        if old and (old['status']!=e['status'] or old.get('sha256')!=e.get('sha256') or old.get('final_url')!=e.get('final_url')):
-            raise ValueError('response changed during original run')
-        out[key]=e
-    return out
+    return recorded_events(r['http_events'])
+
 
 def replay_mismatches(expected,actual):
+    if isinstance(expected,list):
+        mismatches=[]
+        for i in range(max(len(expected),len(actual))):
+            if i>=len(expected) or i>=len(actual):
+                mismatches.append({'position':i,'reason':'missing_or_extra_request'})
+                continue
+            e,a=expected[i],actual[i]
+            fields=['request_url','status','sha256','final_url','error']
+            if 'error_kind' in e: fields.append('error_kind')
+            if any(e.get(k)!=a.get(k) for k in fields):
+                mismatches.append({'position':i,'request_url':e['request_url'],'reason':'event_mismatch'})
+        return mismatches
     observed={e['request_url']:e for e in actual}
     return [k for k in sorted(set(expected)|set(observed)) if k not in expected or k not in observed or any(expected[k].get(f)!=observed[k].get(f) for f in ('status','sha256','final_url'))]
-
 
 def replay_results(report):
     """Compare editorial/algorithmic outputs, not execution timing or cache stats."""

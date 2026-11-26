@@ -11,6 +11,7 @@ from pathlib import Path
 
 from navigation import citation_records,canonical_mia,raw_parse,error_kind,generic_work_name
 from resolver import ROOT,WD_API,norm,sha
+from pilot_full import recorded_events
 from pilot_full import PilotClient,replay_mismatches
 from auto_retrieve import run_auto
 from bibliography import load_catalog
@@ -183,12 +184,7 @@ def main():
     if catalog: small['assisted_comparison']=summary(report,assisted=True)
     rc=int(not report['inventory']['selected'])
     if a.replay:
-        expected={}
-        for e in c.events:
-            old=expected.get(e['request_url'])
-            if old and any(old.get(k)!=e.get(k) for k in ('status','sha256','final_url')):
-                raise RuntimeError('inconsistent_live_response')
-            expected[e['request_url']]=e
+        expected=recorded_events(c.events)
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
         replay=run_inventory(replay_client,*args)
         same=(report['inventory']==replay['inventory'] and
