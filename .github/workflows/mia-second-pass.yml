@@ -3,7 +3,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - 'review-recipient-session.crt'
       - 'second_pass.py'
       - 'tests/test_second_pass.py'
       - '.github/workflows/mia-second-pass.yml'
@@ -46,7 +45,7 @@ jobs:
           github-token: ${{ github.token }}
           path: registry
       - name: Verify new chapter candidates, deferred candidates and documented edition mirror
-        run: python second_pass.py --development frozen/reports-live/refined-index.json --holdout frozen/reports-live/holdout-index.json --chapter chapter/chapter-quality.json --registry registry/review-registry.json --certificate review-recipient-session.crt --packet private-review/second-pass.cms
+        run: python second_pass.py --development frozen/reports-live/refined-index.json --holdout frozen/reports-live/holdout-index.json --chapter chapter/chapter-quality.json --registry registry/review-registry.json --certificate review-recipient.crt --packet private-review/second-pass.cms
       - uses: actions/upload-artifact@v6
         if: always()
         with:

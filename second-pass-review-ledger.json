@@ -1,0 +1,350 @@
+{
+  "schema": "wikidebia-second-pass-review-ledger-1",
+  "scope": "Single conservative bilingual ChatGPT re-review. Source candidate receipts and fragment hashes checked locally against the decrypted fresh packet and the matching public report. Semantic judgments are not independent human gold labels. No rights approval.",
+  "run_id": 45772180576,
+  "original_run_id": 45720424112,
+  "report_sha256": "5dea50b0407103fa08338a1ffa4756c821a92463d04906b7e6f4ca01655937be",
+  "original_report_sha256": "a54994daecd1a75f19ea6b35bee755f03f0b9ae6b2ed428ef297c046691a22c3",
+  "packet_sha256": "57c55611366b378cbeaff7190f94175a11337798eabdb71346c56616f20ed22f",
+  "previous_registry_sha256": "262a6b5e6c941266fd91a4b5eae78c6c3011ca97aef8a0fbf7ba808aedff8bc2",
+  "full_local_registry_sha256": "d056b92dfac446f5d84323bcfd989e33073d8b5021b281298d1e0f1e4883eaf6",
+  "summary": {
+    "cohort": 100,
+    "targeted_cases": 29,
+    "fresh_ready_cases": 22,
+    "fresh_candidates": 38,
+    "decisions": {
+      "complete_equivalent": 6,
+      "edition_variant": 12,
+      "no_new_candidate": 4,
+      "not_reproduced": 3,
+      "boundary_adjustment": 1,
+      "wrong_passage": 1,
+      "omission_adjustment": 1,
+      "partial": 1
+    },
+    "previous_accepted": 29,
+    "additional_accepted": 8,
+    "combined_accepted": 37,
+    "new_fragments": 9,
+    "rights_approved": 0
+  },
+  "cases": [
+    {
+      "case_id": "inventory-f1bfb7d4999e8943e304",
+      "decision": "complete_equivalent",
+      "candidate_sha256": "bd322172b4d904e11dbe84ebb846160f9c98223e19240cc9feca5e64435a7c3c",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 1111,
+          "text_sha256": "bd322172b4d904e11dbe84ebb846160f9c98223e19240cc9feca5e64435a7c3c"
+        }
+      ],
+      "note": "Same propositions; initial pronoun refers to the state.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-738e87212abcd6cecafb",
+      "decision": "edition_variant",
+      "candidate_sha256": "b61328122ed293092184a0e099c2accad2d5d8b876059199aa33e1207457d40c",
+      "fragments": [],
+      "note": "Adds control of representatives, not just election.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-8167fdc52a671bf1590f",
+      "decision": "no_new_candidate",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "No authenticated replacement.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-09e433a7dff39fbbd9d5",
+      "decision": "not_reproduced",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "Original candidates did not pass the fresh receipt checks.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-6959f815987733b1f7c5",
+      "decision": "complete_equivalent",
+      "candidate_sha256": "321c7c59a2909fca05371920a59f6b06f2fc96866591f055addaf53405c6d607",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 734,
+          "text_sha256": "321c7c59a2909fca05371920a59f6b06f2fc96866591f055addaf53405c6d607"
+        }
+      ],
+      "note": "Complete equivalent passage; published mirror spacing.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-76574778b3fc5adc5bb8",
+      "decision": "edition_variant",
+      "candidate_sha256": "3c8c8fe912812b058daa6e96f259941900ea17f58161bfc27edb5776e6df1055",
+      "fragments": [],
+      "note": "Narrows the minority to workers.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-74e41be2c0107318e217",
+      "decision": "not_reproduced",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "Original candidates did not pass the fresh receipt checks.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-3e9650e8151a9a3c835b",
+      "decision": "edition_variant",
+      "candidate_sha256": "9c926264a8ca877c517e4f5df5aaf36f90a0e7bffa5320fe96f5cd0dd140c3ae",
+      "fragments": [],
+      "note": "Cultured versus affluent; Great-Power versus imperialist.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-1619d9f10521f06f62f7",
+      "decision": "boundary_adjustment",
+      "candidate_sha256": "bc4550f3bbc27c6c38c7c1bd26a9e28e4370ff63ec604a39df4fdd253655c08c",
+      "fragments": [
+        {
+          "relative_start": 4,
+          "relative_end": 636,
+          "text_sha256": "7e89ea204ceb1dc389867b44d5ca64f34755ceed5523568f3c58f4962e0c1771"
+        }
+      ],
+      "note": "Remove initial adversative connector; do not silently change capitalization.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-90e0b74e5ecf36fd3ce7",
+      "decision": "no_new_candidate",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "No authenticated replacement.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-3cf4d0c9bd8547eeb0b4",
+      "decision": "complete_equivalent",
+      "candidate_sha256": "f9267fe8d713905ec7c2487fe3bd23a1af9e5cf8b71a3892ad5beb2e342a2727",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 778,
+          "text_sha256": "f9267fe8d713905ec7c2487fe3bd23a1af9e5cf8b71a3892ad5beb2e342a2727"
+        }
+      ],
+      "note": "Both paragraphs correspond; awkward published wording preserved.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-a0a2603fd8e3487dd1e8",
+      "decision": "edition_variant",
+      "candidate_sha256": "9a3ade5f1dfa9daf5e2b45b0ffa2f44973890cb2f895b06a317cb8a9a2117f89",
+      "fragments": [],
+      "note": "Qualifies equality of status by frequency.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-adfe117659761b3be31f",
+      "decision": "edition_variant",
+      "candidate_sha256": "7f82ce291d4af0b02c8fd3f5ce3ad99060c5811f643b5aaffec8db18e17e5751",
+      "fragments": [],
+      "note": "Bibliographic parenthesis absent; verify the edition and note.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-8ab7defd9f1731c5b216",
+      "decision": "wrong_passage",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "Both candidates discuss different subjects within the chapter.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-37895a16e5519563049b",
+      "decision": "edition_variant",
+      "candidate_sha256": "39e91b0f80a35ba199aa12d59673d612b1df51488e95854f9c20cbcb4abeb371",
+      "fragments": [],
+      "note": "Substantive alternative condition in the final sentence; trimming would alter the claim.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-f73a69c5d0172a5ffa95",
+      "decision": "complete_equivalent",
+      "candidate_sha256": "659a9ae869964bc447b51f09d226bf75d67722d77d2af2b905fd4f900441fa06",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 716,
+          "text_sha256": "659a9ae869964bc447b51f09d226bf75d67722d77d2af2b905fd4f900441fa06"
+        }
+      ],
+      "note": "Complete corresponding paragraph.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-9ed583914c16cff4d392",
+      "decision": "no_new_candidate",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "No authenticated replacement.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-9d081fe0c749dd464de3",
+      "decision": "edition_variant",
+      "candidate_sha256": "7278fa5db9dccbe1f64a4256ccddfe9be769ce9b09713c4af66ba96bac238961",
+      "fragments": [],
+      "note": "Foreseeing a revolution versus foreseeing its victory.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-0b0393c5579e60b5ef17",
+      "decision": "complete_equivalent",
+      "candidate_sha256": "bc695be1f6f1c606b3bf94375106c23f4d3ae139660f307efc9c69700f1692c5",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 1258,
+          "text_sha256": "bc695be1f6f1c606b3bf94375106c23f4d3ae139660f307efc9c69700f1692c5"
+        }
+      ],
+      "note": "Both paragraphs match through the final conclusion.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-541a5545fa06c8176e21",
+      "decision": "omission_adjustment",
+      "candidate_sha256": "0a37edcddf1a76d33b19a36bebbfb5dc7170b5b9a58fb700593e2039064cff97",
+      "fragments": [
+        {
+          "relative_start": 162,
+          "relative_end": 424,
+          "text_sha256": "1613a880fa2b061c0088365316f2101856cc7707188cc1bafdf781390b0e0e6d"
+        },
+        {
+          "relative_start": 612,
+          "relative_end": 1694,
+          "text_sha256": "a76ab22115d86e6e51cda63f652f4d37700f989a14be02ee2a8734c85e4e83ef"
+        }
+      ],
+      "note": "Trim prefatory and following material; reproduce explicit omission.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-a190996c792f6c149039",
+      "decision": "not_reproduced",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "Original candidates did not pass the fresh receipt checks.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-33616e6c090ffc8da8ca",
+      "decision": "no_new_candidate",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "No authenticated replacement.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-beda000d28ca4927f373",
+      "decision": "edition_variant",
+      "candidate_sha256": "82d8ed0e49852a3523f2abf59ab1278946b2fb4121f1219775c3a427cd7c6bfe",
+      "fragments": [],
+      "note": "A proper name differs; resolve edition/transcription discrepancy.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-bf75db1b313bfa781f68",
+      "decision": "edition_variant",
+      "candidate_sha256": "689ca1a42f738b2332c1cd1c44756ba08e44ba12b8a840fcf06a5400b9e80b02",
+      "fragments": [],
+      "note": "Explicit reference to households omitted.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-cfe81acc7c6a70f96297",
+      "decision": "edition_variant",
+      "candidate_sha256": "92ea7c0983c9b341dd9a845aaa84f888f8a649b48474af3c6e12e2bd60ace75e",
+      "fragments": [],
+      "note": "Confusion versus rebelliousness.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-c1c4ea9c095e83e1f21e",
+      "decision": "partial",
+      "candidate_sha256": "0e80dcf31dcbf79f14c9a3c194fa32824bf9b1b3242d5fc29fc5f19e180148cb",
+      "fragments": [],
+      "note": "Adds small concerns and lacks final ironic sentence.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-c547548986072f602133",
+      "decision": "complete_equivalent",
+      "candidate_sha256": "0021f9223475b130dded0fcb10435d59a871b42f0a7a1d4dcdd21dbffd6ac78c",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 887,
+          "text_sha256": "0021f9223475b130dded0fcb10435d59a871b42f0a7a1d4dcdd21dbffd6ac78c"
+        }
+      ],
+      "note": "All propositions correspond; idiomatic variation.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-55df4d57f6693df0d9a8",
+      "decision": "edition_variant",
+      "candidate_sha256": "f2e86f0cebac7298278d9e37c13c7626c029c097af0c0ab591d2cc6e950a3872",
+      "fragments": [],
+      "note": "Specifies elected representatives; apparent punctuation defect.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-1b7ad829eb765c002d96",
+      "decision": "edition_variant",
+      "candidate_sha256": "0723afeec8d0858205ace1d795a9fa75328dcb82fe057bb5592a4ffd2ada003b",
+      "fragments": [],
+      "note": "Party worker versus worker; diminished work versus stopped work.",
+      "rights": "unreviewed",
+      "auto_publish": false
+    }
+  ],
+  "rights": "unreviewed",
+  "auto_publish": false
+}
