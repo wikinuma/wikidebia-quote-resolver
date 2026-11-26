@@ -1,0 +1,53 @@
+name: Historical prepared citation audit
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    paths:
+      - 'historical_citations.py'
+      - 'tests/test_historical_citations.py'
+      - '.github/workflows/historical-citations.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - run: python -m unittest discover -s tests -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: wikirouge-refined-mia-comparison
+          run-id: 45715249856
+          github-token: ${{ github.token }}
+          path: frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: mia-bilingual-review-registry
+          run-id: 45719477640
+          github-token: ${{ github.token }}
+          path: registry
+      - uses: actions/download-artifact@v4
+        with:
+          name: mia-second-pass-report
+          run-id: 45772180576
+          github-token: ${{ github.token }}
+          path: second
+      - name: Revalidate historical favourable proofs only
+        run: python historical_citations.py --development frozen/reports-live/refined-index.json --holdout frozen/reports-live/holdout-index.json --first-registry registry/review-registry.json --second-report second/second-pass.json --db "$RUNNER_TEMP/private-history.sqlite3" --out reports-live/historical-citations.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: historical-prepared-citation-audit
+          path: reports-live/historical-citations.json
+          if-no-files-found: warn
+          retention-days: 90

@@ -59,3 +59,18 @@ class EvidenceAuditTests(unittest.TestCase):
         self.assertEqual(s['cases_with_strict_primary_and_source'],1)
         self.assertIsNone(s['verified_exact_english_quotes'])
         self.assertIsNone(s['verified_reuse_rights'])
+
+    def test_only_documented_state_mirror_with_edition_labels(self):
+        from evidence_audit import STATE_MIRROR_TITLE
+        from urllib.parse import quote
+        url = 'https://wikirouge.net/texts/en/' + quote(STATE_MIRROR_TITLE.replace(' ', '_'))
+        self.assertEqual(document_provider(url, 'en'), 'wikirouge')
+        for u in (url+'?x=1', url+'#section', url+'x',
+                  'https://wikirouge.net/texts/en/Other%3A_Title'):
+            with self.assertRaises(ValueError):
+                document_provider(u, 'en')
+        c = Mock()
+        c.get.return_value = (b'<p>Text</p>', url)
+        self.assertEqual(Auditor(c).document(url, 'en')['status'], 'document_unavailable')
+        c.get.return_value = (b'<p>11 July 1919 Lenin Collected Works 4th English Edition Progress Publishers 1972 Volume 29 470-488</p><p>Text</p>', url)
+        self.assertEqual(Auditor(c).document(url, 'en').title, STATE_MIRROR_TITLE)
