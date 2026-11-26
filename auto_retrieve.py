@@ -171,13 +171,19 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
         self.chapter_catalog=tuple(chapter_catalog)
         self.direct_cache=DirectAlignmentCache()
         self.semantic_index=semantic_index
+        self.toc_matcher=toc_matcher
+        self.hybrid=hybrid
+        if (toc_matcher is not None or hybrid) and (semantic_index is None or not refined):
+            raise ValueError('experimental_retrieval_requires_refined_semantic_index')
+        if toc_matcher is not None and toc_matcher.client is not client:
+            raise ValueError('toc_client_must_share_retrieval_budget')
 
     def work(self,provider,root,lang):
         key=(provider,root,lang)
@@ -291,6 +297,14 @@ class Retrieval:
                       'auto_publish':False,'rights':'unreviewed'}
         semantic['elapsed_seconds']=round(time.monotonic()-start,6)
         row['semantic_experiment']=semantic
+        if self.hybrid:
+            from rank_fusion import fused_review_queue
+            baseline=row.get('section_alignment',{}).get('candidates',[])+row.get('candidates',[])
+            try:
+                row['hybrid_review_queue']=fused_review_queue(semantic['candidates'],baseline,docs)
+            except Exception as exc:
+                row['hybrid_review_queue']={'status':'fusion_unavailable','error':error_kind(exc),
+                                            'candidates':[],'fallback_preserved':True,'auto_publish':False}
         return row
 
     def retrieve_catalog(self,case,row,quote):
@@ -366,6 +380,12 @@ class Retrieval:
         row=self._retrieve(case)
         if self.refined:
             row['review_packet']=review_packet(row)
+            queue=row.get('hybrid_review_queue',{}).get('candidates',[])
+            if self.hybrid and queue and row.get('semantic_experiment',{}).get('candidates'):
+                row['review_packet']={'method':'experimental_hybrid_first_v1','candidates':queue[:1],
+                                      'deferred_distinct_candidates':len(queue)-1,
+                                      'first_pass_only':True,'fallback_preserved':True,
+                                      'auto_publish':False,'rights':'unreviewed'}
         return row
 
     def _retrieve(self,case):
@@ -405,6 +425,12 @@ class Retrieval:
                     # Do not silently substitute another chapter when the known one fails.
                     row['status']='chapter_source_or_target_unavailable'
                     return row
+        if self.toc_matcher is not None:
+            from early_toc import try_early_toc
+            candidate,diagnostic=try_early_toc(self,row,quote,source)
+            if candidate is not None:
+                return candidate
+            row['toc_route_experiment']=diagnostic
         target=nav.get('mia_target',{})
         if target.get('url_accessible'):
             docs,info=self.work('mia',target['final_url'],'en')
