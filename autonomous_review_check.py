@@ -1,7 +1,7 @@
 """Read-only replay of frozen real citation candidates on GitHub Actions.
 
 No fresh inventory, no new retrieval, no model, no production state, and no
-quotation text or review archive in public logs/artifacts. The two arms use
+quotation text or review archive in public logs/artifacts. The three arms use
 the same pinned source revisions and freshly fetched English documents.
 """
 import argparse
@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from alignment_store import encode
 from citation_registry import fingerprint
 from evidence_audit import Auditor
 from grouped_review import build_packet, candidate_queue, pinned_loader, review_view
@@ -34,16 +35,35 @@ def load_items():
             if candidate_queue(results[cid])]
 
 
+def seed_inventory(packet):
+    """Compare exact verified anchors, not merged review-window counts."""
+    result = set()
+    for source in packet['sources'].values():
+        for pid in source['candidates']:
+            target = packet['targets'][pid]
+            base = target['char_start']
+            ranges = source.get('seed_ranges', {}).get(
+                pid, [[0, target['char_end']-base]])
+            for lo, hi in ranges:
+                if not 0 <= lo < hi <= target['char_end']-base:
+                    raise ValueError('invalid_seed_range')
+                for occurrence in source['occurrences']:
+                    result.add((occurrence['case_id'],
+                                fingerprint(target['document']), base+lo, base+hi))
+    return result
+
+
 def run(items, load_raw, audit, directory):
-    arms = {'original': [], 'expanded': []}
-    skipped = {'original': Counter(), 'expanded': Counter()}
+    arms = {'original': [], 'expanded': [], 'adaptive': []}
+    skipped = {arm: Counter() for arm in arms}
     overflow = 0
 
     def prepare(batch):
         nonlocal overflow
         try:
             packets = {arm: build_packet(batch,load_raw,audit.document,
-                       distinct_occurrences=True,expanded_context=arm=='expanded')
+                       distinct_occurrences=True,expanded_context=arm=='expanded',
+                       adaptive_context=arm=='adaptive')
                        for arm in arms}
         except ValueError as exc:
             if str(exc) != 'review_payload_limit_split_input':
@@ -56,6 +76,9 @@ def run(items, load_raw, audit, directory):
             prepare(batch[mid:])
             return
         expected = {c['id'] for c,_ in batch}
+        inventories = [seed_inventory(p) for p in packets.values()]
+        if any(x != inventories[0] for x in inventories[1:]):
+            raise ValueError('review_arms_have_different_verified_seeds')
         for arm,p in packets.items():
             ids = [o['case_id'] for s in p['sources'].values() for o in s['occurrences']]
             fails = [x['case_id'] for x in p['skipped']]
@@ -75,6 +98,9 @@ def run(items, load_raw, audit, directory):
                       for o in s['occurrences']}
         stats = {'packets':len(pairs),'occurrences':len(ready[arm]),
                  'skipped':dict(skipped[arm]),
+                 'verified_seed_count':sum(len(seed_inventory(p)) for _,p in pairs),
+                 'review_utf8_bytes':sum(len(encode(review_view(p)).encode('utf-8'))
+                                         for _,p in pairs),
                  'characters':sum(v['length'] for _,p in pairs
                                   for v in p['payload']['passages'].values())}
         if pairs:
@@ -93,6 +119,9 @@ def run(items, load_raw, audit, directory):
     return {'frozen_report_sha256':REPORT_SHA,'frozen_cohort':50,
             'selected_with_candidates':len(items),'single_packet_overflow':overflow,
             'arms':summary,'ready_in_both':len(ready['original'] & ready['expanded']),
+            'ready_in_all':len(set.intersection(*ready.values())),
+            'lost_after_adaptation':len(ready['original'] - ready['adaptive']),
+            'gained_after_adaptation':len(ready['adaptive'] - ready['original']),
             'lost_after_expansion':len(ready['original'] - ready['expanded']),
             'gained_after_expansion':len(ready['expanded'] - ready['original']),
             'semantic_equivalence':None,'rights_approved':0,
@@ -113,7 +142,7 @@ def main():
     # Whitelisted aggregate output only. Do not write packets or local state.
     args.out.write_text(json.dumps(summary,sort_keys=True,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(summary,sort_keys=True))
-    if not summary['arms']['expanded']['occurrences']:
+    if not all(arm['occurrences'] for arm in summary['arms'].values()):
         return 2  # do not claim a successful real-source replay with no data
     return 0
 
