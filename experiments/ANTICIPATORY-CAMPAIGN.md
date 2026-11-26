@@ -67,3 +67,21 @@ pas interchangeables. Ni le registre, ni les paquets ne constituent une
 validation des droits ou une intégration au kit. Aucune écriture sur les wikis,
 aucun modèle hébergé, aucun secret requis. Ne pas publier les fichiers privés
 de STATE, y compris le cache HTTP, la base et les paquets.
+
+
+En cas de document modifié entre préparation et import, apply refuse
+le paquet. Pour sortir de cet état sans supprimer l'historique :
+
+    python prepare_citations.py --state "$STATE" cancel-review --reason "Preuves devenues obsolètes"
+    python prepare_citations.py --state "$STATE" search --retry-documentary --limit 0
+
+Une citation inchangée sur la même page conserve les tentatives antérieures
+même si l'identifiant de révision ou l'index du modèle change (appariement
+unique par page ID et identité de contenu, à algorithme inchangé).
+Aucun transfert entre pages. Les reçus positifs sont relus avant réutilisation.
+
+    python prepare_citations.py --state "$STATE" cases --filter insufficient_evidence
+    python prepare_citations.py --state "$STATE" search --recheck-reviewed --limit 0
+
+La première commande liste les identifiants et diagnostics sans texte de
+citation ; la seconde réévalue explicitement les reçus déjà retrouvés.

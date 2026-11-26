@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import tempfile
 import time
+import uuid
 
 from alignment_store import encode
 from auto_retrieve import Retrieval
@@ -205,6 +206,7 @@ class Campaign:
             skipped = [s['case_id'] for s in packet['skipped']]
             if Counter(included + skipped) != Counter(c['id'] for c in selected):
                 raise ValueError('review_occurrence_accounting_mismatch')
+            packet['campaign_batch'] = uuid.uuid4().hex
             digest = fingerprint(packet)
             with self.db:
                 for failure in packet['skipped']:
@@ -232,6 +234,8 @@ class Campaign:
             if prior_reply != encode(reply):
                 raise ValueError('packet_already_applied_with_different_reply')
             return {'status': 'already_applied', 'packet_sha256': digest}
+        if state != 'open':
+            raise ValueError('campaign_packet_not_open')
         # An inventory refresh must not silently promote changed occurrences.
         for source in packet['sources'].values():
             for occurrence in source['occurrences']:
@@ -272,6 +276,55 @@ class Campaign:
                             'WHERE digest=?', (encode(reply), digest))
         return result
 
+    def cancel_review(self, reason):
+        existing = self.open_packet()
+        if existing is None or not reason.strip():
+            raise ValueError('open_packet_and_cancellation_reason_required')
+        digest, packet = existing
+        with self.db:
+            for source in packet['sources'].values():
+                for occurrence in source['occurrences']:
+                    cid = occurrence['case_id']
+                    if cid in self.cases and self.latest(cid)[0] == AWAITING:
+                        self._append(cid, RETRY, {'reason': 'review_cancelled',
+                                                  'packet_sha256': digest,
+                                                  'detail': reason.strip()})
+            self.db.execute("UPDATE campaign_packets_v1 SET state='cancelled' "
+                            'WHERE digest=?', (digest,))
+
+    def carry_unchanged(self, previous):
+        """Carry exact unchanged occurrence evidence across revisions on the
+        same page only, never across pages or ambiguous repeated citations.
+        Positive receipts are deliberately rechecked by search."""
+        if not previous or previous['algorithm'] != self.inventory['algorithm']:
+            return 0
+        def positions(inventory):
+            result = defaultdict(list)
+            for page in inventory['pages']:
+                for case in page['cases']:
+                    result[(page['pageid'], case['source_key'])].append(case['id'])
+            return result
+        old, new = positions(previous), positions(self.inventory)
+        count = 0
+        with self.db:
+            for key, ids in new.items():
+                before = old.get(key, [])
+                if len(ids) != 1 or len(before) != 1 or ids == before:
+                    continue
+                cid, prior = ids[0], before[0]
+                if self.latest(cid)[0] != QUEUED:
+                    continue
+                status, evidence = self.latest(prior)
+                if status not in {RETRY, INSUFFICIENT, CLOSED, CANDIDATES}:
+                    continue
+                if status == CANDIDATES:
+                    if evidence.get('result', {}).get('id') != prior:
+                        raise ValueError('prior_candidate_occurrence_mismatch')
+                    evidence['result']['id'] = cid
+                self._append(cid, status, {**evidence, 'carried_from': prior})
+                count += 1
+        return count
+
     def close_negative(self, cid, reason):
         if (cid not in self.cases or self.latest(cid)[0] != INSUFFICIENT
                 or not isinstance(reason, str) or not reason.strip()):
@@ -298,12 +351,26 @@ def execute(args, state, library):
             report, manifest = refresh(Client(Path(tmp), budget=args.budget, delay=.25),
                                        previous)
         if manifest is not None:
+            campaign = Campaign(library, manifest)
+            report['unchanged_occurrences_carried'] = campaign.carry_unchanged(previous)
             atomic_private(path, manifest)
             atomic_private(state/'duplicate-anomalies.json', duplicate_groups(manifest))
         show(report)
         return int(manifest is None)
     campaign = Campaign(library, load_inventory(path))
     if args.command == 'status':
+        show(campaign.summary())
+        return 0
+    if args.command == 'cases':
+        for case in campaign.select(set(args.filter or STATES), args.limit):
+            status, evidence = campaign.latest(case['id'])
+            show({'id': case['id'], 'wiki_title': case['wiki_title'],
+                  'mia_url': case['mia_url'], 'state': status,
+                  'reason': evidence.get('reason'),
+                  'retrieval_status': evidence.get('result', {}).get('status')})
+        return 0
+    if args.command == 'cancel-review':
+        campaign.cancel_review(args.reason)
         show(campaign.summary())
         return 0
     if args.command == 'close-negative':
@@ -319,6 +386,8 @@ def execute(args, state, library):
                 states = {RETRY}
             if args.reconsider:
                 states = {INSUFFICIENT}
+            if args.recheck_reviewed:
+                states = {REVIEWED}
             selected = campaign.select(states, args.limit)
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
@@ -362,6 +431,11 @@ def main():
     inv = sub.add_parser('inventory')
     inv.add_argument('--budget', type=int, default=1200)
     sub.add_parser('status')
+    listing = sub.add_parser('cases')
+    listing.add_argument('--filter', choices=STATES, action='append')
+    listing.add_argument('--limit', type=int, default=0)
+    cancel = sub.add_parser('cancel-review')
+    cancel.add_argument('--reason', required=True)
     run = sub.add_parser('search')
     run.add_argument('--limit', type=int, default=50, help='0 means all matching occurrences')
     run.add_argument('--budget', type=int, default=2500)
@@ -370,6 +444,7 @@ def main():
     mode = run.add_mutually_exclusive_group()
     mode.add_argument('--retry-documentary', action='store_true')
     mode.add_argument('--reconsider', action='store_true')
+    mode.add_argument('--recheck-reviewed', action='store_true')
     review = sub.add_parser('review')
     review.add_argument('--limit', type=int, default=20)
     review.add_argument('--max-payload-chars', type=int, default=120000)

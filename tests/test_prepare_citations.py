@@ -120,3 +120,36 @@ class CampaignTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.c.apply(response, self.raw, self.audit)
         self.assertEqual(self.c.latest('1')[0], AWAITING)
+
+
+    def test_cancel_stale_review_and_reissue(self):
+        self.stage('1')
+        digest, packet = self.c.prepare(self.raw, self.audit)
+        self.c.cancel_review('stale document')
+        self.assertEqual(self.c.latest('1')[0], RETRY)
+        with self.assertRaisesRegex(ValueError, 'not_open'):
+            self.c.apply(self.reply(digest, packet), self.raw, self.audit)
+        self.stage('1')
+        new_digest, new_packet = self.c.prepare(self.raw, self.audit)
+        self.assertNotEqual(new_digest, digest)
+        self.c.apply(self.reply(new_digest, new_packet), self.raw, self.audit)
+        self.assertEqual(self.c.latest('1')[0], REVIEWED)
+
+    def test_carry_unchanged_only_on_same_page(self):
+        old = {**self.inv, 'algorithm': 'same',
+               'pages': [{'pageid': i, 'cases': [case], 'citation_issues': {}}
+                         for i, case in enumerate(self.inv['cases'], 1)]}
+        self.stage('1')
+        self.c.record('2', INSUFFICIENT, {'reason': 'test'})
+        new_cases = [{**case, 'id': 'new-'+case['id']} for case in old['cases']]
+        new = {**old, 'cases': new_cases,
+               'pages': [{'pageid': i if i != 2 else 99, 'cases': [case],
+                          'citation_issues': {}}
+                         for i, case in enumerate(new_cases, 1)]}
+        c = Campaign(self.lib, new)
+        self.assertEqual(c.carry_unchanged(old), 1)
+        self.assertEqual(c.latest('new-1')[0], CANDIDATES)
+        self.assertEqual(c.latest('new-1')[1]['result']['id'], 'new-1')
+        self.assertEqual(c.latest('new-1')[1]['carried_from'], '1')
+        self.assertEqual(c.latest('new-2')[0], QUEUED)
+        self.assertEqual(c.carry_unchanged(old), 0)
