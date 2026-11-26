@@ -4,6 +4,8 @@ on:
     branches: ['experiment/persistent-document-alignments', 'experiment/pilot-v04']
     paths:
       - 'citation_registry.py'
+      - 'grouped_review.py'
+      - 'tests/test_grouped_review.py'
       - 'tests/test_citation_registry.py'
       - '.github/workflows/citation-registry.yml'
   workflow_dispatch:
