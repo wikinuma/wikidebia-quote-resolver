@@ -32,6 +32,7 @@ from navigation import error_kind
 from pilot_full import PilotClient, redact_text
 from resolver import Client, ROOT
 from review_bundle import write_bundle
+from transcription_compare import supplement_packet
 from wikirouge_incremental import open_current
 from work_library import WorkLibrary
 
@@ -80,7 +81,7 @@ def classify(row, events=()):
 
 
 def build_campaign_packet(items, load_raw, load_document, stage=None,
-                          max_payload_chars=120000):
+                          max_payload_chars=120000, *, compare_transcriptions=False):
     """One preparation policy shared by the campaign and its benchmarks."""
     if stage not in (None, COMPACT, FALLBACK):
         raise ValueError('invalid_campaign_context_stage')
@@ -96,6 +97,8 @@ def build_campaign_packet(items, load_raw, load_document, stage=None,
             'max_verified_anchors_per_occurrence': 1 if stage == COMPACT else 4}
         if len(encode(packet['payload'])) > max_payload_chars:
             raise ValueError('review_payload_limit_split_input')
+    if compare_transcriptions:
+        packet = supplement_packet(packet,load_document,max_payload_chars=max_payload_chars)
     return packet
 
 
@@ -210,7 +213,7 @@ class Campaign:
         return next(self.open_packets(), None)
 
     def prepare(self, load_raw, audit, limit=20, max_payload_chars=120000,
-                *, allow_multiple=False, progressive=False):
+                *, allow_multiple=False, progressive=False, compare_transcriptions=False):
         if not allow_multiple:
             existing = self.open_packet()
             if existing is not None:
@@ -227,7 +230,9 @@ class Campaign:
             items = [(c, e['result']) for c,e in selected]
             try:
                 packet = build_campaign_packet(items, load_raw, audit.document,
-                                               stage, max_payload_chars)
+                                               stage, max_payload_chars,
+                                               compare_transcriptions=compare_transcriptions or
+                                               any(e.get('compare_transcriptions') is True for _,e in selected))
             except ValueError as exc:
                 if str(exc) != 'review_payload_limit_split_input':
                     raise
@@ -242,6 +247,8 @@ class Campaign:
             skipped = [s['case_id'] for s in packet['skipped']]
             if Counter(included + skipped) != Counter(c['id'] for c,_ in selected):
                 raise ValueError('review_occurrence_accounting_mismatch')
+            if compare_transcriptions or any(e.get('compare_transcriptions') is True for _,e in selected):
+                packet['campaign_compare_transcriptions'] = True
             if stage == COMPACT:
                 packet['campaign_candidate_evidence_sha256'] = {
                     c['id']: fingerprint(e) for c,e in selected if c['id'] in included}
@@ -261,7 +268,7 @@ class Campaign:
         return None
 
     def prepare_many(self, load_raw, audit, packets=8, limit=20,
-                     max_payload_chars=120000, *, progressive=False):
+                     max_payload_chars=120000, *, progressive=False, compare_transcriptions=False):
         """A bounded wave. Re-export pending packets after interruptions;
         never create duplicate open occurrences. One auditor per wave."""
         if packets < 1 or limit < 1:
@@ -278,7 +285,8 @@ class Campaign:
             if not before:
                 break
             batch = self.prepare(load_raw,audit,limit,max_payload_chars,
-                                 allow_multiple=True, progressive=progressive)
+                                 allow_multiple=True, progressive=progressive,
+                                 compare_transcriptions=compare_transcriptions)
             if batch:
                 result.append(batch)
             if len(self.select({CANDIDATES})) >= before:
@@ -392,6 +400,8 @@ class Campaign:
                     evidence = {**prior_candidates[occurrence['case_id']],
                                 **evidence, 'context_stage': FALLBACK,
                                 'reason': 'compact_review_abstention'}
+                    if packet.get('campaign_compare_transcriptions') is True:
+                        evidence['compare_transcriptions'] = True
                 else:
                     evidence['reason'] = 'review_abstention_not_exhaustive'
                 updates.append((occurrence['case_id'], status, evidence))
@@ -584,7 +594,8 @@ def execute(args, state, library):
             show(campaign.summary())
         elif args.command == 'review':
             batch = campaign.prepare(fresh, audit, args.limit, args.max_payload_chars,
-                                     progressive=args.progressive)
+                                     progressive=args.progressive,
+                                     compare_transcriptions=args.compare_transcriptions)
             if batch:
                 digest, packet = batch
                 out = state/'outgoing'/('review-'+digest[:16]+'.json')
@@ -592,11 +603,13 @@ def execute(args, state, library):
                 show({'review_file': str(out), 'packet_sha256': digest,
                       'occurrences': sum(len(s['occurrences']) for s in packet['sources'].values()),
                       'context_stats': packet['payload'].get('context_stats'),
-                      'progressive_review': packet['payload'].get('progressive_review')})
+                      'progressive_review': packet['payload'].get('progressive_review'),
+                      'transcription_comparison':packet['payload'].get('transcription_comparison')})
             show(campaign.summary())
         elif args.command == 'review-many':
             pairs = campaign.prepare_many(fresh,audit,args.packets,args.limit,
-                                          args.max_payload_chars, progressive=args.progressive)
+                                          args.max_payload_chars, progressive=args.progressive,
+                                          compare_transcriptions=args.compare_transcriptions)
             if pairs:
                 wave = fingerprint([digest for digest,_ in pairs])[:16]
                 out = state/'outgoing'/('review-wave-'+wave+'.zip')
@@ -652,11 +665,13 @@ def main():
     review.add_argument('--limit', type=int, default=20)
     review.add_argument('--max-payload-chars', type=int, default=120000)
     review.add_argument('--progressive', action='store_true', help='Start with one adaptive anchor; abstentions receive wide review')
+    review.add_argument('--compare-transcriptions', action='store_true', help='Offer verified literal spacing alternatives for documented edition pairs')
     many = sub.add_parser('review-many', help='Prepare or re-export a private ZIP of independent reviews')
     many.add_argument('--packets',type=int,default=8)
     many.add_argument('--limit',type=int,default=20,help='Max occurrences per packet')
     many.add_argument('--max-payload-chars',type=int,default=120000)
     many.add_argument('--progressive', action='store_true', help='Start with compact reviews; prioritize saved wide fallbacks')
+    many.add_argument('--compare-transcriptions', action='store_true', help='Offer verified literal spacing alternatives for documented edition pairs')
     apply = sub.add_parser('apply')
     apply.add_argument('reply', type=Path, help='JSON path or - for stdin')
     bulk = sub.add_parser('apply-many',help='Import an array of complete per-packet replies')
