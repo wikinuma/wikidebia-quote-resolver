@@ -28,9 +28,11 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
-          cache-dependency-path: requirements.txt
-      - name: Install lightweight dependencies
-        run: python -m pip install -r requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-navigation.txt
+      - name: Install test dependencies (including MediaWiki metadata parser)
+        run: python -m pip install -r requirements-navigation.txt
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: Live pilot and strict offline replay
