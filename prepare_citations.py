@@ -43,6 +43,8 @@ RETRY = 'retry_documentary'
 INSUFFICIENT = 'insufficient_evidence'
 CLOSED = 'closed_without_result'
 STATES = (QUEUED, CANDIDATES, AWAITING, REVIEWED, RETRY, INSUFFICIENT, CLOSED)
+COMPACT = 'compact'
+FALLBACK = 'expanded_fallback'
 
 
 def load_inventory(path):
@@ -117,7 +119,8 @@ class Campaign:
         return rows[:limit] if limit else rows
 
     def summary(self):
-        counts = Counter(self.latest(cid)[0] for cid in self.cases)
+        latest = [self.latest(cid) for cid in self.cases]
+        counts = Counter(state for state, _ in latest)
         anomalies = duplicate_groups(self.inventory)
         issues = Counter()
         for page in self.inventory['pages']:
@@ -127,6 +130,8 @@ class Campaign:
                 'unrepresented_mia_occurrences': sum(issues.values()),
                 'inventory_issues': dict(issues),
                 'states': {s: counts[s] for s in STATES},
+                'expanded_fallback_pending': sum(state == CANDIDATES and
+                    evidence.get('context_stage') == FALLBACK for state,evidence in latest),
                 'duplicate_quote_groups_across_pages': len(anomalies),
                 'duplicate_quote_occurrences': sum(len(g['occurrences']) for g in anomalies),
                 'hosted_model_calls': 0, 'auto_publish': False}
@@ -185,32 +190,51 @@ class Campaign:
         return next(self.open_packets(), None)
 
     def prepare(self, load_raw, audit, limit=20, max_payload_chars=120000,
-                *, allow_multiple=False):
+                *, allow_multiple=False, progressive=False):
         if not allow_multiple:
             existing = self.open_packet()
             if existing is not None:
                 return existing
-        selected = self.select({CANDIDATES}, limit)
+        pending = [(c, self.latest(c['id'])[1]) for c in self.select({CANDIDATES})]
+        fallback = [(c, e) for c,e in pending if e.get('context_stage') == FALLBACK]
+        # Escalated occurrences are always reviewed in the wide mode, even
+        # after a restart or a change to the CLI flag. No new retrieval.
+        stage = FALLBACK if fallback else COMPACT if progressive else None
+        selected = (fallback or pending)
+        if limit:
+            selected = selected[:limit]
         while selected:
-            items = [(c, self.latest(c['id'])[1]['result']) for c in selected]
+            items = [(c, e['result']) for c,e in selected]
             try:
                 packet = build_packet(items, load_raw, audit.document,
-                                      distinct_occurrences=True, expanded_context=True,
+                                      distinct_occurrences=True,
+                                      expanded_context=stage != COMPACT,
+                                      adaptive_context=stage == COMPACT,
+                                      max_candidates=1 if stage == COMPACT else 4,
                                       max_payload_chars=max_payload_chars)
+                if stage:
+                    packet['payload']['progressive_review'] = {
+                        'stage': stage,
+                        'max_verified_anchors_per_occurrence': 1 if stage == COMPACT else 4}
+                    if len(encode(packet['payload'])) > max_payload_chars:
+                        raise ValueError('review_payload_limit_split_input')
             except ValueError as exc:
                 if str(exc) != 'review_payload_limit_split_input':
                     raise
                 if len(selected) > 1:
                     selected = selected[:max(1, len(selected)//2)]
                     continue
-                self.record(selected[0]['id'], INSUFFICIENT,
+                self.record(selected[0][0]['id'], INSUFFICIENT,
                             {'reason': 'single_review_payload_limit'})
                 return None
             included = [o['case_id'] for s in packet['sources'].values()
                         for o in s['occurrences']]
             skipped = [s['case_id'] for s in packet['skipped']]
-            if Counter(included + skipped) != Counter(c['id'] for c in selected):
+            if Counter(included + skipped) != Counter(c['id'] for c,_ in selected):
                 raise ValueError('review_occurrence_accounting_mismatch')
+            if stage == COMPACT:
+                packet['campaign_candidate_evidence_sha256'] = {
+                    c['id']: fingerprint(e) for c,e in selected if c['id'] in included}
             packet['campaign_batch'] = uuid.uuid4().hex
             digest = fingerprint(packet)
             with self.db:
@@ -227,7 +251,7 @@ class Campaign:
         return None
 
     def prepare_many(self, load_raw, audit, packets=8, limit=20,
-                     max_payload_chars=120000):
+                     max_payload_chars=120000, *, progressive=False):
         """A bounded wave. Re-export pending packets after interruptions;
         never create duplicate open occurrences. One auditor per wave."""
         if packets < 1 or limit < 1:
@@ -244,7 +268,7 @@ class Campaign:
             if not before:
                 break
             batch = self.prepare(load_raw,audit,limit,max_payload_chars,
-                                 allow_multiple=True)
+                                 allow_multiple=True, progressive=progressive)
             if batch:
                 result.append(batch)
             if len(self.select({CANDIDATES})) >= before:
@@ -282,11 +306,13 @@ class Campaign:
             counts.update(result.get('counts',{}))
             results.append({'packet_sha256':digest,
                             'status':result.get('status','applied'),
-                            'recorded':result.get('recorded',0)})
+                            'recorded':result.get('recorded',0),
+                            'requeued_for_expanded_review':result.get('requeued_for_expanded_review',0)})
         statuses = Counter(r['status'] for r in results)
         return {'packets':len(results),'statuses':dict(statuses),
                 'recorded':sum(r.get('recorded',0) for r in results),
                 'counts':dict(counts),'results':results,
+                'requeued_for_expanded_review':sum(r.get('requeued_for_expanded_review',0) for r in results),
                 'auto_publish':False,'rights':'unreviewed'}
 
     def apply(self, reply, load_raw, audit):
@@ -304,6 +330,10 @@ class Campaign:
             return {'status': 'already_applied', 'packet_sha256': digest}
         if state != 'open':
             raise ValueError('campaign_packet_not_open')
+        stage = packet['payload'].get('progressive_review', {}).get('stage')
+        if stage not in (None, COMPACT, FALLBACK):
+            raise ValueError('invalid_campaign_context_stage')
+        prior_candidates = {}
         # An inventory refresh must not silently promote changed occurrences.
         for source in packet['sources'].values():
             for occurrence in source['occurrences']:
@@ -313,6 +343,18 @@ class Campaign:
                         or case['wiki_title'] != occurrence['wiki_title']
                         or self.latest(cid) != (AWAITING, {'packet_sha256': digest})):
                     raise ValueError('campaign_packet_occurrence_changed')
+                if stage == COMPACT:
+                    previous = self.db.execute(
+                        'SELECT evidence FROM campaign_events_v1 WHERE occurrence=? AND state=? '
+                        'ORDER BY seq DESC LIMIT 1', (cid,CANDIDATES)).fetchone()
+                    evidence = json.loads(previous[0]) if previous else {}
+                    if (fingerprint(evidence) != packet.get(
+                            'campaign_candidate_evidence_sha256', {}).get(cid)
+                            or evidence.get('result', {}).get('id') != cid
+                            or evidence.get('context_stage') == FALLBACK
+                            or not candidate_queue(evidence.get('result', {}))):
+                        raise ValueError('compact_candidate_evidence_changed')
+                    prior_candidates[cid] = evidence
         result = apply_review(packet, reply, digest, self.registry, load_raw, audit.document)
         updates = []
         for decision in reply['decisions']:
@@ -332,6 +374,14 @@ class Campaign:
                                         rights='unreviewed')
                     else:
                         evidence['reason'] = found['status']
+                elif stage == COMPACT:
+                    # An abstention on a reduced candidate set is provisional.
+                    # Preserve the exact saved retrieval result, not the
+                    # shortlist. The next review uses the full wide baseline.
+                    status = CANDIDATES
+                    evidence = {**prior_candidates[occurrence['case_id']],
+                                **evidence, 'context_stage': FALLBACK,
+                                'reason': 'compact_review_abstention'}
                 else:
                     evidence['reason'] = 'review_abstention_not_exhaustive'
                 updates.append((occurrence['case_id'], status, evidence))
@@ -342,6 +392,7 @@ class Campaign:
                 self._append(cid, status, evidence)
             self.db.execute("UPDATE campaign_packets_v1 SET state='applied',reply=? "
                             'WHERE digest=?', (encode(reply), digest))
+        result['requeued_for_expanded_review'] = sum(s == CANDIDATES for _,s,_ in updates)
         return result
 
     def requeue_legacy_abstentions(self):
@@ -522,18 +573,20 @@ def execute(args, state, library):
                           'fresh_audit_requests': audit.client.requests})
             show(campaign.summary())
         elif args.command == 'review':
-            batch = campaign.prepare(fresh, audit, args.limit, args.max_payload_chars)
+            batch = campaign.prepare(fresh, audit, args.limit, args.max_payload_chars,
+                                     progressive=args.progressive)
             if batch:
                 digest, packet = batch
                 out = state/'outgoing'/('review-'+digest[:16]+'.json')
                 atomic_private(out, review_view(packet))
                 show({'review_file': str(out), 'packet_sha256': digest,
                       'occurrences': sum(len(s['occurrences']) for s in packet['sources'].values()),
-                      'context_stats': packet['payload'].get('context_stats')})
+                      'context_stats': packet['payload'].get('context_stats'),
+                      'progressive_review': packet['payload'].get('progressive_review')})
             show(campaign.summary())
         elif args.command == 'review-many':
             pairs = campaign.prepare_many(fresh,audit,args.packets,args.limit,
-                                          args.max_payload_chars)
+                                          args.max_payload_chars, progressive=args.progressive)
             if pairs:
                 wave = fingerprint([digest for digest,_ in pairs])[:16]
                 out = state/'outgoing'/('review-wave-'+wave+'.zip')
@@ -543,7 +596,8 @@ def execute(args, state, library):
                       'english_chars_before_sharing':index['english_chars_before_sharing'],
                       'english_chars_after_sharing':index['english_chars_after_sharing'],
                       'shared_windows':index['shared_windows'],
-                      'fresh_audit_requests':audit.client.requests})
+                      'fresh_audit_requests':audit.client.requests,
+                      'progressive_stages':dict(Counter(p['payload'].get('progressive_review', {}).get('stage', 'expanded') for _,p in pairs))})
             show(campaign.summary())
         elif args.command in {'apply','apply-many'}:
             reply = json.load(sys.stdin) if str(args.reply) == '-' else json.loads(
@@ -587,10 +641,12 @@ def main():
     review = sub.add_parser('review')
     review.add_argument('--limit', type=int, default=20)
     review.add_argument('--max-payload-chars', type=int, default=120000)
+    review.add_argument('--progressive', action='store_true', help='Start with one adaptive anchor; abstentions receive wide review')
     many = sub.add_parser('review-many', help='Prepare or re-export a private ZIP of independent reviews')
     many.add_argument('--packets',type=int,default=8)
     many.add_argument('--limit',type=int,default=20,help='Max occurrences per packet')
     many.add_argument('--max-payload-chars',type=int,default=120000)
+    many.add_argument('--progressive', action='store_true', help='Start with compact reviews; prioritize saved wide fallbacks')
     apply = sub.add_parser('apply')
     apply.add_argument('reply', type=Path, help='JSON path or - for stdin')
     bulk = sub.add_parser('apply-many',help='Import an array of complete per-packet replies')
