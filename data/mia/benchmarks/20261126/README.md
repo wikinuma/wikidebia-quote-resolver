@@ -17,3 +17,7 @@ The 100-case historical decision memory remains at 38/100. Do not mix
 candidate authentication with semantic success. Use this baseline for paired
 comparisons with unchanged inputs, and use historical accepted fragment
 coordinates only as evaluation labels, never retrieval hints.
+
+Preservation run 45805152874 independently checked both SHA-256 digests,
+matched the 50 cases and committed the redacted files at 36cb02f. The temporary
+write-enabled import workflow and encrypted review transport have been removed.
