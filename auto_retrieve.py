@@ -176,7 +176,7 @@ class Retrieval:
         self.local_index=local_index
         self.refined=refined
         self.chapter_catalog=tuple(chapter_catalog)
-        self.direct_cache=DirectAlignmentCache()
+        self.direct_cache=DirectAlignmentCache(store=work_library.alignment_store if work_library is not None else None)
         self.work_library=work_library
         self.strict_link_policy=strict_link_policy
         self.semantic_index=semantic_index
@@ -341,7 +341,8 @@ class Retrieval:
                 fallback=rank_short_windows(quote,docs); candidates=fallback['candidates']
                 row['lexical_fallback']={k:v for k,v in fallback.items() if k!='candidates'}
             aligned=automatic_alignment(quote,source,list(self.source_documents.values()),docs,
-                                      (entry['source_title'],entry['target_title']),(entry['authors'],))
+                                      (entry['source_title'],entry['target_title']),(entry['authors'],),
+                                      alignment_cache=self.direct_cache if self.refined else None)
             row.update(target_provider='mia',target_scope=info['scope'],candidates=candidates,section_alignment=aligned,
                        status='catalog_candidate_review_required' if candidates or aligned['candidates'] else 'catalog_no_candidate')
             return self.semantic_sidecar(row,quote,docs)
@@ -491,7 +492,8 @@ class Retrieval:
         if self.refined and not aligned['candidates']:
             structural=automatic_alignment(quote,source,fr_docs,docs,
                                         (route['fr_title'],route['en_title'],nav['input'].get('work','')),
-                                        (meta['fr'].get('authors',''),meta['en'].get('authors','')))
+                                        (meta['fr'].get('authors',''),meta['en'].get('authors','')),
+                                        alignment_cache=self.direct_cache)
             if structural['candidates'] or aligned['status']=='not_applicable': aligned=structural
         if aligned['candidates']:
             aligned['evaluation']=evaluation(aligned['candidates'],case,info['provider'])
@@ -509,7 +511,10 @@ def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,ch
     r=Retrieval(client,max_pages,catalog,local_index,refined,chapter_catalog,semantic_index,toc_matcher,hybrid,work_library,strict_link_policy)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
-    return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
+    alignment_stats=({'alignment_stats':{**work_library.alignment_store.stats,
+                      'alignment_memory_hits':r.direct_cache.hits,
+                      'alignment_computations':r.direct_cache.computations}} if work_library is not None else {})
+    return redact_text({**alignment_stats,'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
                         'cases':rows,'counts':counts,'requests':client.requests,'cache_hits':client.hits,
                         'http_events':client.events,'scope':'automatic routes with optional researched catalog; no complete quote or rights approved' if catalog else 'automatically discovered bounded documents; no complete quote or rights approved'})
 
@@ -578,7 +583,7 @@ def execute(a,local_index):
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     summary={k:report[k] for k in ('counts','requests','cache_hits','scope','auto_publish')}
-    for key in ('work_library_stats','encoder_stats'):
+    for key in ('work_library_stats','encoder_stats','alignment_stats'):
         if key in report: summary[key]=report[key]
     summary['cases']=[{'id':r['id'],'navigation_status':r['navigation_status'],'status':r['status'],
                       'source_status':r.get('source',{}).get('status'),'source_matches':len(r.get('source',{}).get('occurrences',[])),

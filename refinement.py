@@ -6,6 +6,7 @@ quotation. Raw extracted wording and all alternatives remain available.
 from collections import OrderedDict
 from alignment import align_sections, text_and_starts
 from resolver import norm, sha
+from alignment_store import alignment_key
 
 
 def select_hit_metadata(source, expected_url):
@@ -61,20 +62,25 @@ def select_source_hit(source, docs, expected_url):
 
 
 class DirectAlignmentCache:
-    def __init__(self,max_entries=16):
+    def __init__(self,max_entries=16,store=None):
         self.entries=OrderedDict()
+        self.store=store
         self.max_entries=max_entries
         self.hits=0
         self.computations=0
 
-    def get(self,fr,en,kind):
-        key=(fr.url,fr.digest,en.url,en.digest,kind)
+    def get(self,fr,en,kind,max_cells=250_000):
+        key=alignment_key(fr,en,kind,max_cells)
         if key in self.entries:
             self.hits+=1
             self.entries.move_to_end(key)
             return self.entries[key]
-        result=align_sections(fr,en,kind)
-        self.computations+=1
+        result=self.store.load(key) if self.store is not None else None
+        if result is None:
+            result=align_sections(fr,en,kind,max_cells)
+            self.computations+=1
+            if self.store is not None:
+                self.store.save(key,result)
         self.entries[key]=result
         if len(self.entries)>self.max_entries:
             self.entries.popitem(last=False)

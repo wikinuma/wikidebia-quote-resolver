@@ -134,7 +134,7 @@ def align_sections(fr,en,kind='paragraph',max_cells=250_000):
             'cost':round(costs[n][m],5),'cells':(n+1)*(m+1),'unit':kind,'length_ratio':round(ratio,4)}
 
 
-def aligned_candidates(quote,fr,en,kind='paragraph',max_cells=250_000):
+def aligned_candidates(quote,fr,en,kind='paragraph',max_cells=250_000,alignment_cache=None):
     matches,truncated=exact_occurrences(quote,fr)
     result={'method':'monotone_length_anchors_v1','fr_occurrences':matches,'occurrences_truncated':truncated,
             'candidates':[],'auto_publish':False,'scope':'caller-identified parallel section; not proof of fidelity'}
@@ -143,7 +143,8 @@ def aligned_candidates(quote,fr,en,kind='paragraph',max_cells=250_000):
         return result
     if truncated or len(matches)>1:
         result['status']='ambiguous_source_occurrence'; return result
-    alignment=align_sections(fr,en,kind,max_cells)
+    alignment=(align_sections(fr,en,kind,max_cells) if alignment_cache is None
+               else alignment_cache.get(fr,en,kind,max_cells))
     result['alignment']={k:v for k,v in alignment.items() if k!='links'}
     if alignment['status']!='aligned_candidates_only': result['status']=alignment['status']; return result
     hit=matches[0]; etext,_=text_and_starts(en)

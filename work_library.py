@@ -160,6 +160,7 @@ class WorkLibrary:
         self.path.parent.mkdir(parents=True,exist_ok=True)
         self.db=sqlite3.connect(self.path,timeout=30)
         self.clock=clock
+        self._alignment_store=None
         self.stats={'work_hits':0,'work_misses':0,'work_learned':0,'chapter_hits':0,'chapter_misses':0,'chapter_learned':0}
         with self.db:
             v=self.db.execute('PRAGMA user_version').fetchone()[0]
@@ -177,6 +178,13 @@ class WorkLibrary:
 
     def __exit__(self,*exc):
         self.db.close()
+
+    @property
+    def alignment_store(self):
+        if self._alignment_store is None:
+            from alignment_store import AlignmentStore
+            self._alignment_store=AlignmentStore(self.db)
+        return self._alignment_store
 
     def learn(self,nav,index_fingerprint=None):
         entry=project_route(nav,index_fingerprint)
