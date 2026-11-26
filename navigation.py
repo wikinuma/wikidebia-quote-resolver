@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from resolver import API, WD_API, ROOT, clean, norm, sha
+from pilot_full import recorded_events, request_error_kind
 from pilot_full import PilotClient, WR, html_url, soup, wr_title, wr_interlanguage, replay_mismatches
 
 MIA_HOSTS={'marxists.org','www.marxists.org'}
@@ -197,8 +198,7 @@ def title_lookup(client,title):
 
 def error_kind(exc):
     # No raw wikitext, source prose, or server error bodies in public reports.
-    if isinstance(exc,ValueError) and re.fullmatch(r'[a-z_]+(?:=\d+)?',str(exc)): return str(exc)
-    return type(exc).__name__
+    return request_error_kind(exc)
 
 
 def wr_meta(client,lang,title):
@@ -424,12 +424,7 @@ def main():
     summary={k:v for k,v in report.items() if k!='http_events'}
     rc=int(not any(r['status'] in ('mia_route_candidate','wikirouge_route_candidate') for r in report['cases']))
     if a.replay:
-        expected={}
-        for e in c.events:
-            old=expected.get(e['request_url'])
-            if old and any(old.get(k)!=e.get(k) for k in ('status','sha256','final_url')):
-                raise RuntimeError('inconsistent_live_response')
-            expected[e['request_url']]=e
+        expected=recorded_events(c.events)
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
         replay=run_navigation(replay_client,cases)
         same=all(report[k]==replay[k] for k in ('smw_property_probes','cases','counts','auto_publish'))

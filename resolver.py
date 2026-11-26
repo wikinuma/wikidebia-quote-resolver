@@ -38,6 +38,10 @@ def valid_url(url):
         return False
 
 
+class RequestBudgetExceeded(RuntimeError):
+    """A local request limit, not evidence of source unavailability."""
+
+
 class Client:
     """Bounded public GETs, disk cache, no cookies or credentials from caller."""
     def __init__(self, cache, budget=70, delay=.5, ttl=30*86400):
@@ -59,7 +63,7 @@ class Client:
         request_url = url
         for _ in range(5):
             if not valid_url(url): raise ValueError(f'Redirect not allowed: {url}')
-            if self.requests >= self.budget: raise RuntimeError('request budget exhausted')
+            if self.requests >= self.budget: raise RequestBudgetExceeded('request budget exhausted')
             time.sleep(max(0, self.delay - (time.monotonic()-self.last)))
             self.requests += 1; self.last = time.monotonic()
             with requests.Session() as session:
