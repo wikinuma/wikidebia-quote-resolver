@@ -8,6 +8,8 @@ on:
       - 'tests/test_prepare_citations.py'
       - 'boundary_stress.py'
       - 'reviewed_boundaries.py'
+      - 'transcription_compare.py'
+      - 'tests/test_transcription_compare.py'
       - 'tests/test_reviewed_boundaries.py'
       - 'data/mia/benchmarks/20261126/reviewed-boundaries.json'
       - 'tests/test_boundary_stress.py'
