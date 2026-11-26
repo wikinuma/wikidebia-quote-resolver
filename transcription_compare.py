@@ -6,9 +6,11 @@ documentary comparison, not evidence that the French quotation is equivalent
 or that either transcription is free of errors. Preserve both exact passages.
 """
 from collections import Counter
+from copy import deepcopy
 from urllib.parse import quote
 
 from alignment import text_and_starts
+from alignment_store import encode
 from citation_registry import check_target
 from evidence_audit import STATE_MIRROR_TITLE
 from review_context import exact_target
@@ -25,7 +27,7 @@ def compact(text):
     return ''.join(text[i] for i in offsets), offsets
 
 
-def boundaries(text, offsets):
+def boundaries(offsets):
     return {i for i in range(1,len(offsets)) if offsets[i]-offsets[i-1] > 1}
 
 
@@ -77,8 +79,8 @@ def compare_spacing(original, target, alternate, *, max_passage_chars=15000):
     alt_key, alt_offsets = compact(actual)
     if alt_key != key:
         raise ValueError('transcription_comparison_identity_mismatch')
-    old = boundaries(raw, original_offsets)
-    new = boundaries(actual, alt_offsets)
+    old = boundaries(original_offsets)
+    new = boundaries(alt_offsets)
     added = new-old
     if not old <= new or any(not(key[i-1].isalpha() and key[i].isalpha()) for i in added):
         return {'status':'mixed_spacing_differences'}
@@ -123,3 +125,111 @@ def summarize_transcriptions(targets, load_document):
     return {'distinct_registered_targets':len(seen),'statuses':dict(counts),
             'added_word_boundaries':added,'semantic_equivalence':None,
             'rights_approved':0,'auto_publish':False}
+
+
+def supplement_packet(packet, load_document, *, max_payload_chars=120000):
+    """Add exact published spacing variants without displacing saved anchors.
+
+    Only the original seed ranges are compared, not arbitrary expanded
+    windows. An unsuccessful comparison never removes the ordinary candidate.
+    No existing packet is modified; the caller seals the returned packet.
+    """
+    if max_payload_chars < 1:
+        raise ValueError('invalid_packet_limits')
+    packet = deepcopy(packet)
+    payload = packet['payload']
+    if 'transcription_comparison' in payload:
+        raise ValueError('packet_already_compared')
+    targets = packet['targets']
+    passages = payload['passages']
+    documents = payload['documents']
+    rows = {row['id']:row for work in payload['groups']
+            for chapter in work['chapters'] for row in chapter['citations']}
+    by_target = {t['candidate_key']:pid for pid,t in targets.items()}
+    counts = Counter()
+    added_candidates = 0
+    added_characters = 0
+    cache = {}
+
+    def load(url,lang):
+        key = (url,lang)
+        if key not in cache:
+            cache[key] = load_document(url,lang)
+        return cache[key]
+
+    def next_id(mapping, prefix):
+        n = len(mapping)+1
+        while prefix+str(n) in mapping:
+            n += 1
+        return prefix+str(n)
+
+    for qid, source in packet['sources'].items():
+        notes = []
+        for pid in list(source['candidates']):
+            target = targets[pid]
+            url = target['document']['url']
+            if url not in DOCUMENTED_PAIRS:
+                continue
+            doc = load(url,'en')
+            if isinstance(doc,dict):
+                counts['original_unavailable'] += 1
+                continue
+            check_target(doc,target)
+            base = target['char_start']
+            ranges = source.get('seed_ranges',{}).get(
+                pid, [[0,target['char_end']-base]])
+            for lo,hi in ranges:
+                if not 0 <= lo < hi <= target['char_end']-base:
+                    raise ValueError('invalid_transcription_seed_range')
+                seed = exact_target(doc,base+lo,base+hi)
+                result = compare_documented(seed,load)
+                counts[result['status']] += 1
+                if result['status'] != 'spacing_variant_requires_review':
+                    continue
+                alt = result['alternate_target']
+                key = alt['candidate_key']
+                apid = by_target.get(key)
+                if apid is None:
+                    adoc = load(alt['document']['url'],'en')
+                    check_target(adoc,alt)
+                    text,_ = text_and_starts(adoc)
+                    excerpt = text[alt['char_start']:alt['char_end']]
+                    did = next((passages[p]['document'] for p,t in targets.items()
+                                if t['document'] == alt['document']),None)
+                    if did is None:
+                        did = next_id(documents,'d')
+                        documents[did] = adoc.url
+                    apid = next_id(targets,'p')
+                    by_target[key] = apid
+                    targets[apid] = alt
+                    passages[apid] = {'document':did,'length':len(excerpt),'text':excerpt}
+                    added_characters += len(excerpt)
+                if apid not in source['candidates']:
+                    source['candidates'].append(apid)
+                    added_candidates += 1
+                alt_range = [0,alt['char_end']-alt['char_start']]
+                if 'seed_ranges' in source:
+                    dest = source['seed_ranges'].setdefault(apid,[])
+                    if alt_range not in dest:
+                        dest.append(alt_range)
+                note = {'original_candidate':pid,'original_range':[lo,hi],
+                        'alternate_candidate':apid,'alternate_range':alt_range,
+                        'added_word_boundaries':result['added_word_boundaries'],
+                        'status':result['status']}
+                if note not in notes:
+                    notes.append(note)
+        if notes:
+            rows[qid]['candidates'] = list(source['candidates'])
+            if 'seed_ranges' in source:
+                rows[qid]['seed_ranges'] = deepcopy(source['seed_ranges'])
+            rows[qid]['transcription_variants'] = notes
+    payload['transcription_comparison'] = {
+        'scope':'documented_pairs_only_original_anchors_preserved',
+        'statuses':dict(counts),
+        'additional_candidate_offers':added_candidates,
+        'additional_english_characters':added_characters,
+    }
+    if len(encode(payload)) > max_payload_chars:
+        # Optional comparison must never displace an original anchor.
+        raise ValueError('review_payload_limit_split_input')
+    return packet
