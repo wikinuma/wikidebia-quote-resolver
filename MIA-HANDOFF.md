@@ -23,7 +23,7 @@ The second review ledger records 6 complete, 1 boundary adjustment, 1 explicit o
 ## Next priorities
 
 1. Verify and reconcile the stacked experimental PRs #3–#8 before merging into experiment/pilot-v04 (never production or wiki writes). The legacy public pilot previously failed for documentary incompleteness; distinguish old failures and real regressions.
-2. Avoid rerunning the entire cohort. Reuse the decision registries, diagnose the three nonreproduced cases, investigate unresolved cases by work/edition, and reserve AI for compact uncertain review packets. A failed HTML hash is not permission to accept changed text; explicitly verify stable document revision and exact span or mark changed/unavailable. Review license/edition separately.
+2. Avoid rerunning the entire cohort. Retain decision registries only as historical evaluation evidence, diagnose unresolved sources by work/edition, and reserve AI for compact uncertain review packets. A failed HTML hash is not permission to accept changed text; explicitly verify stable document revision and exact span or mark changed/unavailable. Review license/edition separately.
 3. Compare passage coverage, verified-equivalence rates, false positives, review words, actual measured AI tokens if available, network requests/decoded bytes and duration on a genuinely work-disjoint MIA holdout if possible. Do not equate review words with quota.
 4. Persist bibliographic/document caches and implement bounded incremental Wikirouge index updates using public MediaWiki revisions, no SSH or mass re-export. Keep original snapshot provenance.
 5. Propose production architecture only; no integration into wikidebates/wikidebia-project, no wiki edits, no generated translations presented as published.

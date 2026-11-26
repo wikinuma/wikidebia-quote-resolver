@@ -16,17 +16,13 @@ from embedding import LocalEncoder,candidate_windows,semantic_rank
 from evidence_audit import Auditor,span_receipt
 from pilot_full import PilotClient
 from resolver import ROOT,norm,rank,sha
-from review_memory import ACCEPT,load_effective_memory
+from benchmark_fixtures import load_semantic_cases
 from revision_receipt import RevisionRefresher
 from sentence_index import SentenceVectorIndex
 from window_rank import rank_short_windows
 
 def label(row):
-    for k in ('restored_review','second','first'):
-        p=row.get(k,{})
-        if p.get('decision')==row['latest_decision'] and p.get('fragments'):
-            return p
-    raise ValueError('missing_historical_label')
+    return row['label']
 
 
 def revalidate(doc,p,refresher):
@@ -99,8 +95,7 @@ def main():
     if not 0<=a.max_exhaustive_windows<=3000: p.error('invalid exhaustive budget')
     a.cache.mkdir(parents=True,exist_ok=True)
     a.out.parent.mkdir(parents=True,exist_ok=True)
-    memory=load_effective_memory(ROOT/'data/mia')
-    cases=[c for c in memory['cases'] if c['latest_decision'] in ACCEPT]
+    cases=load_semantic_cases()
     assert len(cases)==38
     cases.sort(key=lambda c:c['id'])
     rows=[];ready=[];start=time.monotonic()

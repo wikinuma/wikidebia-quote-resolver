@@ -22,7 +22,7 @@ from navigation import canonical_mia, generic_work_name, error_kind
 from pilot_full import PilotClient
 from resolver import ROOT,norm,sha
 from review_export import select_primary
-from review_memory import load_effective_memory,check_hash
+from benchmark_fixtures import load_prior_cohort,check_hash
 from revision_receipt import RevisionRefresher
 from wikirouge_index import DEFAULT,LIMIT
 from wikirouge_incremental import open_current,HISTORY
@@ -31,7 +31,6 @@ INVENTORY_SCHEMA='wikidebia-fresh-mia-inventory-1'
 REPORT_SCHEMA='wikidebia-fresh-mia-holdout-1'
 CATALOG=ROOT/'bibliographic-catalog.json'
 CHAPTERS=ROOT/'chapter-catalog.json'
-MEMORY=ROOT/'data/mia'
 MAX_REVIEW_CHARACTERS=15000
 
 
@@ -61,10 +60,10 @@ def identity(meta,index):
             'uncertain':not bool(labels and norm(meta.get('authors',''))) or len(ids)>LIMIT or len(roots)>1}
 
 
-def select(cases,memory,index,catalog,chapters,legacy,sample=50):
+def select(cases,prior,index,catalog,chapters,legacy,sample=50):
     known_pages,known_labels,known_ids=map(set,legacy)
     quote_hashes=set();template_hashes=set();urls=set();roots=set()
-    for c in memory['cases']:
+    for c in prior['cases']:
         ref=c['citation_ref']
         quote_hashes.add(ref['quote_sha256']);template_hashes.add(ref['template_sha256'])
         known_ids.add(c['id']);known_pages.add(norm(c['wiki_title']))
@@ -124,13 +123,13 @@ def select(cases,memory,index,catalog,chapters,legacy,sample=50):
                    'scope':'exact fingerprint exclusion; novelty by observable metadata signals, not proof of disjoint works or random sampling'}
 
 
-def settings(index,memory,catalog,chapters):
+def settings(index,prior,catalog,chapters):
     return {'base_snapshot_sha256':index.base_fingerprint,'index_chain_sha256':index.fingerprint,
-            'memory_sha256':sha(json.dumps(memory,sort_keys=True,ensure_ascii=True,separators=(',',':')).encode()),
+            'prior_cohort_sha256':sha(json.dumps(prior,sort_keys=True,ensure_ascii=True,separators=(',',':')).encode()),
             'catalog_sha256':sha(CATALOG.read_bytes()),'chapter_catalog_sha256':sha(CHAPTERS.read_bytes())}
 
 
-def discover(client,index,memory,catalog,chapters,sample,scan_pages):
+def discover(client,index,prior,catalog,chapters,sample,scan_pages):
     start=time.monotonic()
     linked,queries=link_pages(client,rows_per_query=200,max_batches=100)
     rows,scan=scan_mia_pages(client,linked,scan_pages)
@@ -141,21 +140,26 @@ def discover(client,index,memory,catalog,chapters,sample,scan_pages):
             raise ValueError('conflicting_inventory_identity')
         by_id[c['id']]=c
     cases=sorted(by_id.values(),key=lambda c:c['id'])
-    chosen,selection=select(cases,memory,index,catalog,chapters,known_examples(DEFAULT),sample)
+    chosen,selection=select(cases,prior,index,catalog,chapters,known_examples(DEFAULT),sample)
     issues=bool(scan['issues'] or scan['page_cap_reached'] or any(q.get('error') or (q['batch']==100 and q.get('more')) for q in queries))
     return {'schema':INVENTORY_SCHEMA,'scope':'explicit_mia_only','status':'bounded_partial_inventory' if issues else 'inventory_complete_within_api_scope',
-            'inputs':settings(index,memory,catalog,chapters),'requested_sample':sample,
+            'inputs':settings(index,prior,catalog,chapters),'requested_sample':sample,
             'discovery':{**scan,'queries':queries,'raw_mia_occurrences':len(rows),'distinct_pinned_occurrences':len(cases),
                          'network_requests':client.requests,'decoded_network_body_bytes':client.network_body_bytes,
                          'elapsed_seconds':round(time.monotonic()-start,3),'model_calls':0},
             'selection':selection,'cases':cases,'sample':chosen,'auto_publish':False}
 
 
-def recheck_inventory(inv,index,memory,catalog,chapters,sample):
+def recheck_inventory(inv,index,prior,catalog,chapters,sample):
+    expected=settings(index,prior,catalog,chapters)
+    # The frozen 2026-11-26 inventory predates the evaluation-only split.
+    if 'memory_sha256' in inv['inputs'] and 'prior_cohort_sha256' not in inv['inputs']:
+        expected.pop('prior_cohort_sha256')
+        expected['memory_sha256']=prior['legacy_snapshot_sha256']
     if (inv['schema']!=INVENTORY_SCHEMA or inv['scope']!='explicit_mia_only' or inv['auto_publish'] is not False
-            or inv['inputs']!=settings(index,memory,catalog,chapters) or inv['requested_sample']!=sample):
+            or inv['inputs']!=expected or inv['requested_sample']!=sample):
         raise ValueError('inventory_input_mismatch')
-    selected,diag=select(inv['cases'],memory,index,catalog,chapters,known_examples(DEFAULT),sample)
+    selected,diag=select(inv['cases'],prior,index,catalog,chapters,known_examples(DEFAULT),sample)
     if selected!=inv['sample'] or diag!=inv['selection'] or len(selected)!=sample:
         raise ValueError('sample_not_reproducible_or_incomplete')
     return selected
@@ -278,12 +282,12 @@ def main():
     a=p.parse_args()
     if not 50<=a.sample<=80 or not 1<=a.scan_pages<=3000 or bool(a.certificate)!=bool(a.packet):
         p.error('invalid bounds or private packet options')
-    memory=load_effective_memory(MEMORY);catalog=load_catalog(CATALOG);chapters=load_chapters(CHAPTERS)
+    prior=load_prior_cohort();catalog=load_catalog(CATALOG);chapters=load_chapters(CHAPTERS)
     with open_current() as index,tempfile.TemporaryDirectory(prefix='fresh-mia-') as tmp:
         cache=Path(tmp)
         if a.stage=='discover':
             if a.inventory.exists(): raise FileExistsError(a.inventory)
-            inv=discover(PilotClient(cache/'discover',budget=400+(a.scan_pages+9)//10+50),index,memory,catalog,chapters,a.sample,a.scan_pages)
+            inv=discover(PilotClient(cache/'discover',budget=400+(a.scan_pages+9)//10+50),index,prior,catalog,chapters,a.sample,a.scan_pages)
             write(a.inventory,inv)
             digest=sha(a.inventory.read_bytes())
             if a.inventory_sha:
@@ -294,7 +298,7 @@ def main():
         if a.inventory_sha is None: p.error('retrieval requires the frozen inventory digest')
         raw=a.inventory.read_bytes()
         if sha(raw)!=a.inventory_sha.read_text().strip(): raise ValueError('inventory_hash_mismatch')
-        inv=json.loads(raw);cases=recheck_inventory(inv,index,memory,catalog,chapters,a.sample)
+        inv=json.loads(raw);cases=recheck_inventory(inv,index,prior,catalog,chapters,a.sample)
         return retrieve(cases,index,inv,sha(raw),catalog,chapters,cache,a.out,a.certificate,a.packet)
 
 if __name__=='__main__':

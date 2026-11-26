@@ -13,7 +13,7 @@ not a new crawl; the exact sample is frozen. The encrypted review was a
 temporary optional transport, not a semantic acceptance. No need to review
 all quotations manually for algorithm development.
 
-The 100-case historical decision memory remains at 38/100. Do not mix
+The frozen historical evaluation had 38/100 complete or adjusted equivalents. Do not mix
 candidate authentication with semantic success. Use this baseline for paired
 comparisons with unchanged inputs, and use historical accepted fragment
 coordinates only as evaluation labels, never retrieval hints.
@@ -21,3 +21,5 @@ coordinates only as evaluation labels, never retrieval hints.
 Preservation run 45805152874 independently checked both SHA-256 digests,
 matched the 50 cases and committed the redacted files at 36cb02f. The temporary
 write-enabled import workflow and encrypted review transport have been removed.
+
+The operational quotation memory has been removed. prior-cohort.json keeps only the 100 frozen inputs for exclusion/reproducibility; semantic-labels.json contains 38 evaluation-only target receipts, never read by the retrieval engine. The migration source commit is 682d9a5e4830e799abcfa60ac81e0b68b8f2a651. No accumulating quotation registry or reuse lookup is maintained.

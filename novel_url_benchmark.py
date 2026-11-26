@@ -20,7 +20,7 @@ from fresh_mia_holdout import review_primary
 from navigation import canonical_mia
 from pilot_full import PilotClient
 from resolver import ROOT,norm,sha
-from review_memory import load_effective_memory,check_hash
+from benchmark_fixtures import load_prior_cohort,check_hash
 from revision_receipt import RevisionRefresher
 from sentence_index import SentenceVectorIndex
 from wikirouge_incremental import open_current
@@ -74,8 +74,7 @@ def frozen_sample():
     raw=BASE.read_bytes()
     if sha(raw)!=PIN: raise ValueError('inventory_pin_mismatch')
     inventory=json.loads(raw)
-    memory=load_effective_memory(ROOT/'data/mia')
-    previous=memory['cases']+inventory['sample']
+    previous=load_prior_cohort()['cases']+inventory['sample']
     if len(previous)!=150 or len({c['citation_ref']['quote_sha256'] for c in previous})!=150:
         raise ValueError('prior_cohort_mismatch')
     selected,diag=select_novel(inventory['cases'],previous)
