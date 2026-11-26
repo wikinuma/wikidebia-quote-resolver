@@ -1,0 +1,532 @@
+{
+  "schema": "wikidebia-independent-holdout-compact-review-1",
+  "engine_commit": "d5b3b03b62661be868d47cf53d14b93bd9d2dcc3",
+  "benchmark_commit": "8a3552e1802fd66f512f5150717534b41cd9cc85",
+  "benchmark_run_id": 45840438647,
+  "report_artifact_id": 15128383240,
+  "report_sha256": "55d890bc4e7bcc92aa8f3ce198c7f5963706f11175d1f9010b5e9603e3c2ce3c",
+  "sample_sha256": "d21995e1bd6fd165ca69ece369ee10f129bbd436e996b4b78ca0eb36a2722f76",
+  "reauthentication_run_id": 45852479148,
+  "packet_sha256": "0056e71509680c3672a929736259f199f00e2ee0284587620b796efcb5277db3",
+  "blind_decisions_sha256": "c2777f4615f6456172f9fdb99fe0681bd50946ebd7c32bbb9ffffe0e460f4960",
+  "full_local_ledger_sha256": "ba915698d310e8bacc3d3cafb4bde92cf3dbc3d0e2b8fdc035a2bbebdc301c43",
+  "reviewer": "ChatGPT",
+  "scope": "39 authenticated paired first candidates and 11 cases with neither candidate; partial arm blinding, exact spans, no replacement search, not human gold or rights approval",
+  "arm_order": "X/Y order is baseline/integrated when last hex digit of sha256('holdout-review-v1:'+id) is odd, integrated/baseline otherwise",
+  "coordinates": "Relative Python character offsets in the exact first candidate text identified by the pinned report; C uses its entire span; O uses two fragments joined by an explicit omission marker, not inferred missing text.",
+  "labels": {
+    "C": "complete_equivalent",
+    "T": "boundary_adjustment",
+    "O": "explicit_omission_adjustment",
+    "V": "edition_or_transcription_difference",
+    "P": "incomplete_corresponding_passage",
+    "W": "wrong_passage"
+  },
+  "counts": {
+    "baseline": {
+      "C": 8,
+      "T": 6,
+      "O": 1,
+      "V": 4,
+      "P": 3,
+      "W": 17,
+      "no_candidate": 11
+    },
+    "integrated": {
+      "C": 7,
+      "T": 13,
+      "O": 2,
+      "V": 4,
+      "P": 8,
+      "W": 5,
+      "no_candidate": 11
+    }
+  },
+  "transitions": {
+    "both_accepted": 14,
+    "baseline_only": 1,
+    "integrated_only": 8,
+    "neither": 27
+  },
+  "accepted_by_author": {
+    "Karl Kautsky": [
+      0,
+      1
+    ],
+    "Lénine": [
+      8,
+      12
+    ],
+    "Léon Trotsky": [
+      6,
+      8
+    ],
+    "Rosa Luxemburg": [
+      1,
+      1
+    ],
+    "Victor Serge": [
+      0,
+      0
+    ]
+  },
+  "cases": [
+    {
+      "review_number": 1,
+      "id": "inventory-023fa2727bdae91cd028",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither text includes the income-equality premise and enumeration of remuneration modes."
+    },
+    {
+      "review_number": 2,
+      "id": "inventory-056c4cdf867d3e4064b0",
+      "X": "V",
+      "Y": "P",
+      "note": "X adds the material alternative of downfall for the children; Y also omits the final sentence."
+    },
+    {
+      "review_number": 3,
+      "id": "inventory-0ff094f7db0ce659ef1f",
+      "X": "P",
+      "Y": "P",
+      "note": "Both include most of the intellectual-proletarian passage but omit the final rhetorical sentence."
+    },
+    {
+      "review_number": 4,
+      "id": "inventory-4c7dacc8eef5c1a0452e",
+      "X": "P",
+      "Y": "P",
+      "note": "X lacks the opening expansion and Y lacks the entire ensuing crisis and crash."
+    },
+    {
+      "review_number": 5,
+      "id": "inventory-9f54e4c93d586fbcc9a6",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the discussion of education, release from labour, or machinery and ancient Greece."
+    },
+    {
+      "review_number": 6,
+      "id": "inventory-a9c49b88fe7aafb919a0",
+      "X": "W",
+      "Y": "V",
+      "note": "Y is the corresponding sentence but omits the explicit crises and insecurity of existence; X is unrelated."
+    },
+    {
+      "review_number": 7,
+      "id": "inventory-4992f1a9434a40a777d1",
+      "X": "W",
+      "Y": "P",
+      "note": "Y contains the introductory uniformity proposition but not its subsequent argument; X is unrelated."
+    },
+    {
+      "review_number": 8,
+      "id": "inventory-b234109c94508e0c6690",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the workplace cooperation, discipline and productivity argument."
+    },
+    {
+      "review_number": 9,
+      "id": "inventory-b95f86482cb39305a6f0",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the beggars and Reformation example."
+    },
+    {
+      "review_number": 10,
+      "id": "inventory-becec48fdfce1e4eca72",
+      "X": "W",
+      "Y": "W",
+      "note": "Neither contains the three stated reasons and final alternative between collapse and overthrow."
+    },
+    {
+      "review_number": 11,
+      "id": "inventory-cb131bc737c4d0b33b44",
+      "X": "P",
+      "Y": "W",
+      "note": "X omits the opening proposition about the state as an instrument of the ruling classes; Y is unrelated."
+    },
+    {
+      "review_number": 12,
+      "id": "inventory-e36c49083adc22083581",
+      "X": "W",
+      "Y": "O",
+      "note": "Y contains the complete proposition with an explicitly omitted parenthesis and an extra following sentence.",
+      "Y_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 59,
+          "text_sha256": "3370e7325d37bb1b038ae6ca027d8b491d862e615c141b8a872db64450c3831b"
+        },
+        {
+          "relative_start": 102,
+          "relative_end": 715,
+          "text_sha256": "364879c2eac55105e64c4fd45c46aeae291386191060235423f12306f2da9801"
+        }
+      ]
+    },
+    {
+      "review_number": 13,
+      "id": "inventory-35c375e8ac62a1290c10",
+      "X": "C",
+      "Y": "T",
+      "note": "X contains the full passage; Y adds a following sentence. Source extraction has joined words; no silent text repair.",
+      "Y_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 1153,
+          "text_sha256": "9bfa1ecb0a4926951ee8f954a437bc06c39cc57c2b731d727ab157899113d871"
+        }
+      ]
+    },
+    {
+      "review_number": 14,
+      "id": "inventory-432cc671e6d6d8dd3e05",
+      "X": "T",
+      "Y": "T",
+      "note": "Both contain the whole passage after an extra introductory clause; Y also adds a following sentence. Feudalism/serfdom treated as contextually equivalent.",
+      "X_fragments": [
+        {
+          "relative_start": 72,
+          "relative_end": 1676,
+          "text_sha256": "b0100f4eecf7406ab69deaa1c124a0f5fb6666c0081931584cadbc027e27175b"
+        }
+      ],
+      "Y_fragments": [
+        {
+          "relative_start": 72,
+          "relative_end": 1676,
+          "text_sha256": "b0100f4eecf7406ab69deaa1c124a0f5fb6666c0081931584cadbc027e27175b"
+        }
+      ]
+    },
+    {
+      "review_number": 15,
+      "id": "inventory-b3d575fff739568dfae4",
+      "X": "T",
+      "Y": "T",
+      "note": "Both contain the complete passage after the preceding sentence corresponding to the editorial setup.",
+      "X_fragments": [
+        {
+          "relative_start": 131,
+          "relative_end": 1132,
+          "text_sha256": "d51dc5425ddd7963a15b9819eb59f7802191f3e38067055fe055b6b72719ba86"
+        }
+      ],
+      "Y_fragments": [
+        {
+          "relative_start": 131,
+          "relative_end": 1132,
+          "text_sha256": "d51dc5425ddd7963a15b9819eb59f7802191f3e38067055fe055b6b72719ba86"
+        }
+      ]
+    },
+    {
+      "review_number": 16,
+      "id": "inventory-fbb8afb3215b08b559a0",
+      "X": "C",
+      "Y": "C",
+      "note": "Equivalent complete sentence."
+    },
+    {
+      "review_number": 17,
+      "id": "inventory-1fa38eea684245a32aca",
+      "X": "T",
+      "Y": "T",
+      "note": "Both contain the complete paragraph after a removable opening connective.",
+      "X_fragments": [
+        {
+          "relative_start": 13,
+          "relative_end": 1229,
+          "text_sha256": "76e58ffd1527dcd7a661687f3ca9f8e79907b09f4490e6eb94fee1b4a5ffecb7"
+        }
+      ],
+      "Y_fragments": [
+        {
+          "relative_start": 13,
+          "relative_end": 1229,
+          "text_sha256": "76e58ffd1527dcd7a661687f3ca9f8e79907b09f4490e6eb94fee1b4a5ffecb7"
+        }
+      ]
+    },
+    {
+      "review_number": 18,
+      "id": "inventory-77449dd25eb948956910",
+      "X": "T",
+      "Y": "T",
+      "note": "Both contain the whole French passage before the extended clause and numbered conditions.",
+      "X_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 240,
+          "text_sha256": "7a5bc117e5018f2b3ace44080e53ab16ac76f3c407cc85a81fdae5400830c360"
+        }
+      ],
+      "Y_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 240,
+          "text_sha256": "7a5bc117e5018f2b3ace44080e53ab16ac76f3c407cc85a81fdae5400830c360"
+        }
+      ]
+    },
+    {
+      "review_number": 19,
+      "id": "inventory-cbcb50ccd2dc846ade99",
+      "X": "C",
+      "Y": "W",
+      "note": "X covers the entire proposition; popular/national and idiomatic final expression noted. Y is a different passage."
+    },
+    {
+      "review_number": 20,
+      "id": "inventory-e4e2a99121a1e0307a64",
+      "X": "O",
+      "Y": "O",
+      "note": "Both contain the full quoted claim with a removable explicit omission and trailing second purpose.",
+      "X_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 99,
+          "text_sha256": "a40ac1b640b922ba3a31dd31728274d5b7cc86c8485b1dd2b0dd2012fa0e7717"
+        },
+        {
+          "relative_start": 106,
+          "relative_end": 147,
+          "text_sha256": "f8bc274e174d5a1fbf458b2a55154afc923a0d6f9a2f37cb79a6d71abc3b0fc2"
+        }
+      ],
+      "Y_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 99,
+          "text_sha256": "a40ac1b640b922ba3a31dd31728274d5b7cc86c8485b1dd2b0dd2012fa0e7717"
+        },
+        {
+          "relative_start": 106,
+          "relative_end": 147,
+          "text_sha256": "f8bc274e174d5a1fbf458b2a55154afc923a0d6f9a2f37cb79a6d71abc3b0fc2"
+        }
+      ]
+    },
+    {
+      "review_number": 21,
+      "id": "inventory-1f9c309eb9a20cb6550a",
+      "X": "T",
+      "Y": "C",
+      "note": "X adds a following sentence; Y covers the exact quoted paragraph. Singular/plural patent nuance recorded.",
+      "X_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 954,
+          "text_sha256": "f07740a0a695fbc61d3fefd2b7ef40ccea09f2ce940d81964cadc94954e602d3"
+        }
+      ]
+    },
+    {
+      "review_number": 22,
+      "id": "inventory-4cd249fb53c8db48dd9e",
+      "X": "T",
+      "Y": "P",
+      "note": "X contains the whole quoted proposition; remove enumerator corresponding to editorial bracket. Y omits its first sentence.",
+      "X_fragments": [
+        {
+          "relative_start": 9,
+          "relative_end": 467,
+          "text_sha256": "6e0124b7ad2ddb75e3dd1ba4a95a380efe3d43a05afaa931584b8e61e2e861be"
+        }
+      ]
+    },
+    {
+      "review_number": 23,
+      "id": "inventory-984c99729e57f89f4a3e",
+      "X": "W",
+      "Y": "T",
+      "note": "Y contains the entire quoted argument before two extra sentences; X is a different discussion.",
+      "Y_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 1174,
+          "text_sha256": "944cebac451e5c5c9cb85d80b592b65b10c0a28111cd15df904800397ca697d4"
+        }
+      ]
+    },
+    {
+      "review_number": 24,
+      "id": "inventory-aae211b848655b3a2c8e",
+      "X": "W",
+      "Y": "C",
+      "note": "Y is the complete matching paragraph; X is a different passage."
+    },
+    {
+      "review_number": 25,
+      "id": "inventory-7087f7a7de210a16f406",
+      "X": "V",
+      "Y": "V",
+      "note": "Both correspond but narrow former labourers to farm labourers and all Latvians to Latvian workers; conservative exclusion."
+    },
+    {
+      "review_number": 26,
+      "id": "inventory-e013d8001463086f39da",
+      "X": "C",
+      "Y": "P",
+      "note": "X contains the complete argument; Y omits the closing two sentences."
+    },
+    {
+      "review_number": 27,
+      "id": "inventory-7d252be965956aeed277",
+      "X": "C",
+      "Y": "C",
+      "note": "Both match the entire passage, including the internal explicit ellipsis and the final sentence."
+    },
+    {
+      "review_number": 28,
+      "id": "inventory-687c0acfa1161d890651",
+      "X": "W",
+      "Y": "C",
+      "note": "Y matches the entire list of diplomats, positions, affiliations and final claim."
+    },
+    {
+      "review_number": 29,
+      "id": "inventory-886c2d5a2c3ec334bbfb",
+      "X": "T",
+      "Y": "T",
+      "note": "Both contain the full argument after an extra opening connective.",
+      "X_fragments": [
+        {
+          "relative_start": 4,
+          "relative_end": 268,
+          "text_sha256": "2f56023982b7e86eb631c2b178b4b79d0b98db50c3f21603671e5232e6af91e5"
+        }
+      ],
+      "Y_fragments": [
+        {
+          "relative_start": 4,
+          "relative_end": 268,
+          "text_sha256": "2f56023982b7e86eb631c2b178b4b79d0b98db50c3f21603671e5232e6af91e5"
+        }
+      ]
+    },
+    {
+      "review_number": 30,
+      "id": "inventory-258203f60c311e242f24",
+      "X": "C",
+      "Y": "T",
+      "note": "X matches the whole passage; Y adds a preceding sentence. The source has an apparent typographical error, preserved.",
+      "Y_fragments": [
+        {
+          "relative_start": 163,
+          "relative_end": 1392,
+          "text_sha256": "a6ab7e8813cb82d22eaf4432658c1986fdbb2a5396f73e21b19fa3aa2e9b9ccd"
+        }
+      ]
+    },
+    {
+      "review_number": 31,
+      "id": "inventory-c853fe9ebf4f5bae86f2",
+      "X": "T",
+      "Y": "C",
+      "note": "X contains the whole passage with extraneous numbered material at the end; Y is complete.",
+      "X_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 1352,
+          "text_sha256": "6bc5a6ef86de465a751cf283b7cd1f2a3d015b32ac1b7bfbe856ded939db9477"
+        }
+      ]
+    },
+    {
+      "review_number": 32,
+      "id": "inventory-3019033393b1153798f5",
+      "X": "V",
+      "Y": "V",
+      "note": "Both correspond but the French source says ombre where the English says numbers; likely French transcription typo, not silently corrected."
+    },
+    {
+      "review_number": 33,
+      "id": "inventory-56747d2fb6279ea87ffd",
+      "X": "T",
+      "Y": "C",
+      "note": "X has a preceding extra sentence; Y contains the full passage. English explicitly includes family laws alongside marriage laws.",
+      "X_fragments": [
+        {
+          "relative_start": 97,
+          "relative_end": 644,
+          "text_sha256": "3f8b54111f061b7b96c7e45ad279bd8f721caf87270e9d15662300059dba2d1d"
+        }
+      ]
+    },
+    {
+      "review_number": 34,
+      "id": "inventory-766935cdfb39adf42594",
+      "X": "W",
+      "Y": "P",
+      "note": "Y lacks the first general proposition and uses a different characterization of the oligarchy; X is unrelated."
+    },
+    {
+      "review_number": 35,
+      "id": "inventory-966a8c99d0e35a2b6608",
+      "X": "W",
+      "Y": "T",
+      "note": "Y contains the full passage after a removable opening connective and before the next paragraph; X is unrelated.",
+      "Y_fragments": [
+        {
+          "relative_start": 18,
+          "relative_end": 667,
+          "text_sha256": "ba73de356d06ddb7aaa839dbd075862ee7002f2680be3c7b30e16e5c566f4d82"
+        }
+      ]
+    },
+    {
+      "review_number": 36,
+      "id": "inventory-d8d4938b3900ea488625",
+      "X": "W",
+      "Y": "C",
+      "note": "Y matches both sentences; X concerns a different argument."
+    },
+    {
+      "review_number": 37,
+      "id": "inventory-e31bdfadebfdc931a66e",
+      "X": "W",
+      "Y": "P",
+      "note": "Y corresponds but omits the final sentence about the Estonian Mensheviks; X is unrelated."
+    },
+    {
+      "review_number": 39,
+      "id": "inventory-217852c75514cc1393c7",
+      "X": "V",
+      "Y": "V",
+      "note": "Both contain the corresponding extended passage but differ materially in number crippled, duration of education, and omit the explicit reprisals clause."
+    },
+    {
+      "review_number": 49,
+      "id": "inventory-f287bb5aaedadaa0c506",
+      "X": "T",
+      "Y": "C",
+      "note": "X adds an unrelated following line; Y contains the complete quoted argument.",
+      "X_fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 415,
+          "text_sha256": "22dbd15c657542ae3e80372cf7b5fd560e44097538e97b2cc0cc6784c195f0bb"
+        }
+      ]
+    }
+  ],
+  "neither_candidate_ids": [
+    "inventory-1d6754f1b5cc874a6e08",
+    "inventory-47793d03f2e976163599",
+    "inventory-47b6da60afc62dd6074f",
+    "inventory-6d0a6699ac40b8e11d7b",
+    "inventory-7599a58006c29bc4741e",
+    "inventory-7b7aec6b93a80870103a",
+    "inventory-ad832bbbc3e8812a5b51",
+    "inventory-ba557f64cf5abf7cfff1",
+    "inventory-dded140a1f30cbd793c1",
+    "inventory-e6b1b2d0d1d22846bf77",
+    "inventory-92f8d1c97cf624989c47"
+  ],
+  "rights": "unreviewed",
+  "auto_publish": false
+}
