@@ -37,3 +37,25 @@ class MemoryTests(unittest.TestCase):
             f.write_text('{}')
             with self.assertRaises(ValueError):
                 read_pinned(f,'a'*64)
+
+    def test_committed_overlay_preserves_baseline_and_counts(self):
+        from review_memory import load_effective_memory
+        import json
+        base=json.loads(Path('data/mia/memory.json').read_bytes())
+        effective=load_effective_memory()
+        self.assertEqual(base['summary']['historically_accepted'],37)
+        self.assertEqual(effective['summary']['historically_accepted'],38)
+        self.assertEqual(effective['summary']['unresolved'],62)
+        self.assertEqual(effective['summary']['rights_approved'],0)
+        self.assertTrue(all(not r['auto_publish'] for r in effective['cases']))
+
+    def test_overlay_rejects_wrong_fragment_or_input_hash(self):
+        from review_memory import apply_restored_review
+        import json
+        p=Path('data/mia')
+        m=json.loads((p/'memory.json').read_bytes())
+        e=json.loads((p/'restored-receipts.json').read_bytes())
+        r=json.loads((p/'restored-review-ledger.json').read_bytes())
+        r['cases'][0]['quote_sha256']='a'*64
+        with self.assertRaises(ValueError):
+            apply_restored_review(m,e,r)

@@ -144,6 +144,77 @@ def lookup(memory, metadata, citation_ref):
     return matches[0] if len(matches)==1 else None
 
 
+def apply_restored_review(memory, evidence, review):
+    """Append a later review without changing the frozen historical memory."""
+    import copy
+    if (memory['schema'] != 'wikidebia-mia-review-memory-1'
+            or evidence['schema'] != 'wikidebia-mia-restored-documentary-evidence-1'
+            or review['schema'] != 'wikidebia-restored-review-ledger-1'
+            or review['documentary_run_id'] != evidence['run_id']
+            or any(x.get('auto_publish') is not False for x in (memory,evidence,review))):
+        raise ValueError('overlay_scope_mismatch')
+    check_hash(review['packet_sha256'])
+    check_hash(review['encrypted_sha256'])
+    out = copy.deepcopy(memory)
+    rows = keyed(out['cases'],'id')
+    restored = {}
+    for p in evidence['cases']:
+        if p['status'] != 'verified_same_revision_span' or p['auto_publish'] is not False or p['rights'] != 'unreviewed':
+            raise ValueError('unverified_restored_proof')
+        r = p['fresh_receipt']
+        if (r['status'] != 'verified_document_and_span' or p['expected_text_sha256'] != r['actual_text_sha256']
+                or p['pinned_text_sha256'] != r['actual_text_sha256']
+                or p['original_receipt']['revision'] != r['revision']):
+            raise ValueError('restored_receipt_mismatch')
+        key = (p['case_id'],r['actual_text_sha256'])
+        if key in restored:
+            raise ValueError('duplicate_restored_receipt')
+        restored[key] = r
+    decisions = keyed(review['cases'],'case_id')
+    if len(restored) != 6 or len(decisions) != 3 or set(decisions) != {cid for cid,_ in restored}:
+        raise ValueError('overlay_cohort_mismatch')
+    for cid, d in decisions.items():
+        row = rows[cid]
+        if (row['latest_decision'] != 'not_reproduced' or d['quote_sha256'] != row['citation_ref']['quote_sha256']
+                or d['rights'] != 'unreviewed' or d['auto_publish'] is not False):
+            raise ValueError('overlay_input_mismatch')
+        hashes = {h for c,h in restored if c==cid}
+        if set(d['reviewed_candidate_sha256s']) != hashes or len(d['reviewed_candidate_sha256s']) != len(hashes):
+            raise ValueError('overlay_review_scope_mismatch')
+        decision = d['decision']
+        selected = d['candidate_sha256']
+        if selected is not None:
+            r = restored[cid,selected]
+            row['restored_review'] = proof(decision,r['url'],r['revision'],r['document_sha256'],selected,
+                                           r['char_start'],r['char_end'],d['fragments'])
+        elif decision in ACCEPT or d['fragments']:
+            raise ValueError('missing_restored_review_proof')
+        else:
+            row['restored_review'] = {'decision':decision}
+        row['latest_decision'] = decision
+    counts = dict(Counter(r['latest_decision'] for r in rows.values()))
+    accepted = sum(r['latest_decision'] in ACCEPT for r in rows.values())
+    if accepted != review['summary']['combined_accepted'] or accepted-memory['summary']['historically_accepted'] != review['summary']['additional_accepted']:
+        raise ValueError('overlay_summary_mismatch')
+    out['summary'] = {'cases':len(rows),'historically_accepted':accepted,'unresolved':len(rows)-accepted,
+                      'latest_decisions':counts,'rights_approved':0}
+    out['restored_review_provenance'] = {'run_id':review['run_id'],'packet_sha256':review['packet_sha256']}
+    return out
+
+
+def load_effective_memory(directory=Path('data/mia')):
+    directory=Path(directory)
+    raw=(directory/'memory.json').read_bytes()
+    expected=(directory/'memory.sha256').read_text().split()[0]
+    if digest(raw)!=expected:
+        raise ValueError('memory_hash_mismatch')
+    memory=json.loads(raw)
+    review=json.loads((directory/'restored-review-ledger.json').read_bytes())
+    if review['memory_sha256']!=expected:
+        raise ValueError('overlay_baseline_mismatch')
+    return apply_restored_review(memory,json.loads((directory/'restored-receipts.json').read_bytes()),review)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in PINS:

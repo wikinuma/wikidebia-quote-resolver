@@ -1,0 +1,72 @@
+{
+  "schema": "wikidebia-restored-review-ledger-1",
+  "memory_sha256": "433bd57d38846f463ea14e79fda08ee44e9eefd73e02b65259a93929ca4f805e",
+  "run_id": 45797398853,
+  "documentary_run_id": 45797074815,
+  "encrypted_artifact_id": 15105347220,
+  "packet_sha256": "81e540e8e3d2aa90d0644b3c6c4674f604ec65db66c9f10a9366cdcbc59c1e55",
+  "encrypted_sha256": "7e9446335d0165eaee9e79e465be6043e88e975d0f4e70ee38c31a361279f6c4",
+  "reviewer": "ChatGPT",
+  "scope": "Local decrypted packet: all three pinned French quote hashes and six English candidate hashes checked; one exact boundary-adjusted fragment selected. No independent human gold, no reuse approval.",
+  "cases": [
+    {
+      "case_id": "inventory-09e433a7dff39fbbd9d5",
+      "decision": "wrong_passage",
+      "quote_sha256": "d3e231d8f098cdfd76464357aa2d001a041c1b226a5e52f1eda8bedb87704f32",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "Both restored candidates concern later arguments about trade union functions or parliamentary organisation, not the quoted wage-pressure paragraph. The exact work is available in the original English Labour Standard article, https://www.marxists.org/archive/marx/works/1881/05/28.htm. The French renders a tenfold increase of wage pressure as considerable; the difference must not be silently erased. Correct passage located bibliographically, not accepted as equivalent.",
+      "reviewed_candidate_sha256s": [
+        "cbae53ca2208835a79893db13452a9f9644327d086087bec6e1d6f3ea0b17431",
+        "86471ca0b0b6ce216433082fe2cdc7d4e81771a21495d321b3532a3fd6256e50"
+      ],
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-74e41be2c0107318e217",
+      "decision": "boundary_adjustment",
+      "quote_sha256": "bbef1a599bf70a89783341b130b394ff5ccd381a0c8624121d2d4aceab83f2b2",
+      "candidate_sha256": "e4a949a5c027b5b0ef686e964a9b632c54afb1097c3af3f747dffee730a2d819",
+      "fragments": [
+        {
+          "relative_start": 0,
+          "relative_end": 1298,
+          "char_start": 6518,
+          "char_end": 7816,
+          "text_sha256": "37cc8dbc0f8a7460f4ce017b8d82a3cd7edf14bef05a42d4169dc81b724ef6ba"
+        }
+      ],
+      "note": "The first candidate covers every argument and rhetorical question of the French passage; remove the following paragraph announcing next week's article. Ordinary translation nuance: at last vs at least in the final question, both urge an attempt to escape wage slavery; the nuance is recorded, not edited into the English text. Exact extracted English fragment checked locally against the packet. Candidate 2 is a different article. Original article dated 28 May 1881; publication and reuse rights remain to be reviewed.",
+      "reviewed_candidate_sha256s": [
+        "e4a949a5c027b5b0ef686e964a9b632c54afb1097c3af3f747dffee730a2d819",
+        "5f2ca521cb87b03e61b0b6bd9628fa00b82db9bf7dedbc999a87d74b64a38815"
+      ],
+      "rights": "unreviewed",
+      "auto_publish": false
+    },
+    {
+      "case_id": "inventory-a190996c792f6c149039",
+      "decision": "wrong_passage",
+      "quote_sha256": "fe5ed747985aaa0c504faa85a37065d8ea1cb1750cf0e24500a31bb9436c5258",
+      "candidate_sha256": null,
+      "fragments": [],
+      "note": "Both restored candidates are in the wrong chapters. The correct chapter is The Attitude of the Bourgeoisie Towards the Proletariat, confirmed by the MIA table of contents https://www.marxists.org/archive/marx/works/1845/condition-working-class/index.htm and the 1892 edition https://en.wikisource.org/wiki/Page:EngelsFriedrich1892ConditionWorkingClassEngland.djvu/306. The older English translation omits the explicit French clause about living only to earn money; do not silently accept it. Alternative chapter/edition research remains open.",
+      "reviewed_candidate_sha256s": [
+        "17f0925db6a9051e0b3a63fe50a16fcc064cdd24eaeb2eeeebf8e501775192dd",
+        "691dddb0ee2c5b032fbc8a3724f0889af1054a48e7653d899e4596b2cbd5b801"
+      ],
+      "rights": "unreviewed",
+      "auto_publish": false
+    }
+  ],
+  "summary": {
+    "reviewed_cases": 3,
+    "reviewed_candidates": 6,
+    "additional_accepted": 1,
+    "combined_accepted": 38,
+    "unresolved": 62,
+    "rights_approved": 0
+  },
+  "auto_publish": false
+}
