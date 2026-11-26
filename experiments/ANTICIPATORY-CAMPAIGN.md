@@ -181,3 +181,26 @@ construites pour les mêmes occurrences et plusieurs taux hypothétiques
 d'abstention (0, 25, 50, 75, 100 %). Il ne mesure ni le taux réel d'abstention,
 ni les tokens, ni la fidélité linguistique. Une économie dépend du taux
 effectif et du coût des cas renvoyés à la seconde passe.
+
+
+## Références bilingues relues séparément
+
+Le fichier data/mia/benchmarks/20261126/reviewed-boundaries.json contient
+des références positives de diagnostic, choisies pour pouvoir être relues
+sur les archives publiques. Elles ne sont pas un échantillon indépendant ou
+représentatif : aucune précision statistique ne doit en être déduite.
+Le jugement bilingue est explicite ; le replay vérifie la citation française
+dans la révision épinglée, l'égalité de ses mots normalisés avec la source
+française localisée, les empreintes des deux documents et des intervalles,
+puis mesure si chaque politique de revue contient l'intégralité de
+l'intervalle anglais relu. Une référence peut être un sous-intervalle du
+candidat ou absente de tous les candidats. La couverture ne mesure pas la
+qualité des réponses d'un réviseur.
+
+Les deux premières références ont été relues directement en français et en
+anglais et les empreintes des extraits ont été reproduites. L'une nécessite
+un ajustement de limite et provient d'une transcription anglaise présentant
+des mots joints sans espace : l'équivalence de sens n'est pas une validation
+de la qualité du texte. Le défaut est signalé, aucune correction n'est
+inventée. Les références ne sont pas importées dans le registre opérationnel
+et n'autorisent aucune réutilisation. Aucun extrait n'est exporté par la CI.
