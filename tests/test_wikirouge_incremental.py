@@ -97,3 +97,19 @@ class IncrementalTests(unittest.TestCase):
             self.assertEqual(list(fetch_batch(Mock(),'fr','pageids',[7])),[{'pageid':7,'missing':True}])
             with self.assertRaisesRegex(ValueError,'not_accounted'):
                 fetch_batch(Mock(),'fr','pageids',[7,8])
+
+    def test_committed_delta_and_chain(self):
+        from wikirouge_incremental import open_current,HISTORY,history_paths
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with open_current() as i:
+            self.assertEqual(i.fingerprint,'077869dd12fc71934550bcc1b19a4ad5437b577bea2fd96e15a295f2e3fdd8a7')
+            self.assertEqual(i.db.execute('SELECT count(*) FROM pages').fetchone()[0],30583)
+            self.assertEqual(i.db.execute('SELECT count(*) FROM pairs').fetchone()[0],10747)
+        with TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            h=json.loads(HISTORY.read_bytes())
+            (folder/'manifest.json').write_text(json.dumps(h))
+            (folder/'0001.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError,'hash_mismatch'):
+                history_paths(folder/'manifest.json')

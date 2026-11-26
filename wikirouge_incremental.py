@@ -25,6 +25,7 @@ SCHEMA = 'wikidebia-wikirouge-delta-1'
 LANGS = ('fr', 'en')
 CATEGORIES = ('Text', 'Texte', 'Subpage', 'Sous-page')
 TEMPLATES = {'text', 'texte', 'subpage', 'sous page'}
+HISTORY = DEFAULT.parent/'deltas/manifest.json'
 MAX_EVENTS = 1000
 MAX_TOUCHED = 200
 BATCH = 5
@@ -374,6 +375,31 @@ def open_updated(manifest=DEFAULT,deltas=()):
         yield index
 
 
+def history_paths(history,manifest=DEFAULT):
+    history=Path(history)
+    h=json.loads(history.read_bytes())
+    base=json.loads(Path(manifest).read_bytes())['database']['sha256']
+    if h.get('schema')!='wikidebia-wikirouge-delta-history-1' or h.get('base_snapshot_sha256')!=base:
+        raise ValueError('history_base_mismatch')
+    paths=[];seen=set()
+    for d in h['deltas']:
+        name=d['file']
+        if not isinstance(name,str) or Path(name).name!=name or name in seen:
+            raise ValueError('invalid_history_filename')
+        seen.add(name)
+        path=history.parent/name
+        if sha(path.read_bytes())!=d['sha256']:
+            raise ValueError('history_delta_hash_mismatch')
+        paths.append(path)
+    return paths
+
+
+@contextmanager
+def open_current(manifest=DEFAULT,history=HISTORY):
+    with open_updated(manifest,history_paths(history,manifest)) as index:
+        yield index
+
+
 def refresh(index,client):
     started=time.monotonic()
     until={};events={};coverage={};updates=[];mapping=field_map(index.db)
@@ -401,10 +427,13 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--manifest',type=Path,default=DEFAULT)
     p.add_argument('--delta',action='append',type=Path,default=[])
+    p.add_argument('--history',type=Path,help='verify and use the committed ordered delta history')
     p.add_argument('--out',type=Path,required=True)
     a=p.parse_args()
     if a.out.exists(): raise FileExistsError(a.out)
-    with tempfile.TemporaryDirectory(prefix='wikirouge-update-') as tmp, open_updated(a.manifest,a.delta) as index:
+    if a.history and a.delta: p.error('choose --history or --delta, not both')
+    paths=history_paths(a.history,a.manifest) if a.history else a.delta
+    with tempfile.TemporaryDirectory(prefix='wikirouge-update-') as tmp, open_updated(a.manifest,paths) as index:
         client=PilotClient(Path(tmp),budget=250)
         delta=refresh(index,client)
         apply_delta(index.db,delta,index.base_fingerprint,index.fingerprint,index.checkpoints)
