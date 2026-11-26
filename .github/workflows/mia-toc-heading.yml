@@ -4,6 +4,8 @@ on:
     branches: ['experiment/pilot-v04']
     paths:
       - 'toc_heading.py'
+      - 'toc_structure.py'
+      - 'tests/test_toc_structure.py'
       - 'benchmark_toc_heading.py'
       - 'tests/test_toc_heading.py'
       - '.github/workflows/mia-toc-heading.yml'
@@ -40,6 +42,7 @@ jobs:
       - name: Regression tests with real numerical arrays
         run: |
           python -m unittest discover -s tests -p 'test_toc_heading.py' -v
+          python -m unittest discover -s tests -p 'test_toc_structure.py' -v
       - uses: actions/cache@v4
         with:
           path: local-model
@@ -63,13 +66,16 @@ jobs:
         env:
           HF_HUB_OFFLINE: '1'
           TRANSFORMERS_OFFLINE: '1'
-        run: python benchmark_toc_heading.py --model-dir local-model --cache private-cache
+        run: |
+          python benchmark_toc_heading.py --model-dir local-model --cache private-cache
+          python benchmark_toc_heading.py --structure-v2 --model-dir local-model --cache private-cache --out reports-live/toc-structure-benchmark.json
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: mia-toc-heading-report
           path: |
             reports-live/toc-heading-benchmark.json
+            reports-live/toc-structure-benchmark.json
             reports-live/semantic-environment.txt
           if-no-files-found: warn
           retention-days: 90
