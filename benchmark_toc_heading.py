@@ -15,7 +15,7 @@ from chapter_routes import load_chapters
 from embedding import LocalEncoder
 from pilot_full import PilotClient
 from resolver import ROOT,sha
-from review_memory import load_effective_memory
+from benchmark_fixtures import load_prior_cohort
 from toc_heading import TocMatcher
 from wikirouge_incremental import open_current
 
@@ -26,7 +26,7 @@ BASE=ROOT/'data/mia/benchmarks/20261126/inventory.json'
 def novel_sources():
     raw=BASE.read_bytes()
     if sha(raw)!=PIN: raise ValueError('inventory_pin_mismatch')
-    inv=json.loads(raw);previous=load_effective_memory(ROOT/'data/mia')['cases']+inv['sample']
+    inv=json.loads(raw);previous=load_prior_cohort()['cases']+inv['sample']
     known={u for c in previous for u in c['metadata']['mia_urls']}
     groups=defaultdict(list)
     for case in inv['cases']:
