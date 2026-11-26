@@ -79,6 +79,26 @@ def classify(row, events=()):
     return INSUFFICIENT
 
 
+def build_campaign_packet(items, load_raw, load_document, stage=None,
+                          max_payload_chars=120000):
+    """One preparation policy shared by the campaign and its benchmarks."""
+    if stage not in (None, COMPACT, FALLBACK):
+        raise ValueError('invalid_campaign_context_stage')
+    packet = build_packet(items, load_raw, load_document,
+                          distinct_occurrences=True,
+                          expanded_context=stage != COMPACT,
+                          adaptive_context=stage == COMPACT,
+                          max_candidates=1 if stage == COMPACT else 4,
+                          max_payload_chars=max_payload_chars)
+    if stage:
+        packet['payload']['progressive_review'] = {
+            'stage': stage,
+            'max_verified_anchors_per_occurrence': 1 if stage == COMPACT else 4}
+        if len(encode(packet['payload'])) > max_payload_chars:
+            raise ValueError('review_payload_limit_split_input')
+    return packet
+
+
 class Campaign:
     def __init__(self, library, inventory):
         self.db = library.db
@@ -206,18 +226,8 @@ class Campaign:
         while selected:
             items = [(c, e['result']) for c,e in selected]
             try:
-                packet = build_packet(items, load_raw, audit.document,
-                                      distinct_occurrences=True,
-                                      expanded_context=stage != COMPACT,
-                                      adaptive_context=stage == COMPACT,
-                                      max_candidates=1 if stage == COMPACT else 4,
-                                      max_payload_chars=max_payload_chars)
-                if stage:
-                    packet['payload']['progressive_review'] = {
-                        'stage': stage,
-                        'max_verified_anchors_per_occurrence': 1 if stage == COMPACT else 4}
-                    if len(encode(packet['payload'])) > max_payload_chars:
-                        raise ValueError('review_payload_limit_split_input')
+                packet = build_campaign_packet(items, load_raw, audit.document,
+                                               stage, max_payload_chars)
             except ValueError as exc:
                 if str(exc) != 'review_payload_limit_split_input':
                     raise
