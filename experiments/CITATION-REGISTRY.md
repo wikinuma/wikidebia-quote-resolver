@@ -33,3 +33,12 @@ l'équivalence linguistique ou les droits. La provenance n'est pas une
 signature cryptographique. Aucun résultat n'est prêt à publier; droits et
 revue éditoriale restent requis. Le stockage d'échecs datés, le transport
 privé des paquets et l'intégration normative sont des étapes ultérieures.
+
+Une nouvelle preuve exacte du même passage d'une révision Wikirouge positive
+(même URL, révision, coordonnées et empreintes des fragments) ne crée pas un
+conflit du seul fait d'un changement de HTML. La reconstruction exige toujours
+un reçu qui correspond aux octets et aux blocs exacts du document fourni.
+Sans ce reçu, elle échoue même si une décision historique est connue. Les
+changements de révision, de passage ou d'identité d'un document non versionné
+restent des conflits à revoir. Cette distinction ne constitue pas une validation
+de fraîcheur ou une autorisation de réutilisation.

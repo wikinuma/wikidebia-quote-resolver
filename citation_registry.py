@@ -122,6 +122,19 @@ def check_target(doc,target):
         raise ValueError('target_evidence_changed')
 
 
+def passage_identity(entry):
+    """A new exact receipt of the same pinned wiki passage is not a
+    conflicting translation. Body/parser digests still bind each receipt.
+    Do not equate unversioned documents or different revisions/coordinates.
+    """
+    document = entry['target']['document']
+    revision = document['revision']
+    if (type(revision) is int and revision > 0
+            and document_provider(document['url'], 'en') == 'wikirouge'):
+        document = {'url': document['url'], 'revision': revision}
+    return fingerprint({'document': document, 'fragments': entry['fragments']})
+
+
 class CitationRegistry:
     """Use the same private SQLite connection as WorkLibrary.
 
@@ -160,7 +173,7 @@ class CitationRegistry:
                             (key,source['source_key'],raw))
         return {'entry_sha256':key,'source_key':source['source_key'],'status':'recorded'}
 
-    def lookup(self,raw_page,ref):
+    def lookup(self,raw_page,ref,*,preferred_document=None):
         source=source_identity(raw_page,ref)
         grouped={}
         for key,raw in self.db.execute(
@@ -177,7 +190,7 @@ class CitationRegistry:
             # Different reviewers or candidate envelopes can agree on exactly
             # the same edition and selected spans. Do not confuse that with
             # conflicting published translations.
-            proof=fingerprint({'document':entry['target']['document'],'fragments':entry['fragments']})
+            proof=passage_identity(entry)
             grouped.setdefault(proof,[]).append({'entry_sha256':key,**entry})
         if not grouped:
             return {'status':'miss','source_key':source['source_key']}
@@ -185,13 +198,20 @@ class CitationRegistry:
             return {'status':'ambiguous_reviewed_passages','source_key':source['source_key'],
                     'distinct_passages':len(grouped)}
         entries=next(iter(grouped.values()))
+        # Prefer a receipt bound to the exact supplied document. Never
+        # reconstruct a passage merely from the semantic group identity.
+        chosen=next((e for e in entries if e['target']['document']==preferred_document),entries[0])
         return {'status':'reviewed_receipt_found','source_key':source['source_key'],
-                'receipt':entries[0],'receipt_count':len(entries),
+                'receipt':chosen,'receipt_count':len(entries),
                 'rights':'unreviewed','auto_publish':False}
 
     def reconstruct(self,raw_page,ref,doc):
         """Private materialization only; never claim that doc is freshly read."""
-        result=self.lookup(raw_page,ref)
+        try:
+            preferred=document_identity(doc)
+        except (AttributeError, TypeError, ValueError):
+            preferred=None
+        result=self.lookup(raw_page,ref,preferred_document=preferred)
         if result['status']!='reviewed_receipt_found':
             return result
         entry=result['receipt']
