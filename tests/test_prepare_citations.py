@@ -251,7 +251,7 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(evidence['packet_sha256'],digest)
         self.assertEqual(self.c.summary()['expanded_fallback_pending'],1)
         self.assertEqual(self.c.apply(reply,self.raw,self.audit)['status'],'already_applied')
-        self.stage('2')
+        self.c.record('2',CANDIDATES,{'result':self.result(self.c.cases['2'])})
         # Even after restarting and without the progressive option, an
         # escalated occurrence gets a wide packet before untouched cases.
         with WorkLibrary(self.lib.path) as lib:
