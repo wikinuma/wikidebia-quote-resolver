@@ -34,7 +34,6 @@ class PersistentAlignmentTests(unittest.TestCase):
         return {'status':'exact_in_examined_documents','occurrences':hits}
 
     def test_reopen_direct_and_structural_distinct_citations(self):
-        cold = DirectAlignmentCache()
         expected = automatic_alignment(self.q2,self.source(self.q2),
             [self.fr],[self.en],(),())
         with WorkLibrary(self.db) as lib:
@@ -67,7 +66,7 @@ class PersistentAlignmentTests(unittest.TestCase):
         changed = [
             (Document(self.fr.url,self.fr.blocks,'c'*64),self.en,'sentence',250000),
             (Document(self.fr.url,[*self.fr.blocks,'Extra.'],self.fr.digest),self.en,'sentence',250000),
-            (Document(self.fr.url,self.fr.blocks,self.fr.digest,42),self.en,'sentence',250000),
+            (Document(self.fr.url,self.fr.blocks,self.fr.digest,revision=42),self.en,'sentence',250000),
             (self.fr,Document(self.en.url+'x',self.en.blocks,self.en.digest),'sentence',250000),
             (self.fr,self.en,'paragraph',250000),
             (self.fr,self.en,'sentence',1),
