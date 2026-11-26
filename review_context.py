@@ -4,6 +4,7 @@ Never search a new document or fabricate text. All offsets refer to the
 existing parser's exact document text; original anchors remain visible.
 """
 from collections import defaultdict
+import re
 
 from alignment import text_and_starts
 from citation_registry import fingerprint, target_identity
@@ -21,7 +22,7 @@ def exact_target(doc, lo, hi):
     })
 
 
-def expand_target(doc, target, quote_chars, limit=15000):
+def expand_target(doc, target, quote_chars, limit=15000, *, pad_cap=4000):
     """The input target must already have passed exact document/span checks.
     Add symmetric, length-adaptive context, bounded by the document and cap.
     Prefer paragraph boundaries close to the proposed limits, otherwise
@@ -30,9 +31,9 @@ def expand_target(doc, target, quote_chars, limit=15000):
     text, _ = text_and_starts(doc)
     start, end = target['char_start'], target['char_end']
     width = end - start
-    if width > limit or quote_chars < 1:
+    if width > limit or quote_chars < 1 or pad_cap < 0:
         raise ValueError('invalid_context_length')
-    pad = min(4000, max(300, (quote_chars * 3 + 4)//5,
+    pad = min(pad_cap, max(300, (quote_chars * 3 + 4)//5,
                         quote_chars - width + 200), (limit-width)//2)
     lo, hi = max(0, start-pad), min(len(text), end+pad)
     if lo > 0 and lo < start:
@@ -57,6 +58,29 @@ def expand_target(doc, target, quote_chars, limit=15000):
     if (lo, hi) == (start, end):
         return target
     return exact_target(doc, lo, hi)
+
+
+def adaptive_target(doc, target, quote, limit=15000):
+    """Conservative review-window heuristic, not a completeness decision.
+
+    Keep the wide baseline for markedly short anchors or explicit omissions.
+    Otherwise use a small safety margin, increased for open sentence edges.
+    The original exact anchor is always preserved; no new search is done.
+    """
+    text, _ = text_and_starts(doc)
+    start, end = target['char_start'], target['char_end']
+    width = end-start
+    size = len(quote)
+    if width < .8 * size or re.search(r'\.{3,}|\u2026', quote):
+        return expand_target(doc, target, size, limit)
+    # Boundary signals are weak: even apparently complete seeds get context.
+    closed = re.compile(r"""[.!?]["'\u2019\u201d)]*\s*$""")
+    left_closed = (start == 0 or text[max(0,start-2):start] == '\n\n'
+                   or bool(closed.search(text[max(0,start-32):start])))
+    right_closed = (end == len(text) or text[end:end+2] == '\n\n'
+                    or bool(closed.search(text[max(start,end-32):end])))
+    cap = 120 if left_closed and right_closed else 250
+    return expand_target(doc, target, size, limit, pad_cap=cap)
 
 
 def coalesce_contexts(targets, passages, sources, docs, limit):

@@ -5,7 +5,8 @@ import unittest
 from alignment import text_and_starts
 from citation_registry import fingerprint
 from grouped_review import build_packet, apply_review, REPLY
-from review_context import exact_target, expand_target
+from review_context import adaptive_target, exact_target, expand_target
+from autonomous_review_check import seed_inventory
 from resolver import sha
 from test_citation_registry import RAW, QUOTE, EN, document, ref
 from work_library import WorkLibrary
@@ -98,3 +99,48 @@ class ExpandedReviewTests(unittest.TestCase):
                          self.load, lambda url, lang: self.doc if url == EN else other,
                          expanded_context=True, distinct_occurrences=True)
         self.assertEqual(len(p['targets']), 2)
+
+    def test_adaptive_narrows_complete_looking_seed_but_keeps_exact_offsets(self):
+        anchor = exact_target(self.doc, self.start, self.end)
+        quote = 'Une phrase reconnue.'
+        wide = expand_target(self.doc, anchor, len(quote))
+        adapted = adaptive_target(self.doc, anchor, quote)
+        self.assertLess(adapted['char_end']-adapted['char_start'],
+                        wide['char_end']-wide['char_start'])
+        self.assertLessEqual(adapted['char_start'], self.start)
+        self.assertGreaterEqual(adapted['char_end'], self.end)
+        excerpt = self.text[adapted['char_start']:adapted['char_end']]
+        self.assertEqual(adapted['text_sha256'], sha(excerpt.encode()))
+        self.assertIn(self.doc.blocks[4], excerpt)
+        self.assertIn(self.doc.blocks[6], excerpt)
+
+    def test_adaptive_keeps_wide_baseline_for_short_seed_and_ellipsis(self):
+        anchor = exact_target(self.doc, self.start, self.end)
+        for quote in ('Une longue phrase. '*10, 'Une phrase [...] reconnue.'):
+            with self.subTest(quote=quote):
+                self.assertEqual(adaptive_target(self.doc, anchor, quote),
+                                 expand_target(self.doc, anchor, len(quote)))
+        t = adaptive_target(self.doc, anchor, 'Une phrase reconnue.', limit=40)
+        self.assertLessEqual(t['char_end']-t['char_start'], 40)
+        self.assertLessEqual(t['char_start'], self.start)
+        self.assertGreaterEqual(t['char_end'], self.end)
+
+    def test_context_modes_offer_same_anchors_even_when_windows_merge(self):
+        candidates = [self.original, self.original] + [
+            seed(self.doc, self.starts[i], self.starts[i]+len(self.doc.blocks[i]))
+            for i in (4, 6)]
+        case, result = self.item('First', '1', candidates[0])
+        result['candidates'] = candidates
+        packets = [
+            build_packet([(case, result)], self.load, self.read,
+                         max_candidates=2, distinct_occurrences=True, **mode)
+            for mode in ({}, {'expanded_context': True}, {'adaptive_context': True})
+        ]
+        anchors = seed_inventory(packets[0])
+        self.assertEqual(len(anchors), 2)
+        self.assertEqual(seed_inventory(packets[1]), anchors)
+        self.assertEqual(seed_inventory(packets[2]), anchors)
+        self.assertEqual(len(packets[1]['targets']), 1)
+        with self.assertRaisesRegex(ValueError, 'conflicting_context_modes'):
+            build_packet([(case, result)], self.load, self.read,
+                         expanded_context=True, adaptive_context=True)
