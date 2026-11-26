@@ -4,7 +4,7 @@ Entries describe explicitly established bilingual work routes and independently
 corroborated chapter hypotheses. All remain documentary leads, not evidence of
 a particular quotation or reuse rights. Unknown/conflicting routes fall back.
 """
-from contextlib import closing
+import argparse
 import json
 from pathlib import Path
 import re
@@ -54,6 +54,7 @@ def identity(meta):
             or not names or not norm(author)):
         return None
     return {'source_url': urls[0], 'titles': names, 'authors': author,
+            'cited_titles': {k:meta[k] for k in ('work','article') if meta.get(k)},
             'citation_year': year([meta.get('date', '')])}
 
 
@@ -274,3 +275,20 @@ def chapter_valid(e):
         if r['requested_url']!=root or canonical_mia(r['url']) is None or not digest(r['sha256']):
             return False
     return digest(e['matcher_id']) and len(e['toc_receipts'])==2
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--database',type=Path,required=True)
+    p.add_argument('--export',type=Path,required=True)
+    a=p.parse_args()
+    with WorkLibrary(a.database) as lib:
+        data=lib.export()
+    a.export.parent.mkdir(parents=True,exist_ok=True)
+    tmp=a.export.with_suffix(a.export.suffix+'.tmp')
+    tmp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    tmp.replace(a.export)
+    print(json.dumps({k:len(data[k]) for k in ('works','chapters','manual_bibliographic_catalog','manual_chapter_catalog','research_notes')}))
+
+
+if __name__=='__main__':
+    main()
