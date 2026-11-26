@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 
 from alignment_store import encode
 from citation_registry import fingerprint
+from boundary_stress import measure_boundary_recovery
 from evidence_audit import Auditor
 from grouped_review import build_packet, candidate_queue, pinned_loader, review_view
 from pilot_full import PilotClient
@@ -124,6 +125,8 @@ def run(items, load_raw, audit, directory):
             'gained_after_adaptation':len(ready['adaptive'] - ready['original']),
             'lost_after_expansion':len(ready['original'] - ready['expanded']),
             'gained_after_expansion':len(ready['expanded'] - ready['original']),
+            'boundary_stress':measure_boundary_recovery(
+                [packet for _,packet in arms['original']],audit),
             'semantic_equivalence':None,'rights_approved':0,
             'hosted_model_calls':0,'auto_publish':False}
 

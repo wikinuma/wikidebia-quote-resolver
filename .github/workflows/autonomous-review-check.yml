@@ -4,6 +4,8 @@ on:
     branches: ['experiment/pilot-v04']
     paths:
       - 'autonomous_review_check.py'
+      - 'boundary_stress.py'
+      - 'tests/test_boundary_stress.py'
       - 'grouped_review.py'
       - 'review_context.py'
       - 'review_bundle.py'
