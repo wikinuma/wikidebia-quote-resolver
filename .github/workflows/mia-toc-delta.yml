@@ -78,7 +78,7 @@ jobs:
         env:
           HF_HUB_OFFLINE: '1'
           TRANSFORMERS_OFFLINE: '1'
-        run: python benchmark_toc_delta.py --integrated frozen/integrated/integrated-mia.json --old-toc frozen/toc/toc-heading-benchmark.json --new-toc frozen/toc/toc-structure-benchmark.json --model-dir local-model --cache private-cache --certificate experiments/toc-delta-recipient.crt --packet private-review/toc-delta.cms
+        run: python benchmark_toc_delta.py --integrated frozen/integrated/integrated-mia.json --old-toc frozen/toc/toc-heading-benchmark.json --new-toc frozen/toc/toc-structure-benchmark.json --model-dir local-model --cache private-cache
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -88,10 +88,3 @@ jobs:
             reports-live/semantic-environment.txt
           if-no-files-found: warn
           retention-days: 90
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: mia-toc-delta-private-review
-          path: private-review/toc-delta.cms
-          if-no-files-found: ignore
-          retention-days: 1
