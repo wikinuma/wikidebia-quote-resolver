@@ -139,3 +139,38 @@ class RegistryTests(unittest.TestCase):
                 lib.db.execute("UPDATE prepared_citations_v1 SET entry='{}'")
             with self.assertRaises(ValueError):
                 CitationRegistry(lib.db).lookup(RAW,self.ref)
+
+    def test_same_pinned_wiki_span_different_html_not_conflicting(self):
+        url = 'https://wikirouge.net/texts/en/Test'
+        docs = [document(url=url, revision=7, digest=d*64) for d in ('a', 'b', 'c')]
+        with WorkLibrary(self.path) as lib:
+            reg = CitationRegistry(lib.db)
+            for doc in docs[:2]:
+                cand = candidate(doc)
+                reg.record(RAW, self.ref, doc, cand, review(RAW, self.ref, doc, cand))
+            self.assertEqual(reg.lookup(RAW, self.ref)['status'], 'reviewed_receipt_found')
+            self.assertEqual(reg.lookup(RAW, self.ref)['receipt_count'], 2)
+            for doc in docs[:2]:
+                result = reg.reconstruct(RAW, self.ref, doc)
+                self.assertEqual(result['status'], 'reviewed_passage_reconstructed')
+                self.assertEqual(result['receipt']['target']['document']['body_sha256'], doc.digest)
+            self.assertEqual(reg.reconstruct(RAW, self.ref, docs[2])['status'], 'target_evidence_changed')
+
+    def test_changed_wiki_passage_or_revision_still_conflicts(self):
+        url = 'https://wikirouge.net/texts/en/Test'
+        for other in (document(url=url, revision=7, digest='b'*64, blocks=['Changed passage.']),
+                      document(url=url, revision=8, digest='b'*64)):
+            with TemporaryDirectory() as tmp, WorkLibrary(Path(tmp)/'works.sqlite3') as lib:
+                reg = CitationRegistry(lib.db)
+                for doc in (document(url=url, revision=7), other):
+                    cand = candidate(doc)
+                    reg.record(RAW, self.ref, doc, cand, review(RAW, self.ref, doc, cand))
+                self.assertEqual(reg.lookup(RAW, self.ref)['status'], 'ambiguous_reviewed_passages')
+
+    def test_unversioned_document_body_change_is_not_collapsed(self):
+        with WorkLibrary(self.path) as lib:
+            reg = CitationRegistry(lib.db)
+            for doc in (self.doc, document(digest='b'*64)):
+                cand = candidate(doc)
+                reg.record(RAW, self.ref, doc, cand, review(RAW, self.ref, doc, cand))
+            self.assertEqual(reg.lookup(RAW, self.ref)['status'], 'ambiguous_reviewed_passages')
