@@ -1,0 +1,87 @@
+name: Independent 50-case MIA holdout
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    paths:
+      - 'independent_mia_holdout.py'
+      - 'tests/test_independent_mia_holdout.py'
+permissions:
+  contents: read
+concurrency:
+  group: mia-independent-holdout-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  benchmark:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      HF_HUB_DISABLE_XET: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned CPU inference environment
+        run: |
+          python -m pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements-navigation.txt numpy==2.2.6 sentence-transformers==4.1.0 transformers==4.51.3 huggingface-hub==0.30.2
+          mkdir -p reports-live
+          python -m pip freeze > reports-live/semantic-environment.txt
+      - name: Regression tests with real numerical arrays
+        run: |
+          python -m unittest discover -s tests -p 'test_sentence_index.py' -v
+          python -m unittest discover -s tests -p 'test_novel_url_benchmark.py' -v
+          python -m unittest discover -s tests -p 'test_early_toc.py' -v
+          python -m unittest discover -s tests -p 'test_rank_fusion.py' -v
+          python -m unittest discover -s tests -p 'test_independent_mia_holdout.py' -v
+      - name: Freeze independent balanced sample (no network)
+        run: python independent_mia_holdout.py --stage select --sample-file reports-live/independent-mia-sample.json
+      - uses: actions/cache@v4
+        with:
+          path: local-model
+          key: mia-minilm-86741b4e3f5cb7765a600d3a3d55a0f6a6cb443d
+      - name: Obtain pinned public safetensors model, no quotation data
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from huggingface_hub import snapshot_download
+          d=Path(snapshot_download(repo_id='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+              revision='86741b4e3f5cb7765a600d3a3d55a0f6a6cb443d',token=False,
+              allow_patterns=['config.json','config_sentence_transformers.json','model.safetensors',
+              'modules.json','sentence_bert_config.json','sentencepiece.bpe.model','special_tokens_map.json',
+              'tokenizer.json','tokenizer_config.json','1_Pooling/config.json'],local_dir='local-model'))
+          with (d/'model.safetensors').open('rb') as f:
+              assert hashlib.file_digest(f,'sha256').hexdigest()=='eaa086f0ffee582aeb45b36e34cdd1fe2d6de2bef61f8a559a1bbc9bd955917b'
+          print('model_bytes='+str(sum(p.stat().st_size for p in d.rglob('*') if p.is_file())))
+          PY
+      - name: Compare frozen engine on 50 previously unused citations
+        env:
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+        run: python independent_mia_holdout.py --stage benchmark --sample-file reports-live/independent-mia-sample.json --model-dir local-model --cache private-cache --certificate experiments/independent-holdout-recipient.crt --packet private-review/independent.cms
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: mia-independent-holdout-report
+          path: |
+            reports-live/independent-mia-sample.json
+            reports-live/independent-mia.json
+            reports-live/semantic-environment.txt
+          if-no-files-found: warn
+          retention-days: 90
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: mia-independent-private-review
+          path: private-review/independent.cms
+          if-no-files-found: ignore
+          retention-days: 1
