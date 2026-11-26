@@ -1,0 +1,37 @@
+{
+  "schema": "wikidebia-mia-work-research-1",
+  "date": "2026-11-26",
+  "scope": "bibliographic leads only; not citation decisions",
+  "entries": [
+    {
+      "authors": "Gueorgui Plekhanov",
+      "work": "",
+      "article": "La conception matérialiste de l'histoire",
+      "mia_urls": [
+        "https://www.marxists.org/francais/plekhanov/works/1904/00/plekhanov_19040000.htm"
+      ],
+      "status": "wrong_work_excluded",
+      "evidence": [
+        "https://www.marxists.org/archive/plekhanov/1897/history/part1.htm",
+        "https://nlr.ru/domplekhanova/40/chitalnyiy-zal"
+      ],
+      "note": "The English review of Labriola (1897) is not the 1904 Geneva lectures published in French in 1926. No matching English edition verified; not a claim of nonexistence."
+    },
+    {
+      "authors": "Victor Serge",
+      "work": "",
+      "article": "Trente ans après la Révolution russe",
+      "mia_urls": [
+        "https://www.marxists.org/francais/serge/works/1947/07/serge_19470700.htm"
+      ],
+      "status": "bibliographic_leads_only",
+      "evidence": [
+        "https://solidarity-us.org/p839/",
+        "https://www.marxists.org/history/etol/newspape/iv/iv-n295-dec-1997.pdf",
+        "https://www.betterworldbooks.com/product/detail/year-one-of-the-russian-revolution-9781608462674/new"
+      ],
+      "note": "The 1996 Russia Twenty Years After includes the Michel Bolsey translation. The 1997 The Ideas of Victor Serge also lists the essay (Hugh O'Donnell attribution in a later academic citation, not independently verified). Year One of the Russian Revolution ISBN 9781608462674 lists the postface on pp. 467–488. No authorized accessible full English text or exact quote or reuse rights established."
+    }
+  ],
+  "auto_publish": false
+}

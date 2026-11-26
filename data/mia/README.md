@@ -47,3 +47,14 @@ load_effective_memory() applies the later redacted review to yield
 38/100, 62 unresolved, zero reuse approvals. All semantic decisions
 remain model-assisted, not independent human labels. No plaintext or
 private key is retained in Git. Temporary workflow/certificate removed.
+
+## Offline research queue
+
+`python work_queue.py --out reports-live/mia-work-queue.json` excludes the
+38 historically accepted cases, retains every unresolved case and groups by
+exact author, work, article and MIA URL set (not inferred title equivalence).
+`work-research.json` records reusable bibliographic leads and exclusions,
+without suppressing any unresolved case or approving any quote. The Victor
+Serge essay has several printed English-edition leads, but its exact text and
+reuse rights remain unverified. The queue is planning only and makes no
+network or model calls.
