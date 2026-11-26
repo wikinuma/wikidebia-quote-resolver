@@ -12,3 +12,8 @@ with open_snapshot() as index:
 m=json.loads(DEFAULT.read_bytes())
 with zipfile.ZipFile(DEFAULT.parent/m['archive']['filename']) as z:
     print('ARCHIVE_MEMBERS='+json.dumps(z.namelist(),ensure_ascii=True))
+
+with zipfile.ZipFile(DEFAULT.parent/m['archive']['filename']) as z:
+    print('BUILD_INDEX_BEGIN')
+    print(z.read('wikirouge-index/build_index.py').decode('utf-8'))
+    print('BUILD_INDEX_END')
