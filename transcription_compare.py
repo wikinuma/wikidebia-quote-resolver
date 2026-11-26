@@ -136,6 +136,7 @@ def supplement_packet(packet, load_document, *, max_payload_chars=120000):
     """
     if max_payload_chars < 1:
         raise ValueError('invalid_packet_limits')
+    ordinary_packet = packet
     packet = deepcopy(packet)
     payload = packet['payload']
     if 'transcription_comparison' in payload:
@@ -230,6 +231,15 @@ def supplement_packet(packet, load_document, *, max_payload_chars=120000):
         'additional_english_characters':added_characters,
     }
     if len(encode(payload)) > max_payload_chars:
-        # Optional comparison must never displace an original anchor.
-        raise ValueError('review_payload_limit_split_input')
+        # Optional comparison must not make a previously valid packet fail.
+        # Retain its exact ordinary anchors, even at the singleton limit.
+        packet = deepcopy(ordinary_packet)
+        packet['payload']['transcription_comparison'] = {
+            'scope':'documented_pairs_only_original_anchors_preserved',
+            'statuses':{'supplement_exceeds_payload_limit':1},
+            'additional_candidate_offers':0,
+            'additional_english_characters':0,
+        }
+        if len(encode(packet['payload'])) > max_payload_chars:
+            return ordinary_packet
     return packet
