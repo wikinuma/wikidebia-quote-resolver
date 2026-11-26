@@ -315,3 +315,22 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(self.c.apply_many([self.reply(d,p,'uncertain') for d,p in wide],
                                           self.raw,self.audit)['requeued_for_expanded_review'],0)
         self.assertEqual(self.c.summary()['states'][INSUFFICIENT],2)
+
+    def test_progressive_cost_scenarios_are_aggregate_and_not_linguistic_results(self):
+        from autonomous_review_check import progressive_cost
+        from prepare_citations import build_campaign_packet
+        items = [(self.c.cases[cid],self.result(self.c.cases[cid])) for cid in ('1','3')]
+        baseline = build_campaign_packet(items,self.raw,self.audit.document)
+        report = progressive_cost(items,[(fingerprint(baseline),baseline)],self.raw,self.audit)
+        self.assertEqual(report['compact']['occurrences'],2)
+        self.assertEqual(report['compact']['verified_seeds'],2)
+        self.assertEqual([row['fallback']['occurrences'] for row in report['scenarios']],
+                         [0,1,1,2,2])
+        self.assertEqual(report['scenarios'][0]['total_review_utf8_bytes'],
+                         report['compact']['review_utf8_bytes'])
+        self.assertGreater(report['scenarios'][-1]['total_review_utf8_bytes'],
+                           report['baseline_expanded_review_utf8_bytes'])
+        self.assertIsNone(report['observed_abstention_rate'])
+        self.assertIsNone(report['semantic_equivalence'])
+        self.assertNotIn(QUOTE,str(report))
+        self.assertNotIn(EN,str(report))
