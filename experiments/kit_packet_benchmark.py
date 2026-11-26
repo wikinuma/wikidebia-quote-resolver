@@ -130,7 +130,14 @@ def find_debate(pages, titles):
         frontier = next_frontier
     if not roots:
         raise ValueError('no_real_debate_found_in_bounded_backlinks')
-    return sorted(roots, key=lambda t: (-sum(counts[c] for c in roots[t]), t))
+    # Try the few smallest actual debate roots first, preserving the
+    # number of reviewed descendants as a secondary ranking criterion.
+    def rank_root(title):
+        record = pages.fetch(title)
+        parsed = parse_debate_wikitext(record.text)
+        return (len({title_key(x.page) for x in parsed.pro + parsed.con}),
+                -sum(counts[c] for c in roots[title]), title)
+    return sorted(roots, key=rank_root), _
 
 
 def load_history(args):
@@ -299,10 +306,29 @@ def main():
         tmp=Path(d)
         client=PilotClient(tmp/'cache',budget=240,delay=.25)
         pages=PublicPages(client)
-        roots=find_debate(pages,[c['wiki_title'] for c,*_ in items])
-        graph=crawl_graph(pages,debate_title=roots[0],stop_on_detailed_debate=True,
-                         stop_on_existing_english_translation=False,max_pages=500,
-                         allow_missing=False,progress_every=0)
+        roots, discovery_depth=find_debate(pages,[c['wiki_title'] for c,*_ in items])
+        graph=None
+        attempts=[]
+        for root in roots[:3]:
+            try:
+                graph=crawl_graph(pages,debate_title=root,stop_on_detailed_debate=True,
+                                  stop_on_existing_english_translation=False,max_pages=500,
+                                  allow_missing=False,progress_every=0)
+                attempts.append({'debate':root,'status':'complete'})
+                break
+            except RuntimeError as exc:
+                if not str(exc).startswith('Limite de sécurité atteinte'):
+                    raise
+                attempts.append({'debate':root,'status':'page_cap_reached'})
+        if graph is None:
+            # The verified backlinks give the minimum depth needed to
+            # include at least one prepared citation. Preserve the graph
+            # safety cap and mark the result as a partial scope.
+            graph=crawl_graph(pages,debate_title=roots[0],stop_on_detailed_debate=True,
+                              stop_on_existing_english_translation=False,max_pages=500,
+                              max_depth=discovery_depth,allow_missing=False,progress_every=0)
+            attempts.append({'debate':roots[0],'status':'bounded_depth',
+                             'max_depth':discovery_depth})
         metas,contents,skipped=source_rows(graph)
         with WorkLibrary(tmp/'works.sqlite3') as lib:
             reconstructed,issues=materialize(items,{title_key(x) for x in graph.page_records},
@@ -317,6 +343,8 @@ def main():
                 'reconstructed_historical_receipts':len(reconstructed),'materialization_issues':issues,
                 **stats,'network_requests':client.requests,'hosted_model_calls':0,
                 'scope':'source-only reconstructed locks, real public debate graph; existing English frontier disabled',
+                'graph_attempts':attempts,'depth_frontiers':len(graph.depth_frontiers),
+                'complete_graph_within_dedicated_debate_frontiers':not bool(graph.depth_frontiers),
                 'provider_tokens_measured':False,'rights_approved':False,'remote_write_performed':False}
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
