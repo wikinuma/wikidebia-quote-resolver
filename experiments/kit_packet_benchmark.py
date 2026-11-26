@@ -313,8 +313,9 @@ def main():
             try:
                 graph=crawl_graph(pages,debate_title=root,stop_on_detailed_debate=True,
                                   stop_on_existing_english_translation=False,max_pages=500,
-                                  allow_missing=False,progress_every=0)
-                attempts.append({'debate':root,'status':'complete'})
+                                  allow_missing=True,progress_every=0)
+                attempts.append({'debate':root,'status':'missing_pages' if graph.missing_pages else 'complete',
+                                 'missing_pages':len(graph.missing_pages)})
                 break
             except RuntimeError as exc:
                 if not str(exc).startswith('Limite de sécurité atteinte'):
@@ -326,7 +327,7 @@ def main():
             # safety cap and mark the result as a partial scope.
             graph=crawl_graph(pages,debate_title=roots[0],stop_on_detailed_debate=True,
                               stop_on_existing_english_translation=False,max_pages=500,
-                              max_depth=discovery_depth,allow_missing=False,progress_every=0)
+                              max_depth=discovery_depth,allow_missing=True,progress_every=0)
             attempts.append({'debate':roots[0],'status':'bounded_depth',
                              'max_depth':discovery_depth})
         metas,contents,skipped=source_rows(graph)
@@ -344,7 +345,7 @@ def main():
                 **stats,'network_requests':client.requests,'hosted_model_calls':0,
                 'scope':'source-only reconstructed locks, real public debate graph; existing English frontier disabled',
                 'graph_attempts':attempts,'depth_frontiers':len(graph.depth_frontiers),
-                'complete_graph_within_dedicated_debate_frontiers':not bool(graph.depth_frontiers),
+                'complete_graph_within_dedicated_debate_frontiers':not bool(graph.depth_frontiers or graph.missing_pages or skipped),
                 'provider_tokens_measured':False,'rights_approved':False,'remote_write_performed':False}
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
