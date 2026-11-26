@@ -84,7 +84,7 @@ def plain(value):
     return clean(soup(value.strip_code()).get_text(' ',strip=False))
 
 
-def citation_record(t,index,include_text=False):
+def citation_record(t,index,include_text=False,include_link_policy=False):
     """One raw Citation template, with its position and exact fingerprint."""
     f=fields(t); q=plain(f.get('citation'))
     result={'quote_sha256':sha(q.encode()),'quote_words':len(norm(q).split()),
@@ -96,6 +96,11 @@ def citation_record(t,index,include_text=False):
             'mia_urls':mia_urls(str(f.get('lien',''))),
             'link_present':bool(str(f.get('lien','')).strip()),
             'source_kind':'raw_citation_template_not_generated_translation'}
+    if include_link_policy:
+        from citation_policy import link_policy
+        policy=link_policy(t)
+        result['link_policy']=policy
+        result['mia_urls']=[policy['mia_url']] if policy['route']=='mia' else []
     if include_text: result['text']=q
     return result
 
@@ -111,12 +116,12 @@ def citation_records(raw):
     return rows,issues
 
 
-def extract_citation(raw,selector,include_text=False):
+def extract_citation(raw,selector,include_text=False,include_link_policy=False):
     needle=norm(selector)
     if len(needle.split())<3: raise ValueError('selector_too_short')
     matches=[]
     for index,t in enumerate(templates(raw,{'citation'})):
-        rec=citation_record(t,index,include_text=True)
+        rec=citation_record(t,index,include_text=True,include_link_policy=include_link_policy)
         if ' '+needle+' ' in ' '+norm(rec['text'])+' ':
             matches.append(rec)
     if len(matches)!=1: raise ValueError('raw_quote_selector_matches='+str(len(matches)))
@@ -125,7 +130,7 @@ def extract_citation(raw,selector,include_text=False):
     return result
 
 
-def extract_citation_ref(raw,ref,include_text=False):
+def extract_citation_ref(raw,ref,include_text=False,include_link_policy=False):
     """Require the exact template occurrence and fingerprints, not merely
     an identical selector elsewhere in the page.
     """
@@ -133,7 +138,7 @@ def extract_citation_ref(raw,ref,include_text=False):
     if type(index) is not int or index<0: raise ValueError('invalid_citation_index')
     for i,t in enumerate(templates(raw,{'citation'})):
         if i!=index: continue
-        rec=citation_record(t,i,include_text)
+        rec=citation_record(t,i,include_text,include_link_policy=include_link_policy)
         if rec['template_sha256']!=ref.get('template_sha256') or rec['quote_sha256']!=ref.get('quote_sha256'):
             raise ValueError('citation_fingerprint_mismatch')
         return rec
@@ -283,7 +288,7 @@ def author_check(citation,work):
     return 'author_tokens_differ'
 
 
-def discover_case(client,case,quote_sink=None,local_index=None,work_library=None):
+def discover_case(client,case,quote_sink=None,local_index=None,work_library=None,strict_link_policy=False):
     row={'id':case['id'],'auto_publish':False,'rights':'unreviewed','status':'unresolved','attempts':[]}
     try:
         ref=case.get('citation_ref')
@@ -293,14 +298,17 @@ def discover_case(client,case,quote_sink=None,local_index=None,work_library=None
             title,rev,raw=raw_parse(client,WD_API,oldid=rev)
             if title.replace('_',' ')!=case['wiki_title'].replace('_',' '):
                 raise ValueError('citation_page_mismatch')
-            metadata=extract_citation_ref(raw,ref,include_text=quote_sink is not None)
+            metadata=extract_citation_ref(raw,ref,include_text=quote_sink is not None,include_link_policy=strict_link_policy)
         else:
             title,rev,raw=raw_parse(client,WD_API,title=case['wiki_title'])
-            metadata=extract_citation(raw,case['selector'],include_text=quote_sink is not None)
+            metadata=extract_citation(raw,case['selector'],include_text=quote_sink is not None,include_link_policy=strict_link_policy)
         if quote_sink is not None: quote_sink[case['id']]=metadata.pop('text')
         row['input']={**metadata,'wiki_title':title,'revision':rev,'raw_sha256':sha(raw.encode())}
     except Exception as exc:
         row.update(status='input_unavailable',error=error_kind(exc)); return row
+    if strict_link_policy and metadata['link_policy']['route'] != 'mia':
+        row['status']='ai_translation_required'
+        return row
     index_fingerprint=getattr(local_index,'fingerprint',None)
     def remember():
         if work_library is not None:

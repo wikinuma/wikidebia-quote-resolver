@@ -38,6 +38,22 @@ class PolicyTests(unittest.TestCase):
                     '{{Citation|Lien=https://marxists.org/a.htm}}'):
             self.assertEqual(link_policy(mwparserfromhell.parse(raw).filter_templates()[0])['route'], 'ai')
 
+    def test_navigation_stops_before_bibliography(self):
+        from navigation import discover_case
+        from auto_retrieve import Retrieval
+        class Fake:
+            def api(self, endpoint, **kw):
+                if kw.get('action') != 'parse':
+                    raise AssertionError('bibliographic lookup attempted')
+                return {'parse': {'title':'Test', 'revid':42, 'wikitext':
+                        '{{Citation|citation=Un texte de test|ouvrage=Le Capital|lien=https://example.org/a}}'}}
+        case={'id':'t','wiki_title':'Test','selector':'Un texte de test'}
+        row=discover_case(Fake(),case,strict_link_policy=True)
+        self.assertEqual(row['status'],'ai_translation_required')
+        retrieved=Retrieval(Fake(),10,strict_link_policy=True).retrieve(case)
+        self.assertEqual(retrieved['status'],'ai_translation_required')
+        self.assertEqual(retrieved['candidates'],[])
+
 
 class FakeWiki:
     requests = 0

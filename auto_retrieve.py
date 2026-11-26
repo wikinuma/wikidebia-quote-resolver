@@ -171,13 +171,14 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
         self.chapter_catalog=tuple(chapter_catalog)
         self.direct_cache=DirectAlignmentCache()
         self.work_library=work_library
+        self.strict_link_policy=strict_link_policy
         self.semantic_index=semantic_index
         self.toc_matcher=toc_matcher
         self.hybrid=hybrid
@@ -397,8 +398,12 @@ class Retrieval:
         quotes={}
         kwargs={'local_index':self.local_index} if self.local_index is not None else {}
         if self.work_library is not None: kwargs['work_library']=self.work_library
+        if self.strict_link_policy: kwargs['strict_link_policy']=True
         nav=discover_case(self.client,query,quote_sink=quotes,**kwargs)
         row={'id':case['id'],'navigation_status':nav['status'],'navigation':nav,'auto_publish':False,'rights':'unreviewed','status':'no_work_route','candidates':[]}
+        if nav['status']=='ai_translation_required':
+            row['status']='ai_translation_required'
+            return row
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
             if self.catalog and nav['status'] in ('work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed') and case['id'] in quotes:
                 return self.retrieve_catalog(case,row,quotes[case['id']])
@@ -500,8 +505,8 @@ class Retrieval:
         return self.semantic_sidecar(row,quote,docs)
 
 
-def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),work_library=None,semantic_index=None,toc_matcher=None,hybrid=False):
-    r=Retrieval(client,max_pages,catalog,local_index,refined,chapter_catalog,semantic_index,toc_matcher,hybrid,work_library)
+def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),work_library=None,semantic_index=None,toc_matcher=None,hybrid=False,strict_link_policy=False):
+    r=Retrieval(client,max_pages,catalog,local_index,refined,chapter_catalog,semantic_index,toc_matcher,hybrid,work_library,strict_link_policy)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
     return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
@@ -522,6 +527,7 @@ def main():
     p.add_argument('--catalog',type=Path,help='Optional researched bibliography')
     p.add_argument('--chapter-catalog',type=Path,help='Optional reviewed chapter mappings; used in refined mode')
     p.add_argument('--work-library',type=Path,help='Persistent work-level metadata SQLite database; no quotation decisions')
+    p.add_argument('--link-policy',action='store_true',help='Restrict recovery to literal MIA Citation links; automatic with --work-library')
     p.add_argument('--cases-file',type=Path,help='JSON object with pinned cases array; default pilot cases')
     p.add_argument('--model-dir',type=Path,help='Optional pinned local safetensors model, with work library and refined mode')
     p.add_argument('--vector-cache',type=Path,help='Shared SQLite cache for local model inputs')
@@ -562,13 +568,13 @@ def execute(a,local_index):
                     from toc_structure import AugmentedTocMatcher
                     enc=LocalEncoder(a.model_dir,a.vector_cache)
                     kwargs=dict(semantic_index=SentenceVectorIndex(enc),toc_matcher=AugmentedTocMatcher(c,enc),hybrid=True)
-                report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters,work_library=library,**kwargs)
+                report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters,work_library=library,strict_link_policy=True,**kwargs)
                 report['work_library_stats']=library.stats.copy()
                 if enc is not None: report['encoder_stats']=enc.stats.copy()
             finally:
                 if enc is not None: enc.close()
     else:
-        report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
+        report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters,strict_link_policy=a.link_policy)
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     summary={k:report[k] for k in ('counts','requests','cache_hits','scope','auto_publish')}
@@ -586,7 +592,7 @@ def execute(a,local_index):
     if a.replay:
         expected=recorded_events(c.events)
         replay_client=PilotClient(a.cache,budget=a.budget,offline=True,expected_events=expected)
-        replay=run_auto(replay_client,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
+        replay=run_auto(replay_client,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters,strict_link_policy=a.link_policy)
         same=report['cases']==replay['cases'] and report['counts']==replay['counts']
         mismatches=replay_mismatches(expected,replay_client.events)
         integrity={'results_match':same,'response_mismatches':mismatches,'network_requests':replay_client.requests}
