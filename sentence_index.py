@@ -25,7 +25,9 @@ class SentenceVectorIndex:
     def document(self,doc,parts):
         import numpy as np
         text,_=text_and_starts(doc)
-        key=(self.encoder.model_id,sha(text.encode()),'sentence_sqrt_words_v1')
+        # Equal extracted text alone does not imply equal segmentation.
+        layout=sha(repr([(p.start,p.end) for p in parts]).encode())
+        key=(self.encoder.model_id,sha(text.encode()),layout,'sentence_sqrt_words_v1')
         if key in self.entries:
             self.hits+=1
             self.entries.move_to_end(key)
@@ -114,3 +116,38 @@ class SentenceVectorIndex:
         result['candidates']=selected
         result['status']='review_required' if selected else 'no_candidate'
         return result
+
+
+def rank_scoped(index,quote,docs,baseline,top=5):
+    """Prefer the entire collected target scope. If the explicit budget
+    prevents that, use only exact identities from existing candidate docs.
+    Report the restriction; never imply that every document was searched.
+    """
+    unique={(d.url,d.digest):d for d in docs}
+    docs=list(unique.values())
+    selected=docs
+    result=index.rank(quote,selected,top=top)
+    attempts=[{'scope':'all_collected_target_documents','documents':len(docs),
+               'status':result['status'],'windows':result['window_count']}]
+    scope='all_collected_target_documents'
+    if result['status'] in ('window_budget_exceeded','segment_budget_exceeded'):
+        keys=list(dict.fromkeys((c['url'],c['sha256']) for c in baseline
+                                if (c['url'],c['sha256']) in unique))
+        selected=[unique[k] for k in keys[:4]]
+        if selected and len(selected)<len(docs):
+            scope='baseline_candidate_documents_only'
+            result=index.rank(quote,selected,top=top)
+            attempts.append({'scope':scope,'documents':len(selected),
+                             'status':result['status'],'windows':result['window_count']})
+            if len(selected)>1 and result['status'] in ('window_budget_exceeded','segment_budget_exceeded'):
+                scope='baseline_primary_document_only'
+                selected=selected[:1]
+                result=index.rank(quote,selected,top=top)
+                attempts.append({'scope':scope,'documents':1,'status':result['status'],
+                                 'windows':result['window_count']})
+        else:
+            selected=docs
+    return {**result,'scope':scope,'available_documents':len(docs),
+            'selected_documents':len(selected),
+            'scope_restricted':len(selected)<len(docs),'attempts':attempts,
+            'candidate_documents':[{'url':d.url,'sha256':d.digest,'revision':d.revision} for d in selected]}

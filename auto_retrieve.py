@@ -171,12 +171,13 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=()):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
         self.chapter_catalog=tuple(chapter_catalog)
         self.direct_cache=DirectAlignmentCache()
+        self.semantic_index=semantic_index
 
     def work(self,provider,root,lang):
         key=(provider,root,lang)
@@ -271,6 +272,27 @@ class Retrieval:
         return {'status':'variant_review_required' if variants else 'source_unconfirmed_in_bounded_scope',
                 'occurrences':[],'variants':variants[:5],'stages':stages,'source_evidence_diagnostics':diagnostics}
 
+    def semantic_sidecar(self,row,quote,docs):
+        """Opt-in candidate comparison on already retrieved documents.
+        Never replace the baseline first-pass packet or trigger another GET."""
+        if self.semantic_index is None:
+            return row
+        urls=row.get('navigation',{}).get('input',{}).get('mia_urls',[])
+        if not urls or any(canonical_mia(u)!=u for u in urls):
+            return row
+        from sentence_index import rank_scoped
+        import time
+        start=time.monotonic()
+        try:
+            semantic=rank_scoped(self.semantic_index,quote,docs,
+                                 row.get('section_alignment',{}).get('candidates',[])+row.get('candidates',[]))
+        except Exception as exc:
+            semantic={'status':'execution_error','error':error_kind(exc),'candidates':[],
+                      'auto_publish':False,'rights':'unreviewed'}
+        semantic['elapsed_seconds']=round(time.monotonic()-start,6)
+        row['semantic_experiment']=semantic
+        return row
+
     def retrieve_catalog(self,case,row,quote):
         # Only use explicit researched mappings when the ordinary route is
         # unresolved. Never override a conflicting or ambiguous author.
@@ -306,7 +328,7 @@ class Retrieval:
                                       (entry['source_title'],entry['target_title']),(entry['authors'],))
             row.update(target_provider='mia',target_scope=info['scope'],candidates=candidates,section_alignment=aligned,
                        status='catalog_candidate_review_required' if candidates or aligned['candidates'] else 'catalog_no_candidate')
-            return row
+            return self.semantic_sidecar(row,quote,docs)
         try:
             if provider=='mia':
                 doc,_=mia_doc(self.client,url)
@@ -338,7 +360,7 @@ class Retrieval:
                 aligned={'status':'not_applicable','candidates':[]}
             row['section_alignment']=aligned
             if aligned['candidates'] and not candidates: row['status']='catalog_candidate_review_required'
-        return row
+        return self.semantic_sidecar(row,quote,[doc])
 
     def retrieve(self,case):
         row=self._retrieve(case)
@@ -377,7 +399,7 @@ class Retrieval:
                     doc,body=mia_doc(self.client,chapter['en_url'])
                     if explicit_toc(body,doc.url): raise ValueError('chapter_target_is_toc')
                     row.update(retrieve_chapter(quote,source,list(self.source_documents.values()),doc,chapter,self.direct_cache))
-                    return row
+                    return self.semantic_sidecar(row,quote,[doc])
                 except Exception as exc:
                     row['chapter_route_failure']={'route':chapter,'error':error_kind(exc)}
                     # Do not silently substitute another chapter when the known one fails.
@@ -447,7 +469,7 @@ class Retrieval:
         if self.catalog and not row['candidates'] and not aligned['candidates']:
             row['automatic_attempt']={'status':row['status'],'source_status':source['status']}
             return self.retrieve_catalog(case,row,quote)
-        return row
+        return self.semantic_sidecar(row,quote,docs)
 
 
 def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=()):
