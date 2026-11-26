@@ -152,3 +152,27 @@ The first 100 MIA cases exposed a failure mode: lexical scoring may prioritize a
 ## Bibliothèque d’ouvrages partagée
 
 Le moteur expérimental peut conserver les notices bibliographiques et correspondances de chapitres entre plusieurs débats, sans stocker de décisions sur les citations individuelles. Voir [WORK-LIBRARY.md](experiments/WORK-LIBRARY.md). Les anciens jeux de référence sont réservés aux benchmarks et ne sont pas lus par le moteur actif.
+
+
+## Routage explicite et recensement des domaines
+
+La recherche documentaire est réservée au domaine du paramètre littéral
+`|lien=` de chaque modèle Citation. Le mode opérationnel `--work-library`
+active ce filtre automatiquement; `--link-policy` l'active pour un pilote
+sans bibliothèque. Seul marxists.org (avec ou sans www) est pris en charge.
+Un autre domaine, un lien absent ou ambigu donne `ai_translation_required`
+sans navigation bibliographique. Cette décision ne lance aucune traduction.
+Les anciens benchmarks non stricts restent disponibles pour comparaison.
+Les candidats MIA nécessitent toujours la revue exacte du passage et des droits.
+
+```sh
+python citation_domain_census.py
+```
+
+Recensement de l'espace principal par embeddedin et redirections de modèle,
+lecture des révisions brutes par lots, pagination et déduplication par page ID.
+Les rapports CI ne contiennent que des compteurs; aucun site cité n'est consulté.
+Les autres fournisseurs multilingues sont comptés, pas activés. Le statut complet
+porte sur les invocations littérales des pages énumérées, non sur les transclusions
+indirectes ou une photographie atomique du wiki. Les pages sans invocation brute
+sont signalées séparément. Aucun texte de citation n'est exporté.
