@@ -5,6 +5,9 @@ on:
     paths:
       - 'autonomous_review_check.py'
       - 'prepare_citations.py'
+      - 'prepared_resolution.py'
+      - 'translation_handoff.py'
+      - 'tests/test_translation_handoff.py'
       - 'tests/test_prepare_citations.py'
       - 'boundary_stress.py'
       - 'reviewed_boundaries.py'
