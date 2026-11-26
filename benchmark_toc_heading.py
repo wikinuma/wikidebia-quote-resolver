@@ -61,8 +61,11 @@ def propose(matcher,root_pair,source_url):
         pair=rows[0]
         try: probe=matcher.content_probe(pair)
         except Exception as exc: probe={'status':'document_probe_unavailable','error':type(exc).__name__}
+        if pair.get('requires_content_probe') and probe['status']!='sampled_content_support':
+            return {**base,'status':'uncorroborated_bracketed_hypothesis','hypothesis':pair,'content_probe':probe}
+        pos=pair['en'].get('ordinary_position',pair['en']['position'])
         return {**base,'status':'candidate','pair':pair,'content_probe':probe,
-                'outside_first_15_toc_links':pair['en']['position']>=15}
+                'outside_first_15_toc_links':pos is None or pos>=15}
     except Exception as exc:
         return {'status':'toc_unavailable','error':type(exc).__name__}
 
@@ -72,9 +75,14 @@ def main():
     p.add_argument('--model-dir',type=Path,required=True)
     p.add_argument('--cache',type=Path,required=True)
     p.add_argument('--out',type=Path,default=ROOT/'reports-live/toc-heading-benchmark.json')
+    p.add_argument('--structure-v2',action='store_true')
     a=p.parse_args();a.cache.mkdir(parents=True,exist_ok=True);a.out.parent.mkdir(parents=True,exist_ok=True)
     client=PilotClient(a.cache/'http',budget=100)
-    enc=LocalEncoder(a.model_dir,a.cache/'vectors.sqlite3');matcher=TocMatcher(client,enc)
+    enc=LocalEncoder(a.model_dir,a.cache/'vectors.sqlite3')
+    if a.structure_v2:
+        from toc_structure import StructureMatcher
+        matcher=StructureMatcher(client,enc)
+    else:matcher=TocMatcher(client,enc)
     started=time.monotonic()
     try:
         labelled=[]
@@ -94,7 +102,9 @@ def main():
                  'labelled_content_supported_correct':sum(r['evaluation']=='correct' and r.get('content_probe',{}).get('status')=='sampled_content_support' for r in labelled),
                  'labelled_content_supported_wrong':sum(r['evaluation']=='wrong' and r.get('content_probe',{}).get('status')=='sampled_content_support' for r in labelled),
                  'novel_urls':len(new),'novel_statuses':dict(Counter(r['status'] for r in new)),
-                 'novel_content_supported':sum(r.get('content_probe',{}).get('status')=='sampled_content_support' for r in new),
+                 'novel_content_supported':sum(r.get('status')=='candidate' and r.get('content_probe',{}).get('status')=='sampled_content_support' for r in new),
+                 'structure_v2':a.structure_v2,
+                 'bracketed_candidates':sum(r.get('pair',{}).get('method')=='equal_contiguous_bracketed_gap' for r in labelled+new),
                  'novel_outside_first_15':sum(r.get('outside_first_15_toc_links',False) for r in new),
                  'network_requests':client.requests,'decoded_network_body_bytes':client.network_body_bytes,
                  'elapsed_seconds':round(time.monotonic()-started,3),'encoder_stats':enc.stats,
