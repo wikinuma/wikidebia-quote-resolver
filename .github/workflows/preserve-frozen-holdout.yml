@@ -1,0 +1,66 @@
+name: Preserve frozen holdout benchmark evidence
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    types: [synchronize]
+    paths:
+      - '.github/workflows/preserve-frozen-holdout.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  preserve:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'experiment/mia-second-pass-closure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: fresh-mia-frozen-inventory
+          run-id: 45804035075
+          github-token: ${{ github.token }}
+          path: frozen/inventory
+      - uses: actions/download-artifact@v4
+        with:
+          name: fresh-mia-holdout-report
+          run-id: 45804035075
+          github-token: ${{ github.token }}
+          path: frozen/report
+      - name: Verify and preserve only redacted artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' '06de13853f1d18b3c16a011a22849efa4cbee3f9b56ba493faf157a31654b286' frozen/inventory/fresh-mia-inventory.json '04b035052345d0ce86b45d52a20344fcd6a4e9ab1af0a1258109011687715e86' frozen/report/fresh-mia-holdout.json | sha256sum -c -
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path('frozen/inventory/fresh-mia-inventory.json').read_bytes())
+          b=json.loads(Path('frozen/report/fresh-mia-holdout.json').read_bytes())
+          assert a['schema']=='wikidebia-fresh-mia-inventory-1' and b['schema']=='wikidebia-fresh-mia-holdout-1'
+          assert a['scope']==b['scope']=='explicit_mia_only' and not a['auto_publish'] and not b['auto_publish']
+          assert b['inventory_sha256']=='06de13853f1d18b3c16a011a22849efa4cbee3f9b56ba493faf157a31654b286'
+          assert len(a['sample'])==len(b['sample'])==len(b['pairs'])==50 and a['sample']==b['sample']
+          def walk(x):
+              if isinstance(x, dict):
+                  assert not set(x)&{'text','fr_quote','en_candidate','raw_wikitext','private_key'}
+                  for v in x.values(): walk(v)
+              elif isinstance(x,list):
+                  for v in x: walk(v)
+          walk(a);walk(b)
+          PY
+          mkdir -p data/mia/benchmarks/20261126
+          cp frozen/inventory/fresh-mia-inventory.json data/mia/benchmarks/20261126/inventory.json
+          cp frozen/report/fresh-mia-holdout.json data/mia/benchmarks/20261126/report.json
+          printf '%s  %s\n' '06de13853f1d18b3c16a011a22849efa4cbee3f9b56ba493faf157a31654b286' data/mia/benchmarks/20261126/inventory.json '04b035052345d0ce86b45d52a20344fcd6a4e9ab1af0a1258109011687715e86' data/mia/benchmarks/20261126/report.json > data/mia/benchmarks/20261126/SHA256SUMS
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- data/mia/benchmarks/20261126/inventory.json data/mia/benchmarks/20261126/report.json data/mia/benchmarks/20261126/SHA256SUMS
+          git commit -m 'Preserve verified redacted 50-case holdout baseline'
+          git -c credential.helper='!gh auth git-credential' push origin HEAD:refs/heads/experiment/mia-second-pass-closure
