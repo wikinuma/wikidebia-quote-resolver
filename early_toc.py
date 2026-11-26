@@ -8,7 +8,7 @@ on failure; reserve part of the remaining budget for ordinary retrieval.
 from bibliography import VERIFIED_AUTHORS
 from navigation import author_check,canonical_mia,error_kind
 from refinement import select_source_hit
-from resolver import rank
+from resolver import rank,sha
 from window_rank import rank_short_windows
 
 
@@ -50,7 +50,31 @@ def try_early_toc(engine,row,quote,source):
     # A failed speculative route cannot use the entire case allowance.
     c.budget=min(old-8,before+4)
     try:
-        m=matcher.match_for_source(fr_root,en_root,url)
+        library=getattr(engine,'work_library',None)
+        matcher_id=None
+        saved=None
+        if library is not None:
+            try:
+                matcher_id=sha(('guarded_chapter_v1|'+type(matcher).__name__+'|'+matcher.encoder.model_id).encode())
+                saved=library.chapter(fr_root,en_root,url,matcher_id,fr.digest)
+                if saved is not None:
+                    # Reuse a chapter hypothesis only when both TOC bodies and
+                    # both chapter bodies still match exactly. The quotation
+                    # itself is independently localized above on every call.
+                    current=[matcher.toc(fr_root,'fr')[1],matcher.toc(en_root,'en')[1]]
+                    if current!=saved['toc_receipts']:
+                        saved=None
+                    else:
+                        doc=matcher.document(saved['pair']['en']['url'])
+                        if doc.digest!=saved['document_hashes']['en'] or canonical_mia(doc.url)!=saved['pair']['en']['url']:
+                            saved=None
+                library.stats['chapter_hits' if saved is not None else 'chapter_misses']+=1
+            except Exception as exc:
+                diagnostic['work_library_error']=error_kind(exc)
+                saved=None
+        m=({'pairs':[saved['pair']],'fr_toc':saved['toc_receipts'][0],
+            'en_toc':saved['toc_receipts'][1],'matcher_variant':'persisted_revalidated_chapter'}
+           if saved is not None else matcher.match_for_source(fr_root,en_root,url))
         pairs=[p for p in m['pairs'] if p['fr']['url']==url]
         diagnostic.update(toc_receipts=[m['fr_toc'],m['en_toc']],supported_pairs=len(m['pairs']),
                           matcher_variant=m.get('matcher_variant','original'))
@@ -64,12 +88,21 @@ def try_early_toc(engine,row,quote,source):
         # Missing ordinary position means the ordinary TOC parser omitted it.
         if ordinary_pos is not None and ordinary_pos<engine.max_pages-1:
             diagnostic['status']='within_ordinary_document_budget';return None,diagnostic
-        probe=matcher.content_probe(pair);diagnostic['content_probe']=probe
+        probe=({'status':'sampled_content_support','scope':'previous_probe_same_document_and_toc_hashes',
+                'fr_document_sha256':saved['document_hashes']['fr'],
+                'en_document_sha256':saved['document_hashes']['en'],'auto_publish':False}
+               if saved is not None else matcher.content_probe(pair))
+        diagnostic['content_probe']=probe
         if probe['status']!='sampled_content_support' or probe['fr_document_sha256']!=fr.digest:
             diagnostic['status']='chapter_content_not_corroborated';return None,diagnostic
         en=matcher.document(pair['en']['url'])
         if en.digest!=probe['en_document_sha256'] or canonical_mia(en.url)!=pair['en']['url']:
             diagnostic['status']='target_document_changed';return None,diagnostic
+        if library is not None and matcher_id is not None and saved is None:
+            try:
+                library.remember_chapter(fr_root,en_root,pair,diagnostic['toc_receipts'],probe,matcher_id)
+            except Exception as exc:
+                diagnostic['work_library_error']=error_kind(exc)
         lexical=rank(quote,[en])
         if not lexical: lexical=rank_short_windows(quote,[en])['candidates']
         aligned=engine.direct_cache.candidate(source,list(engine.source_documents.values()),[en],url,

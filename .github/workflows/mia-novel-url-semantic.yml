@@ -1,11 +1,6 @@
 name: Novel MIA URLs semantic candidate comparison
 on:
-  pull_request:
-    branches: ['experiment/pilot-v04']
-    paths:
-      - 'novel_url_benchmark.py'
-      - 'tests/test_novel_url_benchmark.py'
-      - '.github/workflows/mia-novel-url-semantic.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -13,7 +8,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   benchmark:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

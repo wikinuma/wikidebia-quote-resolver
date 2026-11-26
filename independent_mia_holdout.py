@@ -23,7 +23,7 @@ from fresh_mia_holdout import review_primary
 from novel_url_benchmark import BASE,PIN,frozen_sample,urls,comparison
 from pilot_full import PilotClient
 from resolver import ROOT,sha,norm
-from review_memory import load_effective_memory,check_hash
+from benchmark_fixtures import load_prior_cohort,check_hash
 from revision_receipt import RevisionRefresher
 from sentence_index import SentenceVectorIndex
 from toc_structure import AugmentedTocMatcher
@@ -73,7 +73,7 @@ def sample():
     raw=BASE.read_bytes()
     if sha(raw)!=PIN:raise ValueError('inventory_pin_mismatch')
     inv=json.loads(raw)
-    previous=load_effective_memory(ROOT/'data/mia')['cases']+inv['sample']+frozen_sample()['sample']
+    previous=load_prior_cohort()['cases']+inv['sample']+frozen_sample()['sample']
     if len(previous)!=200 or len({c['citation_ref']['quote_sha256'] for c in previous})!=200:
         raise ValueError('previous_cohort_mismatch')
     cases,diag=select(inv['cases'],previous)

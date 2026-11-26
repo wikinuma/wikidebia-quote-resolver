@@ -171,12 +171,13 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
         self.chapter_catalog=tuple(chapter_catalog)
         self.direct_cache=DirectAlignmentCache()
+        self.work_library=work_library
         self.semantic_index=semantic_index
         self.toc_matcher=toc_matcher
         self.hybrid=hybrid
@@ -395,6 +396,7 @@ class Retrieval:
         else: query['selector']=case['selector']
         quotes={}
         kwargs={'local_index':self.local_index} if self.local_index is not None else {}
+        if self.work_library is not None: kwargs['work_library']=self.work_library
         nav=discover_case(self.client,query,quote_sink=quotes,**kwargs)
         row={'id':case['id'],'navigation_status':nav['status'],'navigation':nav,'auto_publish':False,'rights':'unreviewed','status':'no_work_route','candidates':[]}
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
@@ -498,8 +500,8 @@ class Retrieval:
         return self.semantic_sidecar(row,quote,docs)
 
 
-def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=()):
-    r=Retrieval(client,max_pages,catalog,local_index,refined,chapter_catalog)
+def run_auto(client,cases,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),work_library=None,semantic_index=None,toc_matcher=None,hybrid=False):
+    r=Retrieval(client,max_pages,catalog,local_index,refined,chapter_catalog,semantic_index,toc_matcher,hybrid,work_library)
     rows=[r.retrieve(c) for c in cases]
     counts={status:sum(x['status']==status for x in rows) for status in sorted({x['status'] for x in rows})}
     return redact_text({'schema':'wikidebia-automatic-candidates-0.1','offline':client.offline,'auto_publish':False,
@@ -519,27 +521,59 @@ def main():
     p.add_argument('--refined',action='store_true',help='Cache direct alignments and expose a first-pass review packet')
     p.add_argument('--catalog',type=Path,help='Optional researched bibliography')
     p.add_argument('--chapter-catalog',type=Path,help='Optional reviewed chapter mappings; used in refined mode')
+    p.add_argument('--work-library',type=Path,help='Persistent work-level metadata SQLite database; no quotation decisions')
+    p.add_argument('--cases-file',type=Path,help='JSON object with pinned cases array; default pilot cases')
+    p.add_argument('--model-dir',type=Path,help='Optional pinned local safetensors model, with work library and refined mode')
+    p.add_argument('--vector-cache',type=Path,help='Shared SQLite cache for local model inputs')
     a=p.parse_args()
+    if bool(a.model_dir)!=bool(a.vector_cache) or (a.model_dir and not (a.work_library and a.refined)):
+        p.error('local semantic mode requires --model-dir, --vector-cache, --work-library and --refined')
+    if a.work_library and a.replay: p.error('strict replay requires unchanged library state; use without --work-library')
     if a.budget<1 or a.max_pages<1: p.error('positive limits required')
     if a.local_index:
         from wikirouge_index import open_snapshot
         with open_snapshot(a.local_index) as index:
             return execute(a,index)
+    if a.work_library:
+        from wikirouge_incremental import open_current
+        with open_current() as index:
+            return execute(a,index)
     return execute(a,None)
 
 
 def execute(a,local_index):
-    cases=json.loads((ROOT/'cases-v02.json').read_text())['cases']
+    cases=json.loads((a.cases_file or ROOT/'cases-v02.json').read_text())['cases']
     cases=[c for c in cases if not a.case or c['id'] in a.case]
     if not cases or set(a.case)-{c['id'] for c in cases}: p.error('unknown or empty case')
     from bibliography import load_catalog
-    catalog=load_catalog(a.catalog) if a.catalog else ()
+    catalog=load_catalog(a.catalog or ROOT/'bibliographic-catalog.json') if a.catalog or a.work_library else ()
     from chapter_routes import load_chapters
-    chapters=load_chapters(a.chapter_catalog) if a.chapter_catalog else ()
-    c=PilotClient(a.cache,budget=a.budget); report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
+    chapters=load_chapters(a.chapter_catalog or ROOT/'chapter-catalog.json') if a.chapter_catalog or a.work_library else ()
+    c=PilotClient(a.cache,budget=a.budget)
+    if a.work_library:
+        from work_library import WorkLibrary
+        with WorkLibrary(a.work_library) as library:
+            kwargs={}
+            enc=None
+            try:
+                if a.model_dir:
+                    from embedding import LocalEncoder
+                    from sentence_index import SentenceVectorIndex
+                    from toc_structure import AugmentedTocMatcher
+                    enc=LocalEncoder(a.model_dir,a.vector_cache)
+                    kwargs=dict(semantic_index=SentenceVectorIndex(enc),toc_matcher=AugmentedTocMatcher(c,enc),hybrid=True)
+                report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters,work_library=library,**kwargs)
+                report['work_library_stats']=library.stats.copy()
+                if enc is not None: report['encoder_stats']=enc.stats.copy()
+            finally:
+                if enc is not None: enc.close()
+    else:
+        report=run_auto(c,cases,a.max_pages,catalog,local_index,refined=a.refined,chapter_catalog=chapters)
     a.out.parent.mkdir(parents=True,exist_ok=True)
     a.out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     summary={k:report[k] for k in ('counts','requests','cache_hits','scope','auto_publish')}
+    for key in ('work_library_stats','encoder_stats'):
+        if key in report: summary[key]=report[key]
     summary['cases']=[{'id':r['id'],'navigation_status':r['navigation_status'],'status':r['status'],
                       'source_status':r.get('source',{}).get('status'),'source_matches':len(r.get('source',{}).get('occurrences',[])),
                       'source_stages':[{'provider':s['provider'],'scope':s['scope'],'pages':len(s['pages']),'issues':s['issues']} for s in r.get('source',{}).get('stages',[])],
