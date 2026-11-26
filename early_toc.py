@@ -50,13 +50,19 @@ def try_early_toc(engine,row,quote,source):
     # A failed speculative route cannot use the entire case allowance.
     c.budget=min(old-8,before+4)
     try:
-        m=matcher.match(fr_root,en_root)
+        m=matcher.match_for_source(fr_root,en_root,url)
         pairs=[p for p in m['pairs'] if p['fr']['url']==url]
-        diagnostic.update(toc_receipts=[m['fr_toc'],m['en_toc']],supported_pairs=len(m['pairs']))
+        diagnostic.update(toc_receipts=[m['fr_toc'],m['en_toc']],supported_pairs=len(m['pairs']),
+                          matcher_variant=m.get('matcher_variant','original'))
+        if m.get('structure_error'):
+            diagnostic['structure_error']=m['structure_error']
         if len(pairs)!=1:
             diagnostic['status']='no_unique_supported_chapter';return None,diagnostic
         pair=pairs[0];diagnostic['pair']=pair
-        if pair['en']['position']<engine.max_pages-1:
+        ordinary_pos=pair['en'].get('ordinary_position',pair['en']['position'])
+        # V2's explicit file order is not the old collector's traversal order.
+        # Missing ordinary position means the ordinary TOC parser omitted it.
+        if ordinary_pos is not None and ordinary_pos<engine.max_pages-1:
             diagnostic['status']='within_ordinary_document_budget';return None,diagnostic
         probe=matcher.content_probe(pair);diagnostic['content_probe']=probe
         if probe['status']!='sampled_content_support' or probe['fr_document_sha256']!=fr.digest:

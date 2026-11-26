@@ -19,7 +19,7 @@ def fixture():
     en=Document(EN,['English source passage.'],'e')
     pair={'fr':{'url':FR,'position':20},'en':{'url':EN,'position':19}}
     m=Mock()
-    m.match.return_value={'pairs':[pair],'fr_toc':{},'en_toc':{}}
+    m.match_for_source.return_value={'pairs':[pair],'fr_toc':{},'en_toc':{}}
     m.content_probe.return_value={'status':'sampled_content_support','fr_document_sha256':'f','en_document_sha256':'e'}
     m.document.return_value=en
     client=SimpleNamespace(budget=32,requests=2)
@@ -45,7 +45,7 @@ class EarlyRouteTests(unittest.TestCase):
         for mode in ('ambiguous','inconclusive','changed','no_semantic','inside'):
             with self.subTest(mode=mode):
                 e,row,doc,pair=fixture()
-                if mode=='ambiguous':e.toc_matcher.match.return_value['pairs']=[pair,pair]
+                if mode=='ambiguous':e.toc_matcher.match_for_source.return_value['pairs']=[pair,pair]
                 elif mode=='inconclusive':e.toc_matcher.content_probe.return_value['status']='sampled_content_inconclusive'
                 elif mode=='changed':e.toc_matcher.content_probe.return_value['fr_document_sha256']='different'
                 elif mode=='no_semantic':e.semantic_sidecar=lambda r,q,d:r
@@ -62,7 +62,7 @@ class EarlyRouteTests(unittest.TestCase):
         def fail(*args):
             self.assertEqual(e.client.budget,6)
             raise RuntimeError('unavailable')
-        e.toc_matcher.match.side_effect=fail
+        e.toc_matcher.match_for_source.side_effect=fail
         with patch('early_toc.select_source_hit',return_value=(doc,{'evidence_kind':'exact_normalized_source'})):
             out,d=try_early_toc(e,row,'quote',{})
         self.assertIsNone(out)
@@ -71,7 +71,7 @@ class EarlyRouteTests(unittest.TestCase):
         e.client.requests=30
         with patch('early_toc.select_source_hit',return_value=(doc,{'evidence_kind':'exact_normalized_source'})):
             self.assertEqual(try_early_toc(e,row,'quote',{})[1]['status'],'fallback_budget_reserved')
-        self.assertEqual(e.toc_matcher.match.call_count,1)
+        self.assertEqual(e.toc_matcher.match_for_source.call_count,1)
 
     def test_non_mia_and_conflicting_author_refused(self):
         e,row,doc,pair=fixture()
@@ -84,3 +84,13 @@ class EarlyRouteTests(unittest.TestCase):
     def test_opt_in_requires_shared_client_and_encoder(self):
         with self.assertRaises(ValueError):Retrieval(Mock(),16,hybrid=True)
         with self.assertRaises(ValueError):Retrieval(Mock(),16,refined=True,semantic_index=Mock(),toc_matcher=Mock())
+
+    def test_v2_uses_ordinary_collector_position_not_explicit_order(self):
+        for ordinary_position,accepted in ((None,True),(3,False),(20,True)):
+            with self.subTest(ordinary_position=ordinary_position):
+                e,row,doc,pair=fixture()
+                pair['en'].update(position=2,ordinary_position=ordinary_position)
+                with patch('early_toc.select_source_hit',return_value=(doc,{'evidence_kind':'exact_normalized_source'})),patch('early_toc.rank',return_value=[{'url':EN}]):
+                    out,d=try_early_toc(e,row,'quote',{})
+                self.assertEqual(out is not None,accepted)
+                self.assertEqual(e.client.budget,32)

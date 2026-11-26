@@ -3,12 +3,7 @@ on:
   pull_request:
     branches: ['experiment/pilot-v04']
     paths:
-      - 'toc_heading.py'
-      - 'toc_structure.py'
-      - 'tests/test_toc_structure.py'
       - 'benchmark_toc_heading.py'
-      - 'tests/test_toc_heading.py'
-      - '.github/workflows/mia-toc-heading.yml'
 permissions:
   contents: read
 concurrency:

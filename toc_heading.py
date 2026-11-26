@@ -120,6 +120,10 @@ class TocMatcher:
                                'fr_toc':fr_receipt,'en_toc':en_receipt,'auto_publish':False}
         return self.matches[key]
 
+    def match_for_source(self,fr_root,en_root,source_url):
+        """Return the hypothesis set for one explicit French chapter."""
+        return self.match(fr_root,en_root)
+
     def document(self,url):
         if url not in self.docs:
             d,body=mia_doc(self.client,url)

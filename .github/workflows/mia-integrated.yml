@@ -3,10 +3,7 @@ on:
   pull_request:
     branches: ['experiment/pilot-v04']
     paths:
-      - 'early_toc.py'
       - 'benchmark_integrated.py'
-      - 'tests/test_early_toc.py'
-      - '.github/workflows/mia-integrated.yml'
 permissions:
   contents: read
 concurrency:
