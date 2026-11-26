@@ -32,3 +32,18 @@ the Russian work. This does not establish an English translation of
 the 1904 lectures. No matching English edition verified yet; no claim
 that one does not exist. Record negative work-level evidence once instead
 of repeating the same title-only search eight times.
+
+## Restored cases
+
+Run 45797074815 verified all six exact passages through independent
+pinned Wikirouge revision parses, with 6 network requests and 439623
+decoded body bytes. Run 45797398853 prepared a short-lived encrypted
+review, 9 requests and 445502 bytes. Its decrypted packet and all
+3 French/6 English text digests were independently checked locally.
+The new ledger accepts one boundary-adjusted equivalent and rejects
+two wrong passages; the latter have documented correct-work leads.
+The immutable 37/100 historical snapshot remains unchanged.
+load_effective_memory() applies the later redacted review to yield
+38/100, 62 unresolved, zero reuse approvals. All semantic decisions
+remain model-assisted, not independent human labels. No plaintext or
+private key is retained in Git. Temporary workflow/certificate removed.
