@@ -40,6 +40,11 @@ jobs:
             python wikirouge_incremental.py --history data/wikirouge/deltas/manifest.json --out reports-live/wikirouge-delta.json
             PYTHONPATH=. python experiments/probe_index_metadata.py
           fi
+      - name: Assess automatic leaf-route opportunities on frozen benchmark
+        run: |
+          if git diff --name-only HEAD^1 HEAD | grep -Eq '^(indexed_leaf.py|tests/test_indexed_leaf.py|experiments/probe_indexed_leaf.py)$'; then
+            PYTHONPATH=. python experiments/probe_indexed_leaf.py
+          fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -48,5 +53,6 @@ jobs:
             reports-live/mia-receipt-diagnostic.json
             reports-live/mia-revision-refresh.json
             reports-live/wikirouge-delta.json
+            reports-live/indexed-leaf-probe.json
           if-no-files-found: ignore
           retention-days: 90

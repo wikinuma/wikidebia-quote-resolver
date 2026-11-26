@@ -26,6 +26,7 @@ from section_match import extract_headings, automatic_alignment
 from refinement import DirectAlignmentCache, review_packet, select_source_hit
 from source_refinement import long_variants, fragment_paths
 from chapter_routes import chapter_route, retrieve_chapter
+from indexed_leaf import indexed_leaf_route
 from alignment import OMISSION
 
 
@@ -170,11 +171,13 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=()):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),indexed_leaf=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
         self.chapter_catalog=tuple(chapter_catalog)
+        self.indexed_leaf=indexed_leaf
+        self.leaf_documents={}
         self.direct_cache=DirectAlignmentCache()
 
     def work(self,provider,root,lang):
@@ -339,6 +342,64 @@ class Retrieval:
             if aligned['candidates'] and not candidates: row['status']='catalog_candidate_review_required'
         return row
 
+    def try_indexed_leaf(self,quote,row,source):
+        probe=indexed_leaf_route(self.local_index,row['navigation']['input'],source)
+        row['indexed_leaf_probe']=probe
+        route=probe['route']
+        if route is None:
+            return False
+        fr,hit=select_source_hit(source,list(self.source_documents.values()),route['source_url'])
+        if fr is None:
+            probe['status']='source_span_not_revalidated'
+            return False
+        # Fetch a single documented leaf, not the entire work. If it does
+        # not yield a structural candidate, preserve the ordinary search.
+        options=[]
+        if route['en_mia_url']:
+            options.append(('mia',route['en_mia_url']))
+        if route['en_wr_url']:
+            options.append(('wikirouge',route['en_wr_url']))
+        for provider,url in options:
+            attempt={'provider':provider,'url':url}
+            probe['attempts'].append(attempt)
+            try:
+                key=(provider,url,route['en_revision'] if provider=='wikirouge' else None)
+                doc=self.leaf_documents.get(key)
+                if doc is None:
+                    if provider=='mia':
+                        doc,body=mia_doc(self.client,url)
+                        if canonical_mia(doc.url)!=url or explicit_toc(body,doc.url):
+                            raise ValueError('indexed_target_redirect_or_toc')
+                    else:
+                        body,final=self.client.get(url)
+                        if wr_title(final,'en')!=route['en_title']:
+                            raise ValueError('indexed_target_title_mismatch')
+                        doc=Document(final,extract_blocks(body,True),sha(body),route['en_title'],html_revision(soup(body)))
+                        if type(route['en_revision']) is not int or doc.revision!=route['en_revision']:
+                            raise ValueError('indexed_target_revision_changed')
+                    if not doc.blocks:
+                        raise ValueError('empty_indexed_target')
+                    self.leaf_documents[key]=doc
+                aligned=self.direct_cache.candidate(source,[fr],[doc],fr.url,route['method'])
+                attempt['alignment_status']=aligned['status']
+                if not aligned['candidates']:
+                    continue
+                candidates=rank(quote,[doc])
+                if not candidates:
+                    candidates=rank_short_windows(quote,[doc])['candidates']
+                probe['status']='aligned_candidate'
+                row.update(target_provider=provider,target_scope='indexed_single_leaf',
+                           target_attempts=[{'provider':provider,'root':doc.url,'scope':'indexed_single_leaf',
+                                             'issues':[],'pages':[{'url':doc.url,'sha256':doc.digest,
+                                                                   'revision':doc.revision,'blocks':len(doc.blocks)}]}],
+                           section_alignment=aligned,candidates=candidates,
+                           status='indexed_leaf_candidate_review_required')
+                return True
+            except Exception as exc:
+                attempt['error']=error_kind(exc)
+        probe['status']='no_indexed_alignment_fallback'
+        return False
+
     def retrieve(self,case):
         row=self._retrieve(case)
         if self.refined:
@@ -382,6 +443,9 @@ class Retrieval:
                     # Do not silently substitute another chapter when the known one fails.
                     row['status']='chapter_source_or_target_unavailable'
                     return row
+        if self.refined and self.indexed_leaf and self.local_index is not None:
+            if self.try_indexed_leaf(quote,row,source):
+                return row
         target=nav.get('mia_target',{})
         if target.get('url_accessible'):
             docs,info=self.work('mia',target['final_url'],'en')
