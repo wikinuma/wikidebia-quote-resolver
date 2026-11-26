@@ -4,6 +4,9 @@ from types import SimpleNamespace
 import unittest
 
 from citation_registry import fingerprint, source_identity
+from alignment import text_and_starts
+from resolver import sha
+from grouped_review import review_view
 from grouped_review import REPLY
 from prepare_citations import (Campaign, AWAITING, CANDIDATES, CLOSED, INSUFFICIENT,
                                QUEUED, RETRY, REVIEWED, classify, duplicate_groups)
@@ -223,3 +226,111 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(list(self.c.open_packets()),[pairs[0]])
         self.assertEqual(self.c.latest('2')[0],RETRY)
         self.assertEqual(self.c.latest('1')[0],AWAITING)
+
+    def test_progressive_review_escalates_only_abstentions_and_preserves_evidence(self):
+        # Separate occurrences with different quotations; use a deliberately
+        # synthetic fixture to exercise lifecycle, not linguistic correctness.
+        self.stage('1','3')
+        saved = self.c.latest('3')[1]
+        digest, packet = self.c.prepare(self.raw,self.audit,progressive=True)
+        self.assertEqual(packet['payload']['progressive_review']['stage'],'compact')
+        self.assertIn('Abstentions automatically',review_view(packet)['instructions'])
+        reply = self.reply(digest,packet)
+        for row in reply['decisions']:
+            if packet['sources'][row['id']]['occurrences'][0]['case_id'] == '3':
+                row.update(decision='uncertain',candidate=None,ranges=[])
+            else:
+                row['ranges'] = [[0,packet['payload']['passages'][row['candidate']]['length']]]
+        out = self.c.apply(reply,self.raw,self.audit)
+        self.assertEqual(out['requeued_for_expanded_review'],1)
+        self.assertEqual(self.c.latest('1')[0],REVIEWED)
+        self.assertEqual(self.c.latest('3')[0],CANDIDATES)
+        evidence = self.c.latest('3')[1]
+        self.assertEqual(evidence['result'],saved['result'])
+        self.assertEqual(evidence['context_stage'],'expanded_fallback')
+        self.assertEqual(evidence['packet_sha256'],digest)
+        self.assertEqual(self.c.summary()['expanded_fallback_pending'],1)
+        self.assertEqual(self.c.apply(reply,self.raw,self.audit)['status'],'already_applied')
+        self.c.record('2',CANDIDATES,{'result':self.result(self.c.cases['2'])})
+        # Even after restarting and without the progressive option, an
+        # escalated occurrence gets a wide packet before untouched cases.
+        with WorkLibrary(self.lib.path) as lib:
+            c = Campaign(lib,self.inv)
+            wide_digest, wide = c.prepare(self.raw,self.audit,limit=1)
+            self.assertEqual(wide['payload']['progressive_review']['stage'],'expanded_fallback')
+            self.assertEqual([o['case_id'] for source in wide['sources'].values()
+                              for o in source['occurrences']],['3'])
+            self.assertEqual(c.prepare(self.raw,self.audit,progressive=True),(wide_digest,wide))
+            out = c.apply(self.reply(wide_digest,wide,'no_equivalent'),self.raw,self.audit)
+            self.assertEqual(out['requeued_for_expanded_review'],0)
+            self.assertEqual(c.latest('3')[0],INSUFFICIENT)
+            self.assertEqual(c.requeue_legacy_abstentions(),{})
+            self.assertEqual(c.latest('1')[0],REVIEWED)
+
+    def test_progressive_shortlist_then_full_saved_candidates(self):
+        # One candidate from each of three separate positions, far enough
+        # apart to remain distinct even after window expansion.
+        self.doc = document(blocks=['word '*900,'second '*900,'third '*900])
+        text, starts = text_and_starts(self.doc)
+        candidates = []
+        for start in starts:
+            snippet = text[start:start+40]
+            candidates.append({'url':self.doc.url,'revision':self.doc.revision,
+                               'sha256':self.doc.digest,'char_start':start,
+                               'char_end':start+40,'text_sha256':sha(snippet.encode())})
+        self.audit.document = lambda *_: self.doc
+        self.c.record('1',CANDIDATES,{'result':{'id':'1','candidates':candidates}})
+        digest, packet = self.c.prepare(self.raw,self.audit,progressive=True)
+        source = next(iter(packet['sources'].values()))
+        self.assertEqual(sum(map(len,source['seed_ranges'].values())),1)
+        self.assertEqual(self.c.apply(self.reply(digest,packet,'no_equivalent'),
+                                      self.raw,self.audit)['requeued_for_expanded_review'],1)
+        wide_digest, wide = self.c.prepare(self.raw,self.audit,progressive=True)
+        source = next(iter(wide['sources'].values()))
+        self.assertEqual(sum(map(len,source['seed_ranges'].values())),3)
+        self.c.apply(self.reply(wide_digest,wide,'uncertain'),self.raw,self.audit)
+        self.assertEqual(self.c.latest('1')[0],INSUFFICIENT)
+        self.assertIsNone(self.c.prepare(self.raw,self.audit,progressive=True))
+
+    def test_progressive_rejects_changed_saved_retrieval_evidence(self):
+        self.stage('1')
+        digest,packet = self.c.prepare(self.raw,self.audit,progressive=True)
+        with self.lib.db:
+            self.lib.db.execute("UPDATE campaign_events_v1 SET evidence=? WHERE occurrence=? AND state=?",
+                                ('{}','1',CANDIDATES))
+        with self.assertRaisesRegex(ValueError,'compact_candidate_evidence_changed'):
+            self.c.apply(self.reply(digest,packet,'uncertain'),self.raw,self.audit)
+        self.assertEqual(self.c.latest('1')[0],AWAITING)
+
+    def test_progressive_bulk_abstentions_resume_as_wide_wave(self):
+        self.stage('1','3')
+        pairs = self.c.prepare_many(self.raw,self.audit,limit=1,progressive=True)
+        replies = [self.reply(d,p,'uncertain') for d,p in pairs]
+        self.assertEqual(self.c.apply_many(replies,self.raw,self.audit)['requeued_for_expanded_review'],2)
+        self.assertEqual(self.c.apply_many(replies,self.raw,self.audit)['requeued_for_expanded_review'],0)
+        wide = self.c.prepare_many(self.raw,self.audit,limit=1,progressive=True)
+        self.assertEqual(len(wide),2)
+        self.assertTrue(all(p['payload']['progressive_review']['stage']=='expanded_fallback'
+                            for _,p in wide))
+        self.assertEqual(self.c.apply_many([self.reply(d,p,'uncertain') for d,p in wide],
+                                          self.raw,self.audit)['requeued_for_expanded_review'],0)
+        self.assertEqual(self.c.summary()['states'][INSUFFICIENT],2)
+
+    def test_progressive_cost_scenarios_are_aggregate_and_not_linguistic_results(self):
+        from autonomous_review_check import progressive_cost
+        from prepare_citations import build_campaign_packet
+        items = [(self.c.cases[cid],self.result(self.c.cases[cid])) for cid in ('1','3')]
+        baseline = build_campaign_packet(items,self.raw,self.audit.document)
+        report = progressive_cost(items,[(fingerprint(baseline),baseline)],self.raw,self.audit)
+        self.assertEqual(report['compact']['occurrences'],2)
+        self.assertEqual(report['compact']['verified_seeds'],2)
+        self.assertEqual([row['fallback']['occurrences'] for row in report['scenarios']],
+                         [0,1,1,2,2])
+        self.assertEqual(report['scenarios'][0]['total_review_utf8_bytes'],
+                         report['compact']['review_utf8_bytes'])
+        self.assertGreater(report['scenarios'][-1]['total_review_utf8_bytes'],
+                           report['baseline_expanded_review_utf8_bytes'])
+        self.assertIsNone(report['observed_abstention_rate'])
+        self.assertIsNone(report['semantic_equivalence'])
+        self.assertNotIn(QUOTE,str(report))
+        self.assertNotIn(EN,str(report))

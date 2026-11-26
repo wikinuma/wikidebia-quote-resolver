@@ -225,7 +225,16 @@ def review_view(packet):
                              + (' Seed ranges are original search anchors, not selection limits. '
                                 'Review the full expanded passage for missing beginnings or endings; '
                                 'select only the exact equivalent ranges.'
-                                if 'context_stats' in packet['payload'] else '')),
+                                if 'context_stats' in packet['payload'] else '')
+                             + (' This is a compact first pass with only the first verified anchor. '
+                                'Its ranking is not evidence of equivalence. Accept only a fully '
+                                'established match; if any boundary or meaning is uncertain, abstain. '
+                                'Abstentions automatically receive a wider review.'
+                                if packet['payload'].get('progressive_review', {}).get('stage') == 'compact' else '')
+                             + (' This is a wide fallback after an earlier abstention. '
+                                'A negative decision applies only to the supplied material, '
+                                'not to the existence of a published translation.'
+                                if packet['payload'].get('progressive_review', {}).get('stage') == 'expanded_fallback' else '')),
             **packet['payload']}
 
 
