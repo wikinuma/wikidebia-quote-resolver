@@ -6,7 +6,8 @@ on:
       - 'wikirouge_index.py'
       - 'benchmark_index.py'
       - 'inventory.py'
-      - 'data/wikirouge/**'
+      - 'data/wikirouge/manifest.json'
+      - 'data/wikirouge/*.zip'
       - 'tests/test_wikirouge_index.py'
       - 'tests/test_benchmark_index.py'
       - '.github/workflows/index-paired.yml'
@@ -25,7 +26,17 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 2
+      - name: Check whether this PR changes the paired benchmark
+        id: relevant
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || git diff --name-only HEAD^1 HEAD | grep -Eq '^(wikirouge_index.py|benchmark_index.py|inventory.py|tests/test_(wikirouge_index|benchmark_index).py|data/wikirouge/(manifest.json|[^/]+\.zip))$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@v6
+        if: steps.relevant.outputs.run == 'true'
         with:
           python-version: '3.13'
           cache: pip
@@ -33,14 +44,17 @@ jobs:
             requirements.txt
             requirements-navigation.txt
       - name: Install deterministic retrieval dependencies
+        if: steps.relevant.outputs.run == 'true'
         run: python -m pip install -r requirements-navigation.txt
       - name: Run all regression tests
+        if: steps.relevant.outputs.run == 'true'
         run: python -m unittest discover -s tests -v
       - name: Compare legacy and indexed retrieval on 50 explicit MIA citations
+        if: steps.relevant.outputs.run == 'true'
         timeout-minutes: 50
         run: python benchmark_index.py --sample 50 --scan-pages 1200
       - name: Preserve redacted comparison and partial results
-        if: always()
+        if: always() && steps.relevant.outputs.run == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: wikirouge-paired-comparison

@@ -1,0 +1,12 @@
+{
+  "schema": "wikidebia-wikirouge-delta-history-1",
+  "base_snapshot_sha256": "64882bfcb7b7bb8726c3de7869e3e78d59165c4499d645eafc2c3f1d88163e0e",
+  "deltas": [
+    {
+      "file": "0001.json",
+      "sha256": "077869dd12fc71934550bcc1b19a4ad5437b577bea2fd96e15a295f2e3fdd8a7",
+      "run_id": 45803291710,
+      "artifact_id": 15108721415
+    }
+  ]
+}

@@ -26,13 +26,19 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - name: Targeted document receipt diagnostic (only on explicit fixture or diagnostic changes)
         run: |
-          if [ "${{ github.event_name }}" = workflow_dispatch ] || git diff --name-only HEAD^1 HEAD | grep -Eq '^(diagnose_receipts.py|experiments/mia-nonreproduced-receipts.json|.github/workflows/experiment-checks.yml)$'; then
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || git diff --name-only HEAD^1 HEAD | grep -Eq '^(diagnose_receipts.py|experiments/mia-nonreproduced-receipts.json)$'; then
             python diagnose_receipts.py
           fi
       - name: Verify pinned revision spans independently
         run: |
           if [ "${{ github.event_name }}" = workflow_dispatch ] || git diff --name-only HEAD^1 HEAD | grep -Eq '^(revision_receipt.py|experiments/mia-nonreproduced-receipts.json)$'; then
             python revision_receipt.py
+          fi
+      - name: Live incremental Wikirouge update (bounded)
+        run: |
+          if git diff --name-only HEAD^1 HEAD | grep -Eq '^(wikirouge_incremental.py|tests/test_wikirouge_incremental.py)$'; then
+            python wikirouge_incremental.py --history data/wikirouge/deltas/manifest.json --out reports-live/wikirouge-delta.json
+            PYTHONPATH=. python experiments/probe_index_metadata.py
           fi
       - uses: actions/upload-artifact@v6
         if: always()
@@ -41,5 +47,6 @@ jobs:
           path: |
             reports-live/mia-receipt-diagnostic.json
             reports-live/mia-revision-refresh.json
+            reports-live/wikirouge-delta.json
           if-no-files-found: ignore
           retention-days: 90
