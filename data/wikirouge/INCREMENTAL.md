@@ -36,3 +36,17 @@ field-name vocabulary; this is a candidate index, never semantic evidence.
 No full-text corpus or credentials are stored. No SSH is required.
 The first live window is empty; edits/deletes/moves have regression coverage,
 and a separate four-page read probe checks the real metadata API.
+
+## Live probe (run 45803511744)
+
+Two French pages (IDs 9, 50) and two English pages (IDs 78, 80) were
+read through the actual public metadata API. All 24 comparisons passed:
+revision, title, author, canonical MIA URLs, native links and metadata
+status. The probe took two HTTP requests and 212292 decoded body bytes.
+This confirms the parser on four unchanged real pages, not a live
+mutation or complete compatibility for all pages. 221 tests ran, one
+optional test skipped. The committed first checkpoint is reused; the
+subsequent ephemeral window is only a test, not an accepted checkpoint.
+
+The old paired benchmark is restricted to its frozen inputs and code;
+new incremental delta files no longer trigger a full 50-case rerun.
