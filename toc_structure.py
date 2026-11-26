@@ -111,3 +111,27 @@ class StructureMatcher(TocMatcher):
                                'fr_count':len(fr),'en_count':len(en),
                                'fr_toc':fr_receipt,'en_toc':en_receipt,'auto_publish':False}
         return self.matches[key]
+
+
+class AugmentedTocMatcher(TocMatcher):
+    """Preserve the original parser's hypotheses; try v2 only on abstention.
+
+    The enhanced parser shares the same HTTP budget, exact-body cache and
+    encoder. Never replace an original positive or ambiguous match based
+    on a weaker bracketed hypothesis.
+    """
+    def __init__(self,client,encoder):
+        super().__init__(client,encoder)
+        self.structure=StructureMatcher(client,encoder)
+
+    def match_for_source(self,fr_root,en_root,source_url):
+        old=self.match(fr_root,en_root)
+        if any(p['fr']['url']==source_url for p in old['pairs']):
+            return {**old,'matcher_variant':'original'}
+        try:
+            new=self.structure.match(fr_root,en_root)
+        except Exception as exc:
+            from navigation import error_kind
+            return {**old,'matcher_variant':'original_abstention',
+                    'structure_error':error_kind(exc)}
+        return {**new,'matcher_variant':'structure_on_abstention'}
