@@ -204,3 +204,32 @@ des mots joints sans espace : l'équivalence de sens n'est pas une validation
 de la qualité du texte. Le défaut est signalé, aucune correction n'est
 inventée. Les références ne sont pas importées dans le registre opérationnel
 et n'autorisent aucune réutilisation. Aucun extrait n'est exporté par la CI.
+
+
+## Comparaison optionnelle de transcriptions documentées
+
+    python prepare_citations.py --state "$STATE" review-many --progressive --compare-transcriptions
+
+L'option (également disponible pour review) compare uniquement les couples
+de transcriptions explicitement documentés. Le premier couple concerne
+De l'État de Lénine (11 juillet 1919), édition anglaise de 1972, entre
+Marxists.org et Wikirouge. Le moteur relit les documents via le chargeur
+documentaire existant, exige la même suite littérale de caractères hors
+espaces et une occurrence unique, et n'offre un passage alternatif que
+lorsque des séparations entre lettres sont ajoutées sans suppression des
+séparations existantes. Les changements de ponctuation, de casse, de mots,
+les ambiguïtés et les limites douteuses ne sont pas corrigés.
+
+Le passage publié alternatif est ajouté avec ses propres coordonnées et
+empreintes, jamais généré en modifiant le passage initial. Les ancres
+initiales restent inchangées. Si la comparaison échoue, ou si son ajout
+dépasse la limite du paquet, la revue ordinaire reste disponible. L'option
+est conservée pour les reprises élargies de la revue progressive.
+Le réviseur doit encore établir l'intégralité de l'équivalence, la qualité
+de la transcription et les limites. Les droits restent non examinés.
+La couverture d'autres œuvres exige d'autres couples documentés, pas une
+règle générique de correction automatique des mots.
+
+Le replay autonome mesure séparément les comparaisons d'intervalles relus,
+les ajouts aux paquets réels et leur coût en octets, en vérifiant les
+ancres d'origine et la reconstruction des archives privées.
