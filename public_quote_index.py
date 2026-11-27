@@ -54,7 +54,7 @@ def hashes(fragments):
             'words_sha256': fingerprint(seq) if any(w != '\0' for w in seq) else None}
 
 
-def page_record(row, lang, template_names):
+def page_record(row, lang, template_names, *, invalid_reasons=None):
     record = {k: row[k] for k in ('page_id', 'title', 'revision')}
     nodes = mwparserfromhell.parse(row['raw']).filter_templates(recursive=True)
     record['argument_template_present'] = any(name(t.name) == 'Argument' for t in nodes)
@@ -68,11 +68,15 @@ def page_record(row, lang, template_names):
         params = [str(p.value) for p in t.params if str(p.name).strip() == PARAMETERS[lang]]
         if len(params) != 1:
             record['invalid_occurrences'] += 1
+            if invalid_reasons is not None:
+                invalid_reasons['missing_quote_field' if not params else 'duplicate_quote_field'] += 1
             continue
         try:
             record['quotes'].append({'ordinal': ordinal, **hashes([params[0]])})
         except ValueError:
             record['invalid_occurrences'] += 1
+            if invalid_reasons is not None:
+                invalid_reasons['empty_quote_field'] += 1
     return record
 
 
@@ -151,7 +155,8 @@ def validate_snapshot(value, expected_sha, lang, *, require_complete=True):
     return {p['page_id']: p for p in pages}
 
 
-def summarize(value, *, reused=0, fetched=0, metadata=0, requests=0, decoded_bytes=0):
+def summarize(value, *, reused=0, fetched=0, metadata=0, requests=0, decoded_bytes=0,
+              invalid_reasons=None):
     literal, words = defaultdict(set), defaultdict(set)
     for p in value['pages']:
         for q in p['quotes']:
@@ -172,6 +177,12 @@ def summarize(value, *, reused=0, fetched=0, metadata=0, requests=0, decoded_byt
             'pages_checked_revision_only': metadata,
             'wiki_requests': requests, 'decoded_bytes': decoded_bytes,
             'issues': value['issues'], 'non_atomic': True, 'hosted_model_calls': 0,
+            'all_enumerated_pages_read': (
+                bool(value['template_titles']) and ROOTS[value['language']] in value['template_titles']
+                and len(value['pages']) == value['pages_enumerated']
+                and not any(n for k,n in value['issues'].items() if k != 'invalid_quote_parameter')),
+            'all_literal_occurrences_indexable': value['status'] == COMPLETE,
+            'invalid_occurrence_reasons': dict(invalid_reasons or {}),
             'cited_url_requests': 0, 'publication_authorized': False}
 
 
@@ -180,8 +191,13 @@ def scan(client, lang, *, batch_size=30, previous=None, previous_sha=None):
         raise ValueError('invalid_index_scope')
     if (previous is None) != (previous_sha is None):
         raise ValueError('previous_index_requires_digest')
-    old = {} if previous is None else validate_snapshot(previous, previous_sha, lang)
-    started, issues = utc(), Counter()
+    # A previous incomplete snapshot is not a proof of absence. However, an
+    # individually checked valid page can be reused after its current revision
+    # and title are independently read. Re-enumerate and reread every missing
+    # or malformed page. Never turn its former errors into valid coverage.
+    old = {} if previous is None else validate_snapshot(previous, previous_sha, lang,
+                                                        require_complete=False)
+    started, issues, invalid_reasons = utc(), Counter(), Counter()
     titles, ids, records = [], [], {}
     reused = fetched = metadata = 0
     endpoint = ENDPOINTS[lang]
@@ -206,7 +222,8 @@ def scan(client, lang, *, batch_size=30, previous=None, previous_sha=None):
                     metadata += 1
                     pid = current['page_id']
                     prior = old.get(pid)
-                    if prior is not None and all(prior[k] == current[k] for k in current):
+                    if (prior is not None and not prior['invalid_occurrences']
+                            and all(prior[k] == current[k] for k in current)):
                         records[pid] = prior
                         reused += 1
                     else:
@@ -216,7 +233,7 @@ def scan(client, lang, *, batch_size=30, previous=None, previous_sha=None):
                                             identity=True):
                     fetched += 1
                     try:
-                        record = page_record(row, lang, names)
+                        record = page_record(row, lang, names, invalid_reasons=invalid_reasons)
                         records[row['page_id']] = record
                         if record['invalid_occurrences']:
                             issues['invalid_quote_parameter'] += record['invalid_occurrences']
@@ -235,7 +252,8 @@ def scan(client, lang, *, batch_size=30, previous=None, previous_sha=None):
              'issues': {k: v for k, v in sorted(issues.items()) if v}}
     validate_snapshot(value, fingerprint(value), lang, require_complete=False)
     summary = summarize(value, reused=reused, fetched=fetched, metadata=metadata,
-                        requests=client.requests, decoded_bytes=client.network_body_bytes)
+                        requests=client.requests, decoded_bytes=client.network_body_bytes,
+                        invalid_reasons=invalid_reasons)
     return value, summary
 
 

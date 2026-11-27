@@ -103,9 +103,43 @@ class PublicIndexTests(unittest.TestCase):
         value,summary = scan(client,'fr')
         self.assertEqual(value['status'],'incomplete')
         self.assertEqual(summary['invalid_occurrences'],2)
+        self.assertEqual(summary['invalid_occurrence_reasons'],
+                         {'duplicate_quote_field':1,'empty_quote_field':1})
+        self.assertTrue(summary['all_enumerated_pages_read'])
+        self.assertFalse(summary['all_literal_occurrences_indexable'])
         self.assertEqual(summary['citations'],1)
         with self.assertRaises(ValueError):
             validate_snapshot(value,fingerprint(value),'fr')
+
+    def test_incomplete_index_can_refresh_valid_pages_without_hiding_errors(self):
+        client = Fake()
+        client.pages[1] = (101,'First','{{Citation|ouvrage=Title only}}')
+        old, summary = scan(client,'fr')
+        self.assertEqual(old['status'],'incomplete')
+        self.assertEqual(summary['invalid_occurrence_reasons'],{'missing_quote_field':1})
+        refreshed, summary = scan(client,'fr',previous=old,previous_sha=fingerprint(old))
+        self.assertEqual(refreshed['status'],'incomplete')
+        self.assertEqual(summary['pages_reused_same_revision'],2)
+        self.assertEqual(summary['pages_fetched_content'],1)
+        self.assertEqual(summary['invalid_occurrence_reasons'],{'missing_quote_field':1})
+        client.pages[1] = (201,'First','{{Citation|citation=Fixed}}')
+        fixed,summary = scan(client,'fr',previous=refreshed,previous_sha=fingerprint(refreshed))
+        self.assertEqual(fixed['status'],COMPLETE)
+        self.assertEqual(summary['pages_reused_same_revision'],2)
+        self.assertEqual(summary['pages_fetched_content'],1)
+        self.assertEqual(summary['invalid_occurrence_reasons'],{})
+
+    def test_missing_page_in_previous_snapshot_is_fetched(self):
+        client = Fake()
+        old,_ = scan(client,'fr')
+        old['status'] = 'incomplete'
+        old['pages'].pop(0)
+        old['issues'] = {'missing_page_revision':1}
+        new,summary = scan(client,'fr',previous=old,previous_sha=fingerprint(old))
+        self.assertEqual(new['status'],COMPLETE)
+        self.assertEqual(summary['pages_reused_same_revision'],2)
+        self.assertEqual(summary['pages_fetched_content'],1)
+        self.assertTrue(summary['all_enumerated_pages_read'])
 
     def test_literal_and_word_variants_keep_omissions(self):
         self.assertEqual(hashes(['A   passage.']),hashes(['A passage.\n']))
