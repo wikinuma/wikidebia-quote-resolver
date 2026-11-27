@@ -13,7 +13,8 @@ from bs4 import BeautifulSoup
 ROOT = Path(__file__).resolve().parent
 API = {lang: f'https://wikirouge.net/texts/{lang}/w/api.php' for lang in ('fr', 'en')}
 WD_API = 'https://fr.wikidebates.org/w/api.php'
-HOSTS = {'wikirouge.net', 'www.marxists.org', 'marxists.org', 'fr.wikidebates.org'}
+HOSTS = {'wikirouge.net', 'www.marxists.org', 'marxists.org', 'fr.wikidebates.org',
+         'en.wikidebates.org'}
 MAX_BYTES = 5_000_000
 
 

@@ -15,18 +15,18 @@ def utc():
     return datetime.now(timezone.utc).isoformat()
 
 
-def api(client, **params):
-    result = client.api(WD_API, maxlag=5, **params)
+def api(client, *, endpoint=WD_API, **params):
+    result = client.api(endpoint, maxlag=5, **params)
     if result.get('warnings'):
         raise ValueError('api_warning')
     return result
 
 
-def iterate(client, params, keys):
+def iterate(client, params, keys, *, endpoint=WD_API):
     cursor = {}
     seen = set()
     for _ in range(1000):
-        result = api(client, **params, **cursor)
+        result = api(client, endpoint=endpoint, **params, **cursor)
         yield result['query']
         cursor = result.get('continue', {})
         if not cursor:
@@ -52,12 +52,12 @@ def name(value):
     return value[:1].upper() + value[1:]
 
 
-def aliases(client):
-    root = api(client, action='query', titles='Modèle:Citation',
+def aliases(client, *, endpoint=WD_API, template='Modèle:Citation'):
+    root = api(client, endpoint=endpoint, action='query', titles=template,
                redirects=1)['query']['pages']
     if len(root) != 1 or root[0].get('ns') != 10 or root[0].get('missing'):
         raise ValueError('citation_template_not_found')
-    pending = ['Modèle:Citation', root[0]['title']]
+    pending = [template, root[0]['title']]
     titles = set()
     while pending:
         title = pending.pop()
@@ -67,7 +67,7 @@ def aliases(client):
             raise ValueError('template_alias_limit')
         titles.add(title)
         for query in iterate(client, dict(action='query', titles=title, prop='redirects',
-                         rdnamespace=10, rdlimit=500), {'rdcontinue'}):
+                         rdnamespace=10, rdlimit=500), {'rdcontinue'}, endpoint=endpoint):
             pages = query['pages']
             if len(pages) != 1 or pages[0].get('ns') != 10 or pages[0].get('missing'):
                 raise ValueError('invalid_template_alias')
@@ -78,11 +78,11 @@ def aliases(client):
     return sorted(titles)
 
 
-def embedded_pages(client, titles):
+def embedded_pages(client, titles, *, endpoint=WD_API):
     ids = set()
     for title in titles:
         for query in iterate(client, dict(action='query', list='embeddedin',
-                         eititle=title, einamespace=0, eilimit=500), {'eicontinue'}):
+                         eititle=title, einamespace=0, eilimit=500), {'eicontinue'}, endpoint=endpoint):
             for row in query['embeddedin']:
                 pid = row.get('pageid')
                 if row.get('ns') != 0 or type(pid) is not int or pid <= 0:
@@ -91,10 +91,11 @@ def embedded_pages(client, titles):
     return sorted(ids)
 
 
-def revision_batches(client, ids, issues):
+def revision_batches(client, ids, issues, *, endpoint=WD_API, identity=False, content=True):
     try:
-        pages = api(client, action='query', pageids='|'.join(map(str, ids)),
-                    prop='revisions', rvprop='ids|content', rvslots='main')['query']['pages']
+        pages = api(client, endpoint=endpoint, action='query', pageids='|'.join(map(str, ids)),
+                    prop='revisions', rvprop='ids|content' if content else 'ids',
+                    rvslots='main')['query']['pages']
         if len(pages) != len(ids) or {p.get('pageid') for p in pages} != set(ids):
             raise ValueError('incomplete_revision_batch')
         checked = []
@@ -104,17 +105,29 @@ def revision_batches(client, ids, issues):
                 raise ValueError('missing_page_revision')
             rev = revs[0]
             raw = rev.get('slots', {}).get('main', {}).get('content')
-            if type(rev.get('revid')) is not int or rev['revid'] <= 0 or not isinstance(raw, str):
+            if (type(rev.get('revid')) is not int or rev['revid'] <= 0
+                    or (content and not isinstance(raw, str))):
                 raise ValueError('missing_revision_content')
-            checked.append(raw)
+            if identity:
+                title = p.get('title')
+                if not isinstance(title, str) or not title.strip():
+                    raise ValueError('missing_page_title')
+                row = {'page_id': p['pageid'], 'title': title, 'revision': rev['revid']}
+                if content:
+                    row['raw'] = raw
+                checked.append(row)
+            else:
+                checked.append(raw)
     except RequestBudgetExceeded:
         issues['request_budget_exhausted'] += len(ids)
         return
     except Exception as exc:
         if len(ids) > 1 and isinstance(exc, ValueError):
             mid = len(ids) // 2
-            yield from revision_batches(client, ids[:mid], issues)
-            yield from revision_batches(client, ids[mid:], issues)
+            yield from revision_batches(client, ids[:mid], issues, endpoint=endpoint,
+                                        identity=identity, content=content)
+            yield from revision_batches(client, ids[mid:], issues, endpoint=endpoint,
+                                        identity=identity, content=content)
         else:
             issues[type(exc).__name__] += len(ids)
         return
