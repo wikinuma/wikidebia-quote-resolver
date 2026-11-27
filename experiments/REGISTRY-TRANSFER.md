@@ -56,5 +56,34 @@ append-only; les conflits nécessitent une décision explicite ultérieure.
 Le format JSON canonique compact est volontairement simple, borné à 50 000
 reçus et 64 Mio par fichier, sans ZIP ni SQLite à importer. Le coût réel
 dépend du nombre de reçus, non de la taille des œuvres; aucune économie de
-tokens IA n'est déduite de cette seule taille. L'intégration automatique de
-la sélection depuis le kit et la politique juridique restent à réaliser.
+tokens IA n'est déduite de cette seule taille. L'intégration au parcours normal du kit et la politique juridique restent à réaliser.
+
+## Sélection depuis les lots du verrou français (sans réseau)
+
+Après l'export des requêtes par le pont du kit, construire un sélecteur
+privé dans l'environnement qui possède le verrou, sans ouvrir la base ni
+consulter le wiki:
+
+    python registry_transfer.py select --request "$REQUEST_1" --request "$REQUEST_2" --out "$PRIVATE/selection.json"
+
+Passer chaque lot voulu avec --request (une occurrence ne peut figurer dans
+deux lots; tous doivent être rattachés à la même empreinte de verrou).
+Le fichier ne contient que des empreintes: verrou, requêtes et identités
+des paramètres littéraux de citation. Seuls les liens MIA explicites avec
+révision source renseignée sont retenus. Les requêtes contenant les citations
+et leurs titres n'ont pas besoin de quitter le kit pour l'export du registre.
+
+    python registry_transfer.py --state "$CAMPAIGN_STATE" export --selection "$PRIVATE/selection.json" --selection-sha256 "$SELECTION_SHA" --out "$PRIVATE/scoped.json"
+
+Pour une synchronisation incrémentale, inventory accepte les mêmes options
+--selection et --selection-sha256; transmettre l'inventaire résultant avec
+--known-inventory à export. Un sélecteur vide donne un bundle vide, jamais
+un export global. Le filtrage utilise les empreintes du texte wikicode exact
+et des autres paramètres littéraux, déjà conservées dans chaque reçu, plutôt
+qu'une nouvelle interprétation du texte affiché. Il conserve tous les reçus
+correspondants, y compris contradictoires. Il parcourt la table existante
+une fois, sans index ou bibliothèque supplémentaire ni accès réseau.
+La sélection ne certifie pas l'existence d'une occurrence à la révision
+annoncée; le handoff la vérifie toujours avant l'utilisation d'un reçu.
+Une sélection partielle ou une absence de résultat n'est jamais une preuve
+d'absence d'une traduction publiée.

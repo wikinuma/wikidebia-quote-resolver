@@ -8,8 +8,9 @@ from citation_registry import CitationRegistry, fingerprint, source_identity
 from grouped_review import REPLY
 from prepared_resolution import CANDIDATES, REVIEWED, RETRY, INSUFFICIENT
 from prepare_citations import Campaign
-from registry_transfer import export_bundle, import_bundle, inventory, read_private_json
-from test_citation_registry import RAW, QUOTE, ENGLISH, ref, candidate, document, review
+from registry_transfer import (build_selection, export_bundle, import_bundle, inventory,
+                               read_private_json, selection_keys)
+from test_citation_registry import RAW, QUOTE, ENGLISH, FR, ref, candidate, document, review
 from test_translation_handoff import locked, request
 from translation_handoff import prepare_handoff
 from work_library import WorkLibrary
@@ -174,3 +175,77 @@ class RegistryTransferTests(unittest.TestCase):
         self.transfer(export_bundle(self.source))
         changed = RAW.replace('1900', '1901')
         self.assertEqual(self.dest.lookup(changed, ref(changed, 7))['status'], 'miss')
+
+    def test_request_selection_private_and_incremental_across_lots(self):
+        first = self.record(self.source)
+        second = self.record(self.source, reviewer='another reviewer')
+        changed = RAW.replace('1900', '1901')
+        self.record(self.source, raw=changed)
+        other = RAW.replace(QUOTE, 'Autre citation de test.')
+        self.record(self.source, raw=other)
+        a = request(locked(), locked(RAW.replace(FR, 'https://example.org/a'),
+                                     cid='A0002-C001'))
+        b = request(locked(cid='A0003-C001', title='Another page', revision=8),
+                    locked(other, cid='A0004-C001', revision=None))
+        selection = build_selection([a, b])
+        self.assertEqual(selection, build_selection([b, a]))
+        self.assertEqual(len(selection['selectors']), 1)
+        for secret in (QUOTE, FR, 'Another page', 'A0001-C001'):
+            self.assertNotIn(secret, str(selection))
+        scope = {'selection': selection, 'selection_sha': fingerprint(selection)}
+        self.assertEqual(set(inventory(self.source, **scope)['entry_sha256s']),
+                         {first['entry_sha256'], second['entry_sha256']})
+        self.record(self.dest)
+        delta = export_bundle(self.source, known=inventory(self.dest, **scope), **scope)
+        self.assertEqual([r['entry_sha256'] for r in delta['entries']], [second['entry_sha256']])
+        self.transfer(delta)
+        self.assertEqual(self.dest.lookup(RAW, self.rf)['receipt_count'], 2)
+
+    def test_literal_selection_retains_conflicting_editions(self):
+        self.record(self.source)
+        self.record(self.source, doc=document(digest='c'*64))
+        value = build_selection([request(locked())])
+        bundle = export_bundle(self.source, selection=value, selection_sha=fingerprint(value))
+        self.assertEqual(len(bundle['entries']), 2)
+        self.assertEqual(self.transfer(bundle)['conflicting_sources'], 1)
+
+    def test_selection_does_not_depend_on_parameter_order(self):
+        self.record(self.source)
+        item = locked()
+        item['source_parameters'].reverse()
+        value = build_selection([request(item)])
+        self.assertEqual(len(export_bundle(self.source, selection=value,
+                                          selection_sha=fingerprint(value))['entries']), 1)
+        # Source parameters are stripped as in source_identity, not rewritten.
+        for p in item['source_parameters']:
+            p['value'] += ' '
+        reordered = build_selection([request(item)])
+        self.assertEqual(reordered['selectors'], value['selectors'])
+
+    def test_empty_selection_is_not_unscoped_export(self):
+        self.record(self.source)
+        for req in (request(), request(locked(revision=None)),
+                    request(locked(RAW.replace(FR, 'https://example.org/a')))):
+            value = build_selection([req])
+            self.assertEqual(value['selectors'], [])
+            self.assertEqual(export_bundle(self.source, selection=value,
+                                           selection_sha=fingerprint(value))['entries'], [])
+
+    def test_selection_rejects_mixed_locks_duplicate_occurrences_and_tampering(self):
+        a = request(locked())
+        b = request(locked(cid='A0002-C001'))
+        for requests in ([], [a, a], [a, request(locked(revision=8))],
+                         [a, {**b, 'source_lock_sha256': 'f'*64}]):
+            with self.assertRaises(ValueError):
+                build_selection(requests)
+        value = build_selection([a])
+        self.record(self.source)
+        digest = fingerprint(value)
+        for kwargs in ({'selection': value}, {'selection_sha': digest},
+                       {'selection': {**value, 'selectors': []}, 'selection_sha': digest},
+                       {'selection': value, 'selection_sha': digest, 'source_keys': []}):
+            with self.assertRaises(ValueError):
+                export_bundle(self.source, **kwargs)
+        malformed = {**value, 'selectors': value['selectors']*2}
+        with self.assertRaises(ValueError):
+            selection_keys(malformed, fingerprint(malformed))
