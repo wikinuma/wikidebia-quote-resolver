@@ -7,6 +7,7 @@ on:
       - 'citation_registry.py'
       - 'tests/test_registry_transfer.py'
       - 'translation_handoff.py'
+      - 'experiments/REGISTRY-TRANSFER.md'
       - 'prepared_resolution.py'
       - '.github/workflows/registry-transfer.yml'
   workflow_dispatch:

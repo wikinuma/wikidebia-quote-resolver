@@ -16,10 +16,13 @@ from citation_registry import CitationRegistry, DECISIONS, fingerprint, passage_
 from evidence_audit import document_provider
 from grouped_review import private_dir, write_private
 from navigation import canonical_mia
+from resolver import sha
+from translation_handoff import locked_policy, parameter_signature, validate_request
 from work_library import WorkLibrary
 
 BUNDLE = 'wikidebia-prepared-receipt-transfer-1'
 INVENTORY = 'wikidebia-prepared-receipt-inventory-1'
+SELECTION = 'wikidebia-prepared-receipt-selection-1'
 RECEIPT = 'wikidebia-prepared-citation-receipt-1'
 SOURCE = 'wikidebia-mia-prepared-source-1'
 MAX_BYTES = 64 * 1024 * 1024
@@ -120,7 +123,77 @@ def validate_entry(key, entry):
     return source['source_key']
 
 
-def _stored_rows(registry, source_keys=None):
+def literal_selector(quote_hash, metadata_hash):
+    """Stable *filter*, not a source identity or proof. The existing receipt
+    retains the stronger source key and must still be rebound and revalidated.
+    No reparse of a quotation's rendered text is needed for selecting receipts.
+    """
+    require_digest(quote_hash)
+    require_digest(metadata_hash)
+    return fingerprint({'quote_wikitext_sha256': quote_hash,
+                        'metadata_sha256': metadata_hash})
+
+
+def build_selection(requests):
+    """From kit requests already bound to one French lock. No network, DB,
+    text, title, URL or revision in the output. The receiving registry may
+    contain multiple editorial receipts for a selector; transfer all of them.
+    """
+    lock = None
+    request_digests, ids, selectors = set(), set(), set()
+    for request in requests:
+        digest = validate_request(request)
+        if digest in request_digests:
+            raise ValueError('duplicate_selection_request')
+        request_digests.add(digest)
+        if lock is None:
+            lock = request['source_lock_sha256']
+        elif lock != request['source_lock_sha256']:
+            raise ValueError('mixed_selection_source_locks')
+        for item in request['items']:
+            if item['id'] in ids:
+                raise ValueError('duplicate_selection_occurrence')
+            ids.add(item['id'])
+            if len(ids) > MAX_ENTRIES:
+                raise ValueError('selection_occurrence_limit')
+            if item['revision'] is None or locked_policy(item)['route'] != 'mia':
+                continue
+            pairs = parameter_signature(item['source_parameters'])
+            quote = dict(pairs)['citation']
+            selectors.add(literal_selector(sha(quote.encode('utf-8')),
+                            fingerprint([(k, v) for k, v in pairs if k != 'citation'])))
+        if len(request_digests) > MAX_ENTRIES:
+            raise ValueError('selection_request_limit')
+    if lock is None:
+        raise ValueError('selection_requires_request')
+    return {'schema': SELECTION, 'source_lock_sha256': lock,
+            'request_sha256s': sorted(request_digests), 'selectors': sorted(selectors)}
+
+
+def selection_keys(value, expected_sha):
+    require_digest(expected_sha)
+    fields(value, {'schema', 'source_lock_sha256', 'request_sha256s', 'selectors'})
+    if value['schema'] != SELECTION:
+        raise ValueError('invalid_selection_schema')
+    require_digest(value['source_lock_sha256'])
+    for key in ('request_sha256s', 'selectors'):
+        rows = value[key]
+        if not isinstance(rows, list) or len(rows) > MAX_ENTRIES:
+            raise ValueError('invalid_selection_list')
+        for row in rows:
+            require_digest(row)
+        if rows != sorted(set(rows)):
+            raise ValueError('noncanonical_selection_list')
+    if not value['request_sha256s'] or fingerprint(value) != expected_sha:
+        raise ValueError('selection_digest_mismatch')
+    return set(value['selectors'])
+
+
+def _stored_rows(registry, source_keys=None, *, selectors=None):
+    if selectors is not None and source_keys is not None:
+        raise ValueError('conflicting_transfer_scope')
+    if selectors is not None and not selectors:
+        return []
     selected = None if source_keys is None else set(source_keys)
     if selected is not None:
         for key in selected:
@@ -140,15 +213,28 @@ def _stored_rows(registry, source_keys=None):
             entry = json.loads(raw)
             if validate_entry(key, entry) != source_key or encode(entry) != raw:
                 raise ValueError('transfer_registry_integrity_mismatch')
+            if selectors is not None:
+                source = entry['source']
+                if literal_selector(source['quote_wikitext_sha256'],
+                                    source['metadata_sha256']) not in selectors:
+                    continue
             rows.append({'entry_sha256': key, 'entry': entry})
             if len(rows) > MAX_ENTRIES:
                 raise ValueError('transfer_entry_limit')
     return sorted(rows, key=lambda row: row['entry_sha256'])
 
 
-def inventory(registry, source_keys=None):
+def inventory(registry, source_keys=None, *, selection=None, selection_sha=None):
+    selectors = _selection_scope(selection, selection_sha)
     return {'schema': INVENTORY,
-            'entry_sha256s': [row['entry_sha256'] for row in _stored_rows(registry, source_keys)]}
+            'entry_sha256s': [row['entry_sha256'] for row in
+                              _stored_rows(registry, source_keys, selectors=selectors)]}
+
+
+def _selection_scope(selection, selection_sha):
+    if (selection is None) != (selection_sha is None):
+        raise ValueError('selection_requires_expected_digest')
+    return None if selection is None else selection_keys(selection, selection_sha)
 
 
 def known_inventory(value):
@@ -163,9 +249,10 @@ def known_inventory(value):
     return set(keys)
 
 
-def export_bundle(registry, *, source_keys=None, known=None):
+def export_bundle(registry, *, source_keys=None, known=None, selection=None, selection_sha=None):
+    selectors = _selection_scope(selection, selection_sha)
     known = set() if known is None else known_inventory(known)
-    rows = [row for row in _stored_rows(registry, source_keys)
+    rows = [row for row in _stored_rows(registry, source_keys, selectors=selectors)
             if row['entry_sha256'] not in known]
     bundle = {'schema': BUNDLE, 'entries': rows, 'rights': 'unreviewed', 'auto_publish': False}
     if len(encode(bundle).encode('utf-8')) + 1 > MAX_BYTES:
@@ -248,18 +335,43 @@ def read_private_json(path):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--state', type=Path, required=True)
+    p.add_argument('--state', type=Path)
     sub = p.add_subparsers(dest='command', required=True)
+    s = sub.add_parser('select')
+    s.add_argument('--request', type=Path, action='append', required=True)
+    s.add_argument('--out', type=Path, required=True)
     for command in ('inventory', 'export'):
         s = sub.add_parser(command)
         s.add_argument('--out', type=Path, required=True)
-        s.add_argument('--source-key', action='append')
+        scope = s.add_mutually_exclusive_group()
+        scope.add_argument('--source-key', action='append')
+        scope.add_argument('--selection', type=Path)
+        s.add_argument('--selection-sha256')
         if command == 'export':
             s.add_argument('--known-inventory', type=Path)
     s = sub.add_parser('import')
     s.add_argument('--bundle', type=Path, required=True)
     s.add_argument('--sha256', required=True)
     args = p.parse_args(argv)
+    if args.command == 'select':
+        value = build_selection(read_private_json(path) for path in args.request)
+        out = private_dir(args.out.parent) / args.out.name
+        write_private(out, value)
+        print(json.dumps({'sha256': fingerprint(value), 'selectors': len(value['selectors']),
+                          'requests': len(value['request_sha256s']), 'bytes': out.stat().st_size,
+                          'rights': 'unreviewed', 'auto_publish': False}, sort_keys=True))
+        return 0
+    if args.state is None:
+        p.error('--state is required for inventory, export and import')
+    selection = None
+    selection_sha = None
+    if args.command in ('inventory', 'export'):
+        if (args.selection is None) != (args.selection_sha256 is None):
+            p.error('--selection and --selection-sha256 must be supplied together')
+        if args.selection is not None:
+            selection = read_private_json(args.selection)
+            selection_sha = args.selection_sha256
+            selection_keys(selection, selection_sha)
     state = private_dir(args.state)
     # Same campaign lock and same existing DB as both preparation paths.
     with (state / 'campaign.lock').open('a') as lock:
@@ -270,11 +382,13 @@ def main(argv=None):
                 result = import_bundle(registry, read_private_json(args.bundle), args.sha256)
             else:
                 if args.command == 'inventory':
-                    value = inventory(registry, args.source_key)
+                    value = inventory(registry, args.source_key, selection=selection,
+                                      selection_sha=selection_sha)
                     count = len(value['entry_sha256s'])
                 else:
                     known = read_private_json(args.known_inventory) if args.known_inventory else None
-                    value = export_bundle(registry, source_keys=args.source_key, known=known)
+                    value = export_bundle(registry, source_keys=args.source_key, known=known,
+                                          selection=selection, selection_sha=selection_sha)
                     count = len(value['entries'])
                 out = private_dir(args.out.parent) / args.out.name
                 write_private(out, value)
