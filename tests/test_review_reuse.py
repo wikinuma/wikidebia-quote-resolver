@@ -25,7 +25,8 @@ class ReuseReviewTests(unittest.TestCase):
         self.addCleanup(self.lib.db.close)
         self.doc = document(blocks=['First test sentence. Another test 🐈 sentence. Final test sentence.'])
         self.text, _ = text_and_starts(self.doc)
-        self.pages = {'One': RAW, 'Two': RAW.replace(QUOTE, 'Une autre citation de test.')}
+        self.pages = {'One': RAW, 'Two': RAW.replace(QUOTE, 'Une autre citation de test.'),
+                      'Three': RAW.replace(QUOTE, 'Une troisième citation de test.')}
         cases = []
         for i, (title, raw) in enumerate(self.pages.items(), 1):
             r = ref(raw, i)
@@ -120,6 +121,26 @@ class ReuseReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'reuse_passage_already_examined'):
             prepare(self.c, plan, write=True)
         self.assertIsNone(self.c.open_packet())
+
+    def test_explicit_skip_examined_preserves_other_candidate(self):
+        self.history('1', self.mid, self.end, 'uncertain')
+        latest = self.history('1', 0, self.mid-1, 'uncertain')
+        plan = deepcopy(self.plan)
+        plan['entries'][0]['packet'] = latest
+        empty = prepare(self.c, plan, write=True, skip_examined=True)
+        self.assertEqual(empty['occurrences'], 0)
+        self.assertEqual(empty['skipped_examined'], [
+            {'case_id': '1', 'reason': 'reuse_passage_already_examined'}])
+        self.assertFalse(empty['prepared'])
+        self.assertIsNone(self.c.open_packet())
+        third = self.history('3', 0, self.mid, 'uncertain')
+        plan['entries'].append({**plan['entries'][0], 'packet': third})
+        ready = prepare(self.c, plan, write=True, skip_examined=True)
+        self.assertEqual(ready['occurrences'], 1)
+        self.assertEqual(ready['skipped_examined'], empty['skipped_examined'])
+        self.assertEqual(self.c.latest('1')[0], INSUFFICIENT)
+        self.assertEqual(self.c.latest('2')[0], REVIEWED)
+        self.assertEqual(self.c.latest('3')[0], AWAITING)
 
     def test_reject_document_change(self):
         original = self.doc
