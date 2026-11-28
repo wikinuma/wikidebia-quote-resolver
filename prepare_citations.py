@@ -23,6 +23,7 @@ from alignment_store import encode
 from auto_retrieve import Retrieval
 from bibliography import load_catalog
 from chapter_routes import load_chapters, chapter_route
+from source_pdf import load_pdf_catalog
 from citation_inventory import atomic_private, refresh, validate_previous
 from citation_registry import CitationRegistry, DECISIONS, fingerprint, source_identity
 from evidence_audit import Auditor
@@ -556,6 +557,17 @@ def execute(args, state, library):
             if args.recheck_reviewed:
                 states = {REVIEWED}
             chapters = load_chapters(ROOT/'chapter-catalog.json')
+            pdf_catalog = ()
+            if getattr(args, 'source_pdf', False):
+                import shutil
+                if not args.reconsider or getattr(args,'prefer_catalog',False) or getattr(args,'new_chapter_route_only',False):
+                    raise ValueError('source_pdf_requires_reconsider_without_other_route_override')
+                pdf_catalog = load_pdf_catalog(ROOT/'source-pdf-catalog.json')
+                urls = getattr(args,'mia_url',())
+                if not urls or any(u not in {e['source_url'] for e in pdf_catalog} for u in urls):
+                    raise ValueError('source_pdf_requires_explicit_catalog_urls')
+                if shutil.which('pdftotext') is None:
+                    raise ValueError('source_pdf_requires_pdftotext')
             new_chapter_only = getattr(args, 'new_chapter_route_only', False)
             if new_chapter_only and (not args.reconsider or getattr(args, 'prefer_catalog', False)):
                 raise ValueError('new_chapter_route_only_requires_reconsider_without_prefer_catalog')
@@ -574,7 +586,8 @@ def execute(args, state, library):
                                       load_catalog(ROOT/'bibliographic-catalog.json'),
                                       index, True, chapters,
                                       work_library=library, strict_link_policy=True,
-                                      prefer_catalog=getattr(args, 'prefer_catalog', False))
+                                      prefer_catalog=getattr(args, 'prefer_catalog', False),
+                                      source_pdf_catalog=pdf_catalog)
                 for n, case in enumerate(selected, 1):
                     if client.requests >= args.budget:
                         break
@@ -667,6 +680,8 @@ def main():
                      help='Limit search to exact French citation URLs (repeatable)')
     run.add_argument('--last-retrieval-status', action='append', default=[],
                      help='Limit search to the last saved retrieval status, even after review (repeatable)')
+    run.add_argument('--source-pdf', action='store_true',
+                     help='Use explicitly catalogued alternative French PDF editions for targeted reconsideration')
     run.add_argument('--new-chapter-route-only', action='store_true',
                      help='Only reconsider cases with a newly eligible documented chapter, based on saved source evidence')
     run.add_argument('--prefer-catalog', action='store_true',

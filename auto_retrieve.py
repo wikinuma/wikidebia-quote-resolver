@@ -27,6 +27,7 @@ from section_match import extract_headings, automatic_alignment
 from refinement import DirectAlignmentCache, review_packet, select_source_hit
 from source_refinement import long_variants, fragment_paths
 from chapter_routes import chapter_route, retrieve_chapter
+from source_pdf import SourcePDFs
 from alignment import OMISSION
 
 
@@ -171,7 +172,7 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False,prefer_catalog=False):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False,prefer_catalog=False,source_pdf_catalog=()):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
@@ -180,6 +181,7 @@ class Retrieval:
         self.work_library=work_library
         self.strict_link_policy=strict_link_policy
         self.prefer_catalog=prefer_catalog
+        self.source_pdfs=SourcePDFs(client,source_pdf_catalog) if source_pdf_catalog else None
         self.semantic_index=semantic_index
         self.toc_matcher=toc_matcher
         self.hybrid=hybrid
@@ -422,6 +424,15 @@ class Retrieval:
         quote=quotes[case['id']]
         if nav.get('author_check')=='author_tokens_differ':
             row['status']='author_metadata_conflict'; return row
+        if self.source_pdfs is not None:
+            def fetch_leaf(url):
+                doc,body=mia_doc(self.client,url)
+                if explicit_toc(body,doc.url):
+                    raise ValueError('source_pdf_target_is_toc')
+                return doc
+            alternate=self.source_pdfs.retrieve(row,quote,self.direct_cache,fetch_leaf)
+            if alternate is not None:
+                return alternate
         selector=case.get('selector') or automatic_selector(quote)
         source=self.source(quote,selector,nav); row['source']=source
         if source['status'] not in ('exact_in_examined_documents','variant_review_required'):

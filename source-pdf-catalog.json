@@ -1,0 +1,66 @@
+{
+  "schema": "wikidebia-source-pdf-catalog-1",
+  "entries": [
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c.htm",
+      "source_title": "Terrorisme et communisme",
+      "source_titles": [
+        "Terrorisme et communisme (L'Anti-Kautsky)",
+        "Défense du terrorisme"
+      ],
+      "authors": "Léon Trotsky",
+      "pdf_url": "https://www.marxists.org/francais/trotsky/livres/t_c/terrorisme.pdf",
+      "english_toc": "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm",
+      "skip_pages": 3,
+      "footer_page_offset": 0,
+      "sections": [
+        {
+          "heading": "Préface",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/preface.htm"
+        },
+        {
+          "heading": "I. Le rapport des forces",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch01.htm"
+        },
+        {
+          "heading": "II. La dictature du prolétariat",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch02.htm"
+        },
+        {
+          "heading": "III. La démocratie",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch03.htm"
+        },
+        {
+          "heading": "IV. Le terrorisme",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch04.htm"
+        },
+        {
+          "heading": "V. La Commune de Paris et la Russie des Soviets",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch05.htm"
+        },
+        {
+          "heading": "VI. Marx et Kautsky",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch06.htm"
+        },
+        {
+          "heading": "VIII. La classe ouvrière et sa politique soviétique",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch07.htm"
+        },
+        {
+          "heading": "IX. Les questions d'organisation du travail",
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch08.htm"
+        },
+        {
+          "heading": "X. Karl Kautsky, son école et son livre",
+          "en_url": null
+        }
+      ],
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/livres/t_c/terrorisme.pdf",
+        "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm"
+      ],
+      "scope": "reviewed_titles_not_proof_of_parallel_edition",
+      "rights_note": "Alternative French transcription hosted by MIA. PDF body numbering differs from its own TOC. Only identified sections with a verified quote location may supply English review candidates. No rights approval."
+    }
+  ]
+}
