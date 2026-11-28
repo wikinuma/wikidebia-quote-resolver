@@ -588,6 +588,11 @@ def execute(args, state, library):
                                       work_library=library, strict_link_policy=True,
                                       prefer_catalog=getattr(args, 'prefer_catalog', False),
                                       source_pdf_catalog=pdf_catalog)
+                if pdf_catalog and selected:
+                    selected_urls = {c['mia_url'] for c in selected}
+                    for entry in pdf_catalog:
+                        if entry['source_url'] in selected_urls:
+                            show({'source_pdf_preflight':retrieval.source_pdfs.prepare(entry)})
                 for n, case in enumerate(selected, 1):
                     if client.requests >= args.budget:
                         break

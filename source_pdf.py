@@ -168,6 +168,19 @@ class SourcePDFs:
         self.entries = tuple(entries)
         self.cache = {}
 
+    def prepare(self, entry):
+        """Fail before a campaign retry if the alternative edition cannot
+        be parsed into its documented scope. Reuse the verified extraction."""
+        pdf = entry['pdf_url']
+        if pdf not in self.cache:
+            body,final = self.client.get(pdf)
+            if final != pdf:
+                raise ValueError('source_pdf_redirect')
+            self.cache[pdf] = section_documents(extract_pdf(body),entry,sha(body))
+        sections,extraction = self.cache[pdf]
+        return {**extraction,'url':pdf,'sections':len(sections),
+                'body_sha256':sections[0][1].digest}
+
     def retrieve(self, row, quote, alignment_cache, fetch_leaf):
         entry = match_catalog(row['navigation'].get('input',{}),self.entries)
         if entry is None:
@@ -176,11 +189,7 @@ class SourcePDFs:
         row['alternate_source_pdf'] = {'url':pdf,'scope':entry['scope']}
         evidence = row['alternate_source_pdf']
         try:
-            if pdf not in self.cache:
-                body,final = self.client.get(pdf)
-                if final != pdf:
-                    raise ValueError('source_pdf_redirect')
-                self.cache[pdf] = section_documents(extract_pdf(body),entry,sha(body))
+            self.prepare(entry)
             sections,extraction = self.cache[pdf]
         except Exception as exc:
             row['status']='source_pdf_unavailable'

@@ -16,7 +16,7 @@
       "sections": [
         {
           "heading": "Préface",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/preface.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/intro.htm"
         },
         {
           "heading": "I. Le rapport des forces",
@@ -57,10 +57,11 @@
       ],
       "evidence": [
         "https://www.marxists.org/francais/trotsky/livres/t_c/terrorisme.pdf",
-        "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm"
+        "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm",
+        "https://www.marxists.org/archive/trotsky/1920/terrcomm/intro.htm"
       ],
       "scope": "reviewed_titles_not_proof_of_parallel_edition",
-      "rights_note": "Alternative French transcription hosted by MIA. PDF body numbering differs from its own TOC. Only identified sections with a verified quote location may supply English review candidates. No rights approval."
+      "rights_note": "Alternative French transcription hosted by MIA. PDF body numbering differs from its own TOC. Only identified sections with a verified quote location may supply English review candidates. No rights approval. The French author preface corresponds to the English Introduction, not H. N. Brailsford's English Preface."
     }
   ]
 }

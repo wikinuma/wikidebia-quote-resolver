@@ -7,6 +7,7 @@ from source_pdf import load_pdf_catalog,section_documents,locate,SourcePDFs,extr
 class SourcePDFTests(unittest.TestCase):
     def setUp(self):
         self.entry=load_pdf_catalog(ROOT/'source-pdf-catalog.json')[0]
+        self.assertTrue(self.entry['sections'][0]['en_url'].endswith('/intro.htm'))
         self.quote='Une phrase précise et vérifiable dans le premier chapitre.'
         self.entry={**self.entry,'skip_pages':1,'sections':[
             {'heading':'I. Premier chapitre','en_url':'https://www.marxists.org/archive/example/first.htm'},
@@ -55,6 +56,17 @@ class SourcePDFTests(unittest.TestCase):
         self.assertEqual(got['source']['occurrences'][0]['url'],self.entry['pdf_url'])
         bad={'navigation':{'input':{**row['navigation']['input'],'authors':'Wrong author'}}}
         self.assertIsNone(engine.retrieve(bad,self.quote,align,fetch))
+
+    def test_failed_preflight_is_not_a_negative_lookup_or_cached_failure(self):
+        client=Mock()
+        client.get.return_value=(b'%PDF-fixture',self.entry['pdf_url'])
+        engine=SourcePDFs(client,[self.entry])
+        with patch('source_pdf.extract_pdf',side_effect=[self.raw.replace('IV. Fin','Autre fin'),self.raw]):
+            with self.assertRaisesRegex(ValueError,'source_pdf_heading_missing_or_ambiguous'):
+                engine.prepare(self.entry)
+            self.assertEqual(engine.cache,{})
+            self.assertEqual(engine.prepare(self.entry)['sections'],2)
+        self.assertEqual(client.get.call_count,2)
 
     def test_extract_rejects_non_pdf_and_uses_no_shell(self):
         with self.assertRaisesRegex(ValueError,'invalid_source_pdf_body'):
