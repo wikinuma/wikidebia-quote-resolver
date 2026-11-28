@@ -111,3 +111,46 @@ class AutoRetrievalTests(unittest.TestCase):
         self.assertEqual(got['status'],'exact_in_examined_documents')
         self.assertEqual(got['occurrences'][0]['url'],child)
         w.assert_called_once_with('mia',root,'fr')
+
+    def test_catalog_toc_prefers_reviewed_chapter_after_source_confirmation(self):
+        from bibliography import load_catalog
+        from chapter_routes import load_chapters
+        from resolver import ROOT
+        entry=next(e for e in load_catalog(ROOT/'bibliographic-catalog.json')
+                   if '/junius/' in e['source_url'])
+        routes=load_chapters(ROOT/'chapter-catalog.json')
+        route=next(e for e in routes if e['fr_url'].endswith('/rljff.html'))
+        metadata={'mia_urls':[entry['source_url']], 'authors':entry['authors'],
+                  'work':entry['source_title']}
+        row={'navigation':{'input':metadata},'status':'no_work_route','candidates':[]}
+        source={'status':'exact_in_examined_documents','occurrences':[{'url':route['fr_url']}]}
+        r=Retrieval(Mock(),8,[entry],refined=True,chapter_catalog=routes)
+        with patch.object(r,'source',return_value=source), \
+             patch.object(r,'retrieve_mapped_chapter',return_value={'status':'chapter_candidate_review_required'}) as mapped, \
+             patch.object(r,'work') as work:
+            got=r.retrieve_catalog({'id':'x'},row,'Une citation.')
+        self.assertEqual(got['status'],'chapter_candidate_review_required')
+        mapped.assert_called_once_with(row,'Une citation.',source,route)
+        work.assert_not_called()
+        with patch.object(r,'source',return_value={'status':'source_unconfirmed_in_bounded_scope'}), \
+             patch.object(r,'retrieve_mapped_chapter') as mapped, patch.object(r,'work') as work:
+            got=r.retrieve_catalog({'id':'x'},row,'Une citation.')
+        self.assertEqual(got['status'],'source_needs_review')
+        mapped.assert_not_called()
+        work.assert_not_called()
+
+    def test_missing_split_leaf_cannot_return_partial_success(self):
+        from chapter_routes import load_chapters,chapter_urls
+        from resolver import ROOT
+        route=next(e for e in load_chapters(ROOT/'chapter-catalog.json') if 'en_urls' in e)
+        urls=chapter_urls(route)
+        first=Document(urls[0],['Text of first leaf.'],'digest')
+        r=Retrieval(Mock(),8,refined=True)
+        with patch('auto_retrieve.mia_doc',side_effect=[(first,b'<p>Text of first leaf.</p>'),OSError('missing')]) as fetch, \
+             patch('auto_retrieve.retrieve_chapter') as retrieve:
+            row=r.retrieve_mapped_chapter({'candidates':[]},'Une citation.',{},route)
+        self.assertEqual(row['status'],'chapter_source_or_target_unavailable')
+        self.assertEqual(row['chapter_route_failure']['route'],route)
+        self.assertEqual(row['candidates'],[])
+        self.assertEqual([x.args[1] for x in fetch.call_args_list],list(urls))
+        retrieve.assert_not_called()
