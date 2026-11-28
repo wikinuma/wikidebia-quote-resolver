@@ -157,7 +157,7 @@ def build_packet(campaign, plan, max_payload_chars=120000):
                         'source_statuses': source.get('source_statuses', []),
                         'unavailable_candidates': 0}
         view = {k: deepcopy(v) for k, v in quote.items()
-                if k not in ('id', 'candidates', 'seed_ranges')}
+                if k not in ('id', 'candidates', 'seed_ranges', 'transcription_variants')}
         view.update(id=qid, candidates=[pid])
         groups.append({'authors': group['authors'], 'work': group['work'],
                        'chapters': [{'fr_url': chapter['fr_url'], 'article': chapter['article'],
