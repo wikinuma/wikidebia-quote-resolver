@@ -56,6 +56,13 @@ class CampaignTests(unittest.TestCase):
                                'ranges': [[0,len(ENGLISH)]] if decision == 'complete_equivalent' else []}
                               for q,s in packet['sources'].items()]}
 
+    def test_select_last_retrieval_status_after_review(self):
+        self.c.record('1', CANDIDATES, {'result':{'status':'first'}})
+        self.c.record('1', INSUFFICIENT, {'decision':'uncertain'})
+        self.c.record('2', INSUFFICIENT, {'result':{'status':'second'}})
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT}, retrieval_statuses=('first',))], ['1'])
+        self.assertEqual(self.c.select({QUEUED}, retrieval_statuses=('first',)), [])
+
     def test_select_exact_mia_url(self):
         a, b, c = self.c.cases.values()
         a['mia_url'] = 'https://www.marxists.org/francais/a.htm'

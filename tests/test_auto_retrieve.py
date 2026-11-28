@@ -24,7 +24,7 @@ class AutoRetrievalTests(unittest.TestCase):
             r = Retrieval(Mock(),8,[entry],prefer_catalog=prefer)
             with patch('auto_retrieve.discover_case',side_effect=discover), \
                  patch.object(r,'retrieve_catalog',return_value={'status':'alternate','candidates':[]}) as alternate, \
-                 patch.object(r,'source',return_value={'status':'source_unconfirmed_in_bounded_scope'}):
+                 patch.object(r,'source',return_value={'status':'ambiguous_exact_source'}):
                 row = r.retrieve(case)
             if expected:
                 alternate.assert_called_once()

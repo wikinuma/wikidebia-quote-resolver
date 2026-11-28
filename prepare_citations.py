@@ -123,11 +123,21 @@ class Campaign:
         with self.db:
             self._append(cid, state, evidence)
 
-    def select(self, states, limit=0, mia_roots=(), mia_urls=()):
+    def last_retrieval_status(self, cid):
+        # Review decisions may omit the retrieval result; inspect saved history.
+        for (body,) in self.db.execute('SELECT evidence FROM campaign_events_v1 '
+                                      'WHERE occurrence=? ORDER BY seq DESC', (cid,)):
+            evidence = json.loads(body)
+            if 'result' in evidence:
+                return evidence['result'].get('status')
+        return None
+
+    def select(self, states, limit=0, mia_roots=(), mia_urls=(), retrieval_statuses=()):
         rows = [c for c in self.cases.values()
                 if (not mia_roots or any(c['mia_url'].startswith(root) for root in mia_roots))
                 and (not mia_urls or c['mia_url'] in mia_urls)
-                and self.latest(c['id'])[0] in states]
+                and self.latest(c['id'])[0] in states
+                and (not retrieval_statuses or self.last_retrieval_status(c['id']) in retrieval_statuses)]
         return rows[:limit] if limit else rows
 
     def summary(self):
@@ -529,7 +539,8 @@ def execute(args, state, library):
             if args.recheck_reviewed:
                 states = {REVIEWED}
             selected = campaign.select(states, args.limit, getattr(args, 'mia_root', ()),
-                                       getattr(args, 'mia_url', ()))
+                                       getattr(args, 'mia_url', ()),
+                                       getattr(args, 'last_retrieval_status', ()))
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
             with open_current() as index:
@@ -628,6 +639,8 @@ def main():
                      help='Limit search to citations under this canonical MIA directory (repeatable)')
     run.add_argument('--mia-url', type=parse_mia_url, action='append', default=[],
                      help='Limit search to exact French citation URLs (repeatable)')
+    run.add_argument('--last-retrieval-status', action='append', default=[],
+                     help='Limit search to the last saved retrieval status, even after review (repeatable)')
     run.add_argument('--prefer-catalog', action='store_true',
                      help='Try explicitly documented alternative routes before ordinary navigation targets')
     run.add_argument('--budget', type=int, default=2500)
