@@ -35,6 +35,7 @@ from prepared_resolution import (CANDIDATES, REVIEWED, RETRY, INSUFFICIENT,
                                  classify, resolve_occurrence)
 from resolver import Client, ROOT
 from review_bundle import write_bundle
+from review_history import ReviewedWindows, SKIPPED
 from transcription_compare import supplement_packet
 from wikirouge_incremental import open_current
 from work_library import WorkLibrary
@@ -171,6 +172,8 @@ class Campaign:
                 'unrepresented_mia_occurrences': sum(issues.values()),
                 'inventory_issues': dict(issues),
                 'states': {s: counts[s] for s in STATES},
+                'unchanged_review_evidence_skipped': sum(state == INSUFFICIENT and evidence.get('reason') == SKIPPED
+                                                        for state,evidence in latest),
                 'expanded_fallback_pending': sum(state == CANDIDATES and
                     evidence.get('context_stage') == FALLBACK for state,evidence in latest),
                 'duplicate_quote_groups_across_pages': len(anomalies),
@@ -196,11 +199,16 @@ class Campaign:
         return next(self.open_packets(), None)
 
     def prepare(self, load_raw, audit, limit=20, max_payload_chars=120000,
-                *, allow_multiple=False, progressive=False, compare_transcriptions=False):
+                *, allow_multiple=False, progressive=False, compare_transcriptions=False,
+                novel_only=False, history=None):
+        if novel_only and progressive:
+            raise ValueError('novelty_requires_wide_review')
         if not allow_multiple:
             existing = self.open_packet()
             if existing is not None:
                 return existing
+        if novel_only and history is None:
+            history = ReviewedWindows(self.db)
         pending = [(c, self.latest(c['id'])[1]) for c in self.select({CANDIDATES})]
         fallback = [(c, e) for c,e in pending if e.get('context_stage') == FALLBACK]
         # Escalated occurrences are always reviewed in the wide mode, even
@@ -225,6 +233,8 @@ class Campaign:
                 self.record(selected[0][0]['id'], INSUFFICIENT,
                             {'reason': 'single_review_payload_limit'})
                 return None
+            if novel_only:
+                packet = history.filter(packet)
             included = [o['case_id'] for s in packet['sources'].values()
                         for o in s['occurrences']]
             skipped = [s['case_id'] for s in packet['skipped']]
@@ -241,7 +251,11 @@ class Campaign:
                 for failure in packet['skipped']:
                     cid = failure['case_id']
                     old = self.latest(cid)[1]
-                    self._append(cid, RETRY, {**old, 'review_skip': failure})
+                    if failure['status'] == SKIPPED:
+                        self._append(cid, INSUFFICIENT, {**old, 'reason': SKIPPED,
+                                                         'review_skip': failure})
+                    else:
+                        self._append(cid, RETRY, {**old, 'review_skip': failure})
                 if included:
                     self.db.execute('INSERT INTO campaign_packets_v1 VALUES (?,?,?,NULL)',
                                     (digest, encode(packet), 'open'))
@@ -251,14 +265,18 @@ class Campaign:
         return None
 
     def prepare_many(self, load_raw, audit, packets=8, limit=20,
-                     max_payload_chars=120000, *, progressive=False, compare_transcriptions=False):
+                     max_payload_chars=120000, *, progressive=False, compare_transcriptions=False,
+                     novel_only=False):
         """A bounded wave. Re-export pending packets after interruptions;
         never create duplicate open occurrences. One auditor per wave."""
         if packets < 1 or limit < 1:
             raise ValueError('invalid_wave_limits')
+        if novel_only and progressive:
+            raise ValueError('novelty_requires_wide_review')
         existing = list(self.open_packets())
         if existing:
             return existing[:packets]
+        history = ReviewedWindows(self.db) if novel_only else None
         result = []
         while len(result) < packets:
             client = getattr(audit,'client',None)
@@ -269,7 +287,8 @@ class Campaign:
                 break
             batch = self.prepare(load_raw,audit,limit,max_payload_chars,
                                  allow_multiple=True, progressive=progressive,
-                                 compare_transcriptions=compare_transcriptions)
+                                 compare_transcriptions=compare_transcriptions,
+                                 novel_only=novel_only, history=history)
             if batch:
                 result.append(batch)
             if len(self.select({CANDIDATES})) >= before:
@@ -607,7 +626,8 @@ def execute(args, state, library):
         elif args.command == 'review':
             batch = campaign.prepare(fresh, audit, args.limit, args.max_payload_chars,
                                      progressive=args.progressive,
-                                     compare_transcriptions=args.compare_transcriptions)
+                                     compare_transcriptions=args.compare_transcriptions,
+                                     novel_only=args.novel_only)
             if batch:
                 digest, packet = batch
                 out = state/'outgoing'/('review-'+digest[:16]+'.json')
@@ -621,7 +641,8 @@ def execute(args, state, library):
         elif args.command == 'review-many':
             pairs = campaign.prepare_many(fresh,audit,args.packets,args.limit,
                                           args.max_payload_chars, progressive=args.progressive,
-                                          compare_transcriptions=args.compare_transcriptions)
+                                          compare_transcriptions=args.compare_transcriptions,
+                                          novel_only=args.novel_only)
             if pairs:
                 wave = fingerprint([digest for digest,_ in pairs])[:16]
                 out = state/'outgoing'/('review-wave-'+wave+'.zip')
@@ -704,12 +725,14 @@ def main():
     review.add_argument('--max-payload-chars', type=int, default=120000)
     review.add_argument('--progressive', action='store_true', help='Start with one adaptive anchor; abstentions receive wide review')
     review.add_argument('--compare-transcriptions', action='store_true', help='Offer verified literal spacing alternatives for documented edition pairs')
+    review.add_argument('--novel-only', action='store_true', help='Skip occurrences wholly covered by an earlier completed wide abstention on identical evidence')
     many = sub.add_parser('review-many', help='Prepare or re-export a private ZIP of independent reviews')
     many.add_argument('--packets',type=int,default=8)
     many.add_argument('--limit',type=int,default=20,help='Max occurrences per packet')
     many.add_argument('--max-payload-chars',type=int,default=120000)
     many.add_argument('--progressive', action='store_true', help='Start with compact reviews; prioritize saved wide fallbacks')
     many.add_argument('--compare-transcriptions', action='store_true', help='Offer verified literal spacing alternatives for documented edition pairs')
+    many.add_argument('--novel-only', action='store_true', help='Skip occurrences wholly covered by an earlier completed wide abstention on identical evidence')
     apply = sub.add_parser('apply')
     apply.add_argument('reply', type=Path, help='JSON path or - for stdin')
     bulk = sub.add_parser('apply-many',help='Import an array of complete per-packet replies')
@@ -723,6 +746,8 @@ def main():
             or getattr(a, 'limit', 0) < 0
             or (a.command == 'review-many' and a.limit < 1)):
         p.error('invalid processing limits')
+    if getattr(a, 'novel_only', False) and getattr(a, 'progressive', False):
+        p.error('--novel-only requires wide review (without --progressive)')
     os.umask(0o077)
     state = private_dir(a.state)
     with (state/'campaign.lock').open('a') as lock:

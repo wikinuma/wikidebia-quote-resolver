@@ -4,6 +4,8 @@ on:
     branches: ['experiment/mia-campaign-diagnostics-20261128']
     paths:
       - 'review_reuse.py'
+      - 'review_history.py'
+      - 'tests/test_review_history.py'
       - 'tests/test_review_reuse.py'
       - 'chapter-catalog.json'
       - 'chapter_routes.py'
@@ -30,6 +32,7 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-navigation.txt
       - run: python -m unittest discover -s tests -p 'test_review_reuse.py' -v
+      - run: python -m unittest discover -s tests -p 'test_review_history.py' -v
       - run: python -m unittest discover -s tests -p 'test_chapter_routes.py' -v
       - run: python -m unittest discover -s tests -p 'test_auto_retrieve.py' -v
       - run: python -m unittest discover -s tests -p 'test_campaign_diagnostic.py' -v
