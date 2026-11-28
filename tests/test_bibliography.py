@@ -108,3 +108,24 @@ class BibliographyTests(unittest.TestCase):
         self.assertTrue(got['candidates'])
         self.assertTrue(all(c['url']==en for c in got['candidates']))
         self.assertFalse(got['auto_publish'])
+
+    def test_compilation_letter_route_requires_exact_source_and_metadata(self):
+        fr='https://www.marxists.org/francais/marx/works/00/parti/kmpc018.htm'
+        en='https://wikirouge.net/texts/en/Letter_to_The_Communist_Correspondence_Committee%2C_October_23%2C_1846'
+        meta={'mia_urls':[fr], 'work':'Marxists.org',
+              'article':"Activités d'organisation (1843-1847) Activité au sein de la Ligue des communistes",
+              'authors':'Karl Marx, Friedrich Engels'}
+        entry=match_catalog(meta,self.entries)
+        self.assertEqual(entry['target_url'],en)
+        self.assertEqual(entry['source_document'],fr)
+        self.assertFalse(entry['whole_document_parallel'])
+        self.assertEqual(entry['target_provider'],'wikirouge')
+        self.assertIsNone(match_catalog({**meta,'article':'Un autre chapitre'},self.entries))
+        self.assertIsNone(match_catalog({**meta,'mia_urls':[fr.replace('018','019')]},self.entries))
+        self.assertIsNone(match_catalog({**meta,'authors':'Karl Marx'},self.entries))
+        r=Retrieval(Mock(),8,self.entries,refined=True)
+        row={'navigation':{'input':meta},'candidates':[]}
+        with patch.object(r,'source',return_value={'status':'source_unconfirmed_in_bounded_scope'}):
+            got=r.retrieve_catalog({'id':'synthetic'},row,'Texte de test synthétique.')
+        self.assertEqual(got['status'],'source_needs_review')
+        r.client.get.assert_not_called()
