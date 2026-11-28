@@ -171,7 +171,7 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False,prefer_catalog=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
@@ -179,6 +179,7 @@ class Retrieval:
         self.direct_cache=DirectAlignmentCache(store=work_library.alignment_store if work_library is not None else None)
         self.work_library=work_library
         self.strict_link_policy=strict_link_policy
+        self.prefer_catalog=prefer_catalog
         self.semantic_index=semantic_index
         self.toc_matcher=toc_matcher
         self.hybrid=hybrid
@@ -405,6 +406,15 @@ class Retrieval:
         if nav['status']=='ai_translation_required':
             row['status']='ai_translation_required'
             return row
+        # An explicitly selected documented alternative is a new retrieval
+        # path, not a way to override author conflicts or skip source checks.
+        if (self.prefer_catalog and case['id'] in quotes
+                and nav.get('author_check') != 'author_tokens_differ'
+                and nav['status'] in ('mia_route_candidate','wikirouge_route_candidate',
+                                      'work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed')
+                and catalog_route(nav.get('input', {}), self.catalog) is not None):
+            row['catalog_preferred'] = True
+            return self.retrieve_catalog(case,row,quotes[case['id']])
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
             if self.catalog and nav['status'] in ('work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed') and case['id'] in quotes:
                 return self.retrieve_catalog(case,row,quotes[case['id']])

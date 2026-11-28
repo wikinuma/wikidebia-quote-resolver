@@ -123,9 +123,10 @@ class Campaign:
         with self.db:
             self._append(cid, state, evidence)
 
-    def select(self, states, limit=0, mia_roots=()):
+    def select(self, states, limit=0, mia_roots=(), mia_urls=()):
         rows = [c for c in self.cases.values()
                 if (not mia_roots or any(c['mia_url'].startswith(root) for root in mia_roots))
+                and (not mia_urls or c['mia_url'] in mia_urls)
                 and self.latest(c['id'])[0] in states]
         return rows[:limit] if limit else rows
 
@@ -527,14 +528,16 @@ def execute(args, state, library):
                 states = {INSUFFICIENT}
             if args.recheck_reviewed:
                 states = {REVIEWED}
-            selected = campaign.select(states, args.limit, getattr(args, 'mia_root', ()))
+            selected = campaign.select(states, args.limit, getattr(args, 'mia_root', ()),
+                                       getattr(args, 'mia_url', ()))
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
             with open_current() as index:
                 retrieval = Retrieval(client, args.max_pages,
                                       load_catalog(ROOT/'bibliographic-catalog.json'),
                                       index, True, load_chapters(ROOT/'chapter-catalog.json'),
-                                      work_library=library, strict_link_policy=True)
+                                      work_library=library, strict_link_policy=True,
+                                      prefer_catalog=getattr(args, 'prefer_catalog', False))
                 for n, case in enumerate(selected, 1):
                     if client.requests >= args.budget:
                         break
@@ -596,6 +599,13 @@ def parse_mia_root(value):
     return root
 
 
+def parse_mia_url(value):
+    url = canonical_mia(value)
+    if url is None or not url.startswith('https://www.marxists.org/francais/') or url.endswith('/'):
+        raise argparse.ArgumentTypeError('expected an exact French MIA document URL')
+    return url
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--state', type=Path, required=True,
@@ -616,6 +626,10 @@ def main():
     run.add_argument('--limit', type=int, default=50, help='0 means all matching occurrences')
     run.add_argument('--mia-root', type=parse_mia_root, action='append', default=[],
                      help='Limit search to citations under this canonical MIA directory (repeatable)')
+    run.add_argument('--mia-url', type=parse_mia_url, action='append', default=[],
+                     help='Limit search to exact French citation URLs (repeatable)')
+    run.add_argument('--prefer-catalog', action='store_true',
+                     help='Try explicitly documented alternative routes before ordinary navigation targets')
     run.add_argument('--budget', type=int, default=2500)
     run.add_argument('--case-budget', type=int, default=300)
     run.add_argument('--max-pages', type=int, default=64)

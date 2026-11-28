@@ -56,6 +56,14 @@ class CampaignTests(unittest.TestCase):
                                'ranges': [[0,len(ENGLISH)]] if decision == 'complete_equivalent' else []}
                               for q,s in packet['sources'].items()]}
 
+    def test_select_exact_mia_url(self):
+        a, b, c = self.c.cases.values()
+        a['mia_url'] = 'https://www.marxists.org/francais/a.htm'
+        b['mia_url'] = a['mia_url'] + '.extra'
+        c['mia_url'] = a['mia_url']
+        self.c.record(c['id'], REVIEWED, {})
+        self.assertEqual(self.c.select({QUEUED}, mia_urls=(a['mia_url'],)), [a])
+
     def test_select_mia_roots_filters_before_limit_and_preserves_states(self):
         root = 'https://www.marxists.org/francais/example/work/'
         other = 'https://www.marxists.org/francais/example/work-other/'

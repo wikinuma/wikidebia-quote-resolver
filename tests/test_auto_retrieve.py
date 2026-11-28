@@ -5,6 +5,36 @@ from resolver import Document,sha
 
 
 class AutoRetrievalTests(unittest.TestCase):
+
+    def test_preferred_catalog_is_opt_in_and_respects_author_conflict(self):
+        from bibliography import load_catalog
+        from resolver import ROOT
+        entry = next(e for e in load_catalog(ROOT/'bibliographic-catalog.json')
+                     if e['target_provider']=='mia')
+        metadata = {'mia_urls':[entry['source_url']], 'article':entry['source_title'],
+                    'authors':entry['authors']}
+        nav = {'status':'wikirouge_route_candidate',
+               'author_check':'same_normalized_author_tokens','input':metadata}
+        def discover(client,case,quote_sink=None,**kwargs):
+            quote_sink[case['id']] = 'Un passage documentaire fictif.'
+            return nav
+        case = {'id':'x','wiki_title':'Argument','selector':'passage'}
+        for prefer, conflict, expected in [(True,False,True),(False,False,False),(True,True,False)]:
+            nav['author_check'] = 'author_tokens_differ' if conflict else 'same_normalized_author_tokens'
+            r = Retrieval(Mock(),8,[entry],prefer_catalog=prefer)
+            with patch('auto_retrieve.discover_case',side_effect=discover), \
+                 patch.object(r,'retrieve_catalog',return_value={'status':'alternate','candidates':[]}) as alternate, \
+                 patch.object(r,'source',return_value={'status':'source_unconfirmed_in_bounded_scope'}):
+                row = r.retrieve(case)
+            if expected:
+                alternate.assert_called_once()
+                self.assertEqual(row['status'],'alternate')
+            elif conflict:
+                alternate.assert_not_called()
+                self.assertEqual(row['status'],'author_metadata_conflict')
+            else:
+                alternate.assert_not_called()
+                self.assertEqual(row['status'],'source_needs_review')
     def test_directory_index_only_direct_links(self):
         root='https://www.marxists.org/archive/work/'
         body=b'<a href="ch01.htm">Chapter</a><a href="index.htm">Index</a><a href="../other.htm">Other work</a><a href="sub/a.htm">Subdirectory</a><a href="https://evil.test/x.htm">Bad</a>'
