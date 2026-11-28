@@ -28,7 +28,7 @@ from citation_registry import CitationRegistry, DECISIONS, fingerprint, source_i
 from evidence_audit import Auditor
 from grouped_review import (apply_review, build_packet, candidate_queue,
                             pinned_loader, private_dir, review_view)
-from navigation import error_kind
+from navigation import canonical_mia, error_kind
 from pilot_full import PilotClient
 from prepared_resolution import (CANDIDATES, REVIEWED, RETRY, INSUFFICIENT,
                                  classify, resolve_occurrence)
@@ -123,8 +123,10 @@ class Campaign:
         with self.db:
             self._append(cid, state, evidence)
 
-    def select(self, states, limit=0):
-        rows = [c for c in self.cases.values() if self.latest(c['id'])[0] in states]
+    def select(self, states, limit=0, mia_roots=()):
+        rows = [c for c in self.cases.values()
+                if (not mia_roots or any(c['mia_url'].startswith(root) for root in mia_roots))
+                and self.latest(c['id'])[0] in states]
         return rows[:limit] if limit else rows
 
     def summary(self):
@@ -525,7 +527,7 @@ def execute(args, state, library):
                 states = {INSUFFICIENT}
             if args.recheck_reviewed:
                 states = {REVIEWED}
-            selected = campaign.select(states, args.limit)
+            selected = campaign.select(states, args.limit, getattr(args, 'mia_root', ()))
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
             with open_current() as index:
@@ -587,6 +589,13 @@ def execute(args, state, library):
     return 0
 
 
+def parse_mia_root(value):
+    root = canonical_mia(value)
+    if root is None or not root.endswith('/') or root == 'https://www.marxists.org/':
+        raise argparse.ArgumentTypeError('expected a specific MIA directory URL ending in /')
+    return root
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--state', type=Path, required=True,
@@ -605,6 +614,8 @@ def main():
     cancel.add_argument('--packet-sha', help='Required when several reviews are open')
     run = sub.add_parser('search')
     run.add_argument('--limit', type=int, default=50, help='0 means all matching occurrences')
+    run.add_argument('--mia-root', type=parse_mia_root, action='append', default=[],
+                     help='Limit search to citations under this canonical MIA directory (repeatable)')
     run.add_argument('--budget', type=int, default=2500)
     run.add_argument('--case-budget', type=int, default=300)
     run.add_argument('--max-pages', type=int, default=64)
