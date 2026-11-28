@@ -1,7 +1,8 @@
 """Offline inspection of pinned French input and saved source evidence.
 
 This is diagnostic, not a new retrieval engine or a receipt format.
-Only the explicitly selected MIA URL is inspected. The optional transfer
+A selected MIA URL is inspected, or all unresolved French quotes are
+exported in compact quote-only mode. The optional transfer
 contains French quote text and is confined to the designated private relay.
 No document is fetched from the web, no campaign state is modified.
 """
@@ -100,19 +101,70 @@ def probe_rows(db, inventory, url, load_raw, chapters):
     return rows, expected
 
 
-def project(state, url, expected_inventory):
+def quote_rows(db, inventory, url, load_raw):
+    """Read only the latest state and the pinned French citation."""
+    rows = []
+    for c in sorted(inventory['cases'], key=lambda x: (x['mia_url'], x['id'])):
+        if url is not None and c['mia_url'] != url:
+            continue
+        event = db.execute('SELECT state FROM campaign_events_v1 '
+                           'WHERE occurrence=? ORDER BY seq DESC LIMIT 1',
+                           (c['id'],)).fetchone()
+        if event is None or event[0] not in PENDING:
+            continue
+        ref = c['citation_ref']
+        row = {'id':c['id'], 'wiki_title':c['wiki_title'],
+               'mia_url':c['mia_url'], 'state':event[0],
+               'source_key':c['source_key'], 'citation_ref':ref}
+        try:
+            raw = load_raw(c['wiki_title'], ref['revision'])
+            if source_identity(raw, ref)['source_key'] != c['source_key']:
+                raise ValueError('source_identity_mismatch')
+            rec = extract_citation_ref(raw, ref, include_text=True)
+            quote = rec['text']
+            if not quote or len(quote) > 20000:
+                raise ValueError('source_probe_quote_length_limit')
+            row['fr'] = quote
+            for key in ('authors', 'work', 'article', 'date'):
+                if key in rec:
+                    row[key] = rec[key]
+        except Exception as exc:
+            row['probe_error'] = (str(exc) if str(exc) in
+                {'offline_cache_miss','invalid_offline_cache_entry',
+                 'source_identity_mismatch','source_probe_quote_length_limit'}
+                else type(exc).__name__)
+        rows.append(row)
+    return rows
+
+
+def project(state, url, expected_inventory, *, quote_only=False):
     inventory = load_inventory(state/'inventory.json')
     if inventory['manifest_sha256'] != expected_inventory:
         raise ValueError('unexpected_inventory')
-    if not any(c['mia_url']==url for c in inventory['cases']):
+    if url is not None and not any(c['mia_url']==url for c in inventory['cases']):
         raise ValueError('url_not_in_inventory')
     client = PilotClient(state/'http', budget=0, offline=True)
-    chapters = load_chapters(ROOT/'chapter-catalog.json')
+    chapters = [] if quote_only else load_chapters(ROOT/'chapter-catalog.json')
     dbpath = (state/'works.sqlite3').resolve().as_uri()+'?mode=ro'
     with sqlite3.connect(dbpath,uri=True) as db:
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
-        rows, expected = probe_rows(db, inventory, url, pinned_loader(client), chapters)
+        if quote_only:
+            rows = quote_rows(db, inventory, url, pinned_loader(client))
+        else:
+            rows, expected = probe_rows(db, inventory, url, pinned_loader(client), chapters)
+    if quote_only:
+        if client.requests:
+            raise RuntimeError('offline_probe_made_network_requests')
+        return {'schema':'wikidebia-source-probe-1', 'mode':'quote-only',
+                'inventory_sha256':expected_inventory, 'source_url':url,
+                'auto_publish':False, 'rights':'unreviewed',
+                'states':dict(Counter(r['state'] for r in rows)),
+                'source_quotes':sum('fr' in r for r in rows),
+                'probe_errors':dict(Counter(r['probe_error'] for r in rows if 'probe_error' in r)),
+                'eligible_chapters':0, 'cached_source_documents':0,
+                'cache_only':True, 'network_requests':client.requests,
+                'cache_hits':client.hits, 'rows':rows, 'scopes':{}}
     # Also inspect the headings of already cached MIA leaves, not their text.
     docs, info = collect_mia(client, url, 128)
     scopes = {}
@@ -140,16 +192,22 @@ def main():
     p.add_argument('--state',type=Path,required=True)
     p.add_argument('--out',type=Path,required=True)
     p.add_argument('--inventory-sha256',required=True)
-    p.add_argument('--mia-url',required=True)
+    p.add_argument('--mia-url')
+    p.add_argument('--quote-only',action='store_true',
+                   help='Export pinned French text only for unresolved cases; omit URL for all.')
     p.add_argument('--upload-private',action='store_true')
     a = p.parse_args()
-    url=canonical_mia(a.mia_url)
-    if url is None or url!=a.mia_url or not url.startswith('https://www.marxists.org/francais/'):
-        p.error('expected exact canonical French MIA URL')
+    url=None
+    if a.mia_url is not None:
+        url=canonical_mia(a.mia_url)
+        if url is None or url!=a.mia_url or not url.startswith('https://www.marxists.org/francais/'):
+            p.error('expected exact canonical French MIA URL')
+    elif not a.quote_only:
+        p.error('--mia-url is required unless --quote-only is selected')
     os.umask(0o077)
     with (a.state/'campaign.lock').open('rb') as lock:
         fcntl.flock(lock,fcntl.LOCK_SH|fcntl.LOCK_NB)
-        manifest, files = split(project(a.state,url,a.inventory_sha256))
+        manifest, files = split(project(a.state,url,a.inventory_sha256,quote_only=a.quote_only))
     digest = manifest['diagnostic_sha256']
     directory = a.out/digest
     directory.mkdir(mode=0o700,parents=True,exist_ok=True)

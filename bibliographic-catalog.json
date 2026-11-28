@@ -369,6 +369,29 @@
       "bibliography": "The French section II.H, Travail productif et improductif, of the unpublished chapter of Capital corresponds to the English section Productive and Unproductive Labour in Results of the Direct Production Process (Economic Works of Karl Marx 1861-1864). Opening and sequence of examples correspond. Distinguish this manuscript from the ordinary first-volume chapters; no proof of whole-document parallelism or exact quotation boundaries.",
       "rights_note": "English published translation; exact passage and reproduction rights require separate review.",
       "researched_on": "2026-11-28"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/marx/works/00/parti/kmpc018.htm",
+      "source_title": "Activités d'organisation (1843-1847) Activité au sein de la Ligue des communistes",
+      "source_titles": [
+        "Activité au sein de la Ligue des communistes"
+      ],
+      "authors": "Karl Marx, Friedrich Engels",
+      "source_document": "https://www.marxists.org/francais/marx/works/00/parti/kmpc018.htm",
+      "target_provider": "wikirouge",
+      "target_url": "https://wikirouge.net/texts/en/Letter_to_The_Communist_Correspondence_Committee%2C_October_23%2C_1846",
+      "target_title": "Letter to The Communist Correspondence Committee, October 23, 1846",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/marx/works/00/parti/kmpc018.htm",
+        "https://wikirouge.net/texts/en/Letter_to_The_Communist_Correspondence_Committee%2C_October_23%2C_1846",
+        "https://www.marxists.org/archive/marx/letters/index.htm",
+        "https://www.marxists.org/archive/marx/works/1846/letters/46_10_23.htm",
+        "https://www.marxists.org/archive/marx/letters/selected-correspondence.pdf"
+      ],
+      "bibliography": "The opening extract in the French compilation Le parti de classe is identified by its first note as an Engels letter of 23 October 1846. The English MECW vol. 38 pp. 81–86 transcription identifies the recipient as the Communist Correspondence Committee in Brussels; the opening, Proudhon discussion and numbered definition correspond. The French compilation also includes material from later letters: do not claim full-document parallelism or apply this target to other excerpts. The authors field matches the compilation metadata, not the authorship of the English letter. Exact bilingual passage and attribution must be reviewed independently.",
+      "rights_note": "Documentary lead only; source and target spans, edition, attribution and rights require separate review.",
+      "researched_on": "2026-11-28"
     }
   ]
 }
