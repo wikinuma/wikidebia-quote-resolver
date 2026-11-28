@@ -19,6 +19,8 @@ class SourcePDFTests(unittest.TestCase):
     def test_sections_are_not_toc_or_number_based(self):
         sections,meta=section_documents(self.raw,self.entry,'digest')
         self.assertEqual(len(sections),2)
+        punctuated=self.raw.replace('IV. Fin','***\nIV. Fin')
+        self.assertEqual(len(section_documents(punctuated,self.entry,'digest')[0]),2)
         self.assertEqual(meta['removed_numbered_footers'],3)
         h,status=locate(self.quote,sections)
         self.assertEqual(status,'exact')

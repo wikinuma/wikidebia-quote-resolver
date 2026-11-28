@@ -104,11 +104,12 @@ def section_documents(text, entry, digest):
         needle = norm(s['heading'])
         matches = []
         for i,line in enumerate(lines):
-            if not line.strip():
+            normalized = norm(line)
+            if not normalized:
                 continue
-            if norm(line) == needle:
+            if normalized == needle:
                 matches.append((i,i+1))
-            elif i+1 < len(lines) and lines[i+1].strip() and norm(line+' '+lines[i+1]) == needle:
+            elif i+1 < len(lines) and norm(lines[i+1]) and norm(line+' '+lines[i+1]) == needle:
                 matches.append((i,i+2))
         if len(matches) != 1:
             raise ValueError('source_pdf_heading_missing_or_ambiguous')
