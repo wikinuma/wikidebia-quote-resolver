@@ -212,6 +212,37 @@ class ReuseReviewTests(unittest.TestCase):
         self.assertEqual(self.c.latest('1')[0], INSUFFICIENT)
         self.assertEqual(self.c.latest('3')[0], AWAITING)
 
+    def test_append_disjoint_packet_to_open_wave_without_mutating_first(self):
+        third = self.history('3', 0, self.mid, 'uncertain')
+        first = prepare(self.c, self.plan, write=True)
+        first_digest, first_packet = self.c.open_packet()
+        second_plan = deepcopy(self.plan)
+        second_plan['entries'][0]['packet'] = third
+        with self.assertRaisesRegex(ValueError, 'reuse_open_review_exists'):
+            prepare(self.c, second_plan, write=True)
+        with self.assertRaisesRegex(ValueError, 'reuse_occurrence_not_current_abstention'):
+            prepare(self.c, self.plan, write=True, append_to_open=True)
+        second = prepare(self.c, second_plan, write=True, append_to_open=True)
+        pairs = self.c.prepare_many(self.raw, self.audit)
+        self.assertEqual([d for d,_ in pairs],
+                         [first['packet_sha256'], second['packet_sha256']])
+        self.assertEqual(pairs[0], (first_digest, first_packet))
+        index, _, _ = build_bundle(pairs, 'a'*64)
+        self.assertEqual(index['occurrences'], 2)
+        self.assertEqual(self.c.latest('1')[0], AWAITING)
+        self.assertEqual(self.c.latest('3')[0], AWAITING)
+        self.assertEqual(self.c.latest('2')[0], REVIEWED)
+
+    def test_append_fails_closed_on_inconsistent_open_packet(self):
+        third = self.history('3', 0, self.mid, 'uncertain')
+        prepare(self.c, self.plan, write=True)
+        self.c.record('1', INSUFFICIENT, {'reason':'inconsistent test'})
+        other = deepcopy(self.plan)
+        other['entries'][0]['packet'] = third
+        with self.assertRaisesRegex(ValueError, 'reuse_inconsistent_open_review'):
+            prepare(self.c, other, write=True, append_to_open=True)
+        self.assertEqual(self.c.latest('3')[0], INSUFFICIENT)
+
     def test_reject_tampered_historical_packet(self):
         body = self.c.db.execute('SELECT packet FROM campaign_packets_v1 WHERE digest=?',
                                  (self.donor,)).fetchone()[0]

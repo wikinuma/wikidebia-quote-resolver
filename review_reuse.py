@@ -94,7 +94,7 @@ def extend_cached_passage(prior, source, entry, load_document):
 
 
 def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=False,
-                 load_document=None, skip_unavailable=False):
+                 load_document=None, skip_unavailable=False, append_to_open=False):
     if (not isinstance(plan, dict)
             or set(plan) != {'schema', 'inventory_sha256', 'entries'}
             or plan['schema'] not in (PLAN, EXTENDED_PLAN)
@@ -103,8 +103,19 @@ def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=Fals
             or not 1 <= len(plan['entries']) <= 20
             or max_payload_chars < 1):
         raise ValueError('reuse_invalid_plan')
-    if campaign.open_packet() is not None:
+    open_packets = list(campaign.open_packets())
+    if open_packets and not append_to_open:
         raise ValueError('reuse_open_review_exists')
+    open_cases = set()
+    for digest, packet in open_packets:
+        for source in packet['sources'].values():
+            for occurrence in source['occurrences']:
+                cid = occurrence['case_id']
+                state, evidence = campaign.latest(cid)
+                if (cid not in campaign.cases or cid in open_cases or state != AWAITING
+                        or evidence.get('packet_sha256') != digest):
+                    raise ValueError('reuse_inconsistent_open_review')
+                open_cases.add(cid)
     history = applied_packets(campaign)
     sources, targets, documents, passages, groups, proofs = {}, {}, {}, {}, [], {}
     seen, doc_ids, target_ids = set(), {}, {}
@@ -126,7 +137,7 @@ def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=Fals
         case = campaign.cases.get(cid)
         state, evidence = campaign.latest(cid)
         decision = [d for d in reply['decisions'] if d['id'] == old_q]
-        if (cid in seen or not case or state != INSUFFICIENT
+        if (cid in seen or cid in open_cases or not case or state != INSUFFICIENT
                 or evidence.get('packet_sha256') != entry['packet']
                 or len(decision) != 1 or decision[0]['decision'] not in REJECT
                 or decision[0]['candidate'] is not None or decision[0]['ranges'] != []
@@ -237,9 +248,10 @@ def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=Fals
 
 
 def prepare(campaign, plan, *, write=False, skip_examined=False,
-            load_document=None, skip_unavailable=False):
+            load_document=None, skip_unavailable=False, append_to_open=False):
     packet = build_packet(campaign, plan, skip_examined=skip_examined,
-                          load_document=load_document, skip_unavailable=skip_unavailable)
+                          load_document=load_document, skip_unavailable=skip_unavailable,
+                          append_to_open=append_to_open)
     digest = fingerprint(packet)
     registered = write and bool(packet['sources'])
     if registered:
@@ -270,6 +282,8 @@ def main():
                    help='Report and omit passages already examined for that exact occurrence')
     p.add_argument('--skip-unavailable', action='store_true',
                    help='Omit cache misses or document mismatches, never substitute evidence')
+    p.add_argument('--append-to-open', action='store_true',
+                   help='Allow disjoint sealed packets alongside already open, consistent reviews')
     a = p.parse_args()
     os.umask(0o077)
     state = private_dir(a.state)
@@ -285,7 +299,8 @@ def main():
                 loader = Auditor(PilotClient(state/'http', offline=True)).document
             print(encode(prepare(campaign, plan, write=a.prepare,
                                  skip_examined=a.skip_examined, load_document=loader,
-                                 skip_unavailable=a.skip_unavailable)))
+                                 skip_unavailable=a.skip_unavailable,
+                                 append_to_open=a.append_to_open)))
     return 0
 
 
