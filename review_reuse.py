@@ -58,7 +58,7 @@ def checked_passage(packet, pid):
     return target, text
 
 
-def build_packet(campaign, plan, max_payload_chars=120000):
+def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=False):
     if (not isinstance(plan, dict)
             or set(plan) != {'schema', 'inventory_sha256', 'entries'}
             or plan['schema'] != PLAN
@@ -72,6 +72,7 @@ def build_packet(campaign, plan, max_payload_chars=120000):
     history = applied_packets(campaign)
     sources, targets, documents, passages, groups, proofs = {}, {}, {}, {}, [], {}
     seen, doc_ids, target_ids = set(), {}, {}
+    skipped_examined = []
     for entry in plan['entries']:
         if (not isinstance(entry, dict)
                 or set(entry) != {'packet', 'qid', 'donor_packet', 'donor_pid', 'range'}):
@@ -133,6 +134,7 @@ def build_packet(campaign, plan, max_payload_chars=120000):
         new_target['candidate_key'] = fingerprint(new_target)
         # Do not recycle a passage (or mere truncation) already shown to
         # this exact occurrence, even if it used a different passage ID.
+        already_examined = False
         for packet, _ in history.values():
             for historical in packet['sources'].values():
                 if not any(o == occurrence for o in historical['occurrences']):
@@ -142,7 +144,12 @@ def build_packet(campaign, plan, max_payload_chars=120000):
                     if (text in old_text or (old['document'] == new_target['document']
                             and old['char_start'] <= new_target['char_start']
                             and new_target['char_end'] <= old['char_end'])):
-                        raise ValueError('reuse_passage_already_examined')
+                        already_examined = True
+        if already_examined:
+            if not skip_examined:
+                raise ValueError('reuse_passage_already_examined')
+            skipped_examined.append({'case_id': cid, 'reason': 'reuse_passage_already_examined'})
+            continue
         qid = 'q' + str(len(sources) + 1)
         key = new_target['candidate_key']
         pid = target_ids.setdefault(key, 'p' + str(len(target_ids) + 1))
@@ -171,13 +178,14 @@ def build_packet(campaign, plan, max_payload_chars=120000):
     return {'schema': PACKET, 'payload': payload, 'sources': sources,
             'targets': targets, 'skipped': [], 'rights': 'unreviewed',
             'auto_publish': False, 'campaign_batch': fingerprint(plan),
-            'campaign_reuse': proofs}
+            'campaign_reuse': proofs, 'campaign_reuse_skipped_examined': skipped_examined}
 
 
-def prepare(campaign, plan, *, write=False):
-    packet = build_packet(campaign, plan)
+def prepare(campaign, plan, *, write=False, skip_examined=False):
+    packet = build_packet(campaign, plan, skip_examined=skip_examined)
     digest = fingerprint(packet)
-    if write:
+    registered = write and bool(packet['sources'])
+    if registered:
         # The CLI holds the ordinary campaign lock throughout. Registration
         # and transitions are one transaction; apply uses the existing checks.
         with campaign.db:
@@ -186,9 +194,11 @@ def prepare(campaign, plan, *, write=False):
             for source in packet['sources'].values():
                 campaign._append(source['occurrences'][0]['case_id'], AWAITING,
                                  {'packet_sha256': digest})
-    return {'packet_sha256': digest, 'occurrences': len(packet['sources']),
+    return {'packet_sha256': digest if packet['sources'] else None,
+            'occurrences': len(packet['sources']),
+            'skipped_examined': packet['campaign_reuse_skipped_examined'],
             'candidate_chars': sum(p['length'] for p in packet['payload']['passages'].values()),
-            'prepared': write, 'network_requests': 0, 'auto_publish': False,
+            'prepared': registered, 'network_requests': 0, 'auto_publish': False,
             'rights': 'unreviewed'}
 
 
@@ -198,6 +208,8 @@ def main():
     p.add_argument('--plan', type=Path, required=True)
     p.add_argument('--prepare', action='store_true',
                    help='Register a new open packet; otherwise preview only')
+    p.add_argument('--skip-examined', action='store_true',
+                   help='Report and omit passages already examined for that exact occurrence')
     a = p.parse_args()
     os.umask(0o077)
     state = private_dir(a.state)
@@ -206,7 +218,8 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with WorkLibrary(state/'works.sqlite3') as library:
             campaign = Campaign(library, load_inventory(state/'inventory.json'))
-            print(encode(prepare(campaign, plan, write=a.prepare)))
+            print(encode(prepare(campaign, plan, write=a.prepare,
+                                 skip_examined=a.skip_examined)))
     return 0
 
 
