@@ -112,11 +112,11 @@ class ChapterRoutesTests(unittest.TestCase):
 
     def test_split_chapter_preserves_document_boundaries_and_both_parts(self):
         route=next(e for e in self.entries if e['fr_url'].endswith('/kautsky_18920000_04.htm'))
-        q='Les travailleurs sont unis dans cette lutte.'
+        q='La classe prolétarienne veut la révolution sociale.'
         fr=Document(route['fr_url'],[q],'f')
         hits,_=exact_occurrences(q,fr)
         source={'status':'exact_in_examined_documents','occurrences':hits}
-        docs=[Document(u,['The workers are united in this struggle.'],'digest'+str(i))
+        docs=[Document(u,['The proletarian class wants the social revolution.'],'digest'+str(i))
               for i,u in enumerate(chapter_urls(route))]
         cache=Mock()
         result=retrieve_chapter(q,source,[fr],docs,route,cache)
