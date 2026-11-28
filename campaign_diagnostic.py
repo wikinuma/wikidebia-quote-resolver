@@ -58,6 +58,59 @@ def span(d):
     return out
 
 
+def triage_summary(rows):
+    """Compact observed-state counts; never infer an unavailable translation
+    from a failed or bounded search. Keep the latest event distinct from the
+    last retrieval, because a later review can supersede retrieval state.
+    """
+    grouped = Counter()
+    for row in rows:
+        events = row['events']
+        latest = events[-1] if events else {}
+        last = next((e['retrieval'] for e in reversed(events) if 'retrieval' in e), {})
+        biblio = next((b for e in reversed(events)
+                       for b in (e.get('review', {}).get('bibliography'),
+                                 e.get('retrieval', {}).get('bibliography')) if b), {})
+        reason = code(latest.get('reason'))
+        decision = code(latest.get('decision'))
+        status = code(last.get('status'))
+        source = code(last.get('source_status'))
+        if row['state'] == 'retry_documentary':
+            signal = 'documentary_retry'
+        elif reason == 'already_reviewed_without_new_evidence':
+            signal = 'unchanged_review_evidence'
+        elif (decision in {'uncertain', 'no_equivalent'}
+              or reason == 'review_abstention_not_exhaustive'):
+            signal = 'review_abstention'
+        elif source in {'source_unconfirmed_in_bounded_scope', 'ambiguous_exact_source'}:
+            signal = 'source_not_confirmed'
+        elif status in {'no_work_route', 'bibliographic_lead_only',
+                        'alternative_catalog_route_unconfirmed'}:
+            signal = 'documentary_route_unresolved'
+        elif status in {'catalog_source_document_unconfirmed', 'source_needs_review'}:
+            signal = 'source_not_confirmed'
+        elif status and status.endswith('_unavailable'):
+            signal = 'documentary_unavailable'
+        elif status and status.endswith('_no_candidate'):
+            signal = 'no_ranked_candidate'
+        else:
+            signal = 'other_or_unclassified'
+        grouped[(row['mia_url'], label(biblio.get('authors')),
+                 label(biblio.get('work') or biblio.get('article')),
+                 row['state'], signal, status, source, reason, decision)] += 1
+    keys = ('mia_url', 'authors', 'work', 'state', 'signal',
+            'last_retrieval_status', 'last_source_status', 'latest_reason',
+            'latest_decision')
+    result = [{**dict(zip(keys, k)), 'count':n}
+              for k,n in sorted(grouped.items(), key=lambda pair:repr(pair[0]))]
+    by_signal = Counter()
+    for row in result:
+        by_signal[row['signal']] += row['count']
+    return {'scope':'observed_statuses_not_proven_causes_or_exhaustive_search',
+            'unresolved_occurrences':sum(by_signal.values()),
+            'by_signal':dict(sorted(by_signal.items())), 'groups':result}
+
+
 def projection(state, expected=None):
     inventory = json.loads((state / 'inventory.json').read_bytes())
     digest = inventory.pop('manifest_sha256')
@@ -173,6 +226,7 @@ def projection(state, expected=None):
             'groups':[{'authors':a, 'work':w, 'state':s, 'last_retrieval_status':r, 'count':n}
                       for (a,w,s,r),n in sorted(groups.items(), key=lambda p:repr(p[0]))],
             'states':dict(counts), 'by_url':dict(by_url), 'rows':rows, 'scopes':scopes,
+            'triage':triage_summary(rows),
             'auto_publish':False, 'rights':'unreviewed'}
 
 

@@ -3,7 +3,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
-from campaign_diagnostic import fingerprint, projection, split, encode
+from campaign_diagnostic import fingerprint, projection, split, encode, triage_summary
 
 
 class DiagnosticTest(unittest.TestCase):
@@ -38,6 +38,9 @@ class DiagnosticTest(unittest.TestCase):
             self.assertEqual(report['rows'][0]['events'][-1]['review']['decision'],'uncertain')
             manifest, files = split(report)
             self.assertEqual(manifest['unresolved_occurrences'],2)
+            self.assertEqual(manifest['triage']['unresolved_occurrences'],2)
+            self.assertEqual(manifest['triage']['by_signal'],{'documentary_retry':1,'review_abstention':1})
+            self.assertEqual(next(r for r in manifest['triage']['groups'] if r['signal']=='review_abstention')['last_source_status'], 'exact_in_examined_documents')
             self.assertNotIn(b'PRIVATE_',b''.join(files.values()))
             self.assertEqual(split(projection(state)),(manifest,files))
             with self.assertRaisesRegex(ValueError,'unexpected_inventory'):
@@ -46,6 +49,34 @@ class DiagnosticTest(unittest.TestCase):
                 db.execute('UPDATE campaign_packets_v1 SET packet=?',(encode({}),))
             with self.assertRaisesRegex(ValueError,'packet_digest_mismatch'):
                 projection(state)
+
+    def test_triage_uses_latest_event_and_does_not_infer_absence(self):
+        url = 'https://www.marxists.org/francais/example.htm'
+        prior = {'retrieval':{'status':'chapter_candidate_review_required',
+                              'source_status':'exact_in_examined_documents',
+                              'bibliography':{'authors':'A','work':'W'}}}
+        def row(latest, previous=prior, state='insufficient_evidence'):
+            return {'mia_url':url, 'state':state, 'events':[previous,latest]}
+        rows = [
+            row({'decision':'no_equivalent'}),
+            row({'decision':'uncertain'}),
+            row({'reason':'already_reviewed_without_new_evidence'}),
+            row({}, {'retrieval':{'status':'no_work_route'}}),
+            row({}, {'retrieval':{'status':'source_needs_review','source_status':'source_unconfirmed_in_bounded_scope'}}),
+            row({}, {'retrieval':{'status':'catalog_no_candidate'}}),
+            row({}, {'retrieval':{'status':'catalog_target_unavailable'}}),
+            row({'reason':'HTTPError'}, state='retry_documentary'),
+            row({'reason':'unknown_new_reason'}),
+        ]
+        got = triage_summary(rows)
+        self.assertEqual(got['unresolved_occurrences'], len(rows))
+        self.assertEqual(got['by_signal'], {
+            'review_abstention':2, 'unchanged_review_evidence':1,
+            'documentary_route_unresolved':1, 'source_not_confirmed':1,
+            'no_ranked_candidate':1, 'documentary_unavailable':1,
+            'documentary_retry':1, 'other_or_unclassified':1})
+        self.assertEqual(got,triage_summary(list(reversed(rows))))
+        self.assertIn('not_proven_causes',got['scope'])
 
 if __name__ == '__main__':
     unittest.main()

@@ -18,3 +18,10 @@ The normal chapter catalog remains unchanged. The opt-in campaign search `--reco
 https://www.gutenberg.org/cache/epub/38982/pg38982-images.html is a digital transcription of the 1922 Workers Party of America printing. https://wikirouge.net/texts/en/Terrorism_and_Communism identifies the US printing behind its transcription. Compare the underlying edition and literal text before treating another host as new evidence. Do not assume a different translation from a different title or year alone.
 
 All rights remain unreviewed. No private campaign data or quotation texts belong in this document.
+
+
+### Follow-up: Neumann and other historical editions
+
+- SPGB's approved translation of chapter I is available as HTML: https://www.worldsocialism.org/spgb/pamphlet/handicraft-capitalism-karl-kautsky-1906/ . The foreword credits H. J. Neumann and records Kautsky's review of the translation proofs.
+- Chapter III, https://www.worldsocialism.org/spgb/kautsky-on-capitalist-class-1908/ , includes sections 6, 7 and 8 on profit, concentration and industrial crises. The site contains transcription errors; compare with the original printing when available. The translation is not a priori equivalent to every French quotation. No SPGB domain or receipt provider has been enabled.
+- Lenin, *The State*, lecture of 11 July 1919: the existing MIA HTML credits George Hanna and the 1972 English collected works. The index/search record for the January 15, 1929, *International Press Correspondence*, vol. 9 no. 3, identifies a different early English excerpt: https://www.marxists.org/history/international/comintern/inprecor/1929/v09n03-jan-15-1929-inprecor.pdf . The editorial note announces a later full version; availability and text coverage of that full version are unconfirmed. This is a bibliographic lead, not an approved PDF target.

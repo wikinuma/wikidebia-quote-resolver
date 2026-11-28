@@ -18,6 +18,7 @@ on:
       - 'chapter_quality.py'
       - 'prepare_citations.py'
       - 'campaign_diagnostic.py'
+      - 'tests/test_campaign_diagnostic.py'
       - 'tests/test_prepare_citations.py'
       - '.github/workflows/review-reuse.yml'
   workflow_dispatch:
