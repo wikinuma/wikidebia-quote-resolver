@@ -68,3 +68,44 @@ class ChapterRoutesTests(unittest.TestCase):
         h=[e for e in self.entries if e['fr_url'].endswith('/hrr43.htm')]
         self.assertEqual(len(h),1)
         self.assertTrue(h[0]['en_url'].endswith('/ch42.htm'))
+
+    def test_new_targeted_chapters_are_bound_to_source_and_toc(self):
+        pairs = [
+            ("https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr30.htm",
+             "https://www.marxists.org/archive/trotsky/1930/hrr/ch29.htm"),
+            ("https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr31.htm",
+             "https://www.marxists.org/archive/trotsky/1930/hrr/ch30.htm"),
+            ("https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr37.htm",
+             "https://www.marxists.org/archive/trotsky/1930/hrr/ch36.htm"),
+            ("https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr38.htm",
+             "https://www.marxists.org/archive/trotsky/1930/hrr/ch37.htm"),
+            ("https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm",
+             "https://www.marxists.org/archive/kautsky/1892/erfurt/ch03.htm"),
+            ("https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_05.htm",
+             "https://www.marxists.org/archive/kautsky/1892/erfurt/ch05.htm"),
+            ("https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp1.htm",
+             "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch01.htm"),
+            ("https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp2.htm",
+             "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch02.htm"),
+            ("https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp7.htm",
+             "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch07.htm"),
+            ("https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp10.htm",
+             "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch10.htm"),
+            ("https://www.marxists.org/francais/lenin/works/1917/08/er3.htm",
+             "https://www.marxists.org/archive/lenin/works/1917/staterev/ch03.htm"),
+        ]
+        for fr, en in pairs:
+            with self.subTest(fr=fr):
+                entry = next(e for e in self.entries if e['fr_url'] == fr)
+                self.assertEqual(entry['en_url'], en)
+                source = {'status': 'exact_in_examined_documents',
+                          'occurrences': [{'url': fr}]}
+                for link in (fr, entry['fr_toc']):
+                    meta = {'authors': entry['authors'], 'mia_urls': [link]}
+                    self.assertEqual(chapter_route(meta, source, self.entries), entry)
+                # A different explicit source leaf must not be silently replaced.
+                wrong = {**meta, 'mia_urls': [fr + '.other']}
+                self.assertIsNone(chapter_route(wrong, source, self.entries))
+        # Kautsky chapter IV is split across two English pages; no single-leaf route.
+        self.assertFalse(any(e['fr_url'].endswith('/kautsky_18920000_04.htm')
+                             for e in self.entries))
