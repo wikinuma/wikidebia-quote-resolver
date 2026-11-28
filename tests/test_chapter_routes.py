@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from resolver import ROOT, Document,sha
 from alignment import exact_occurrences
-from chapter_routes import load_chapters, chapter_route,retrieve_chapter
+from chapter_routes import load_chapters, chapter_route,chapter_urls,retrieve_chapter
 from refinement import DirectAlignmentCache,review_packet
 from chapter_quality import review_receipt
 from unittest.mock import Mock
@@ -106,6 +106,42 @@ class ChapterRoutesTests(unittest.TestCase):
                 # A different explicit source leaf must not be silently replaced.
                 wrong = {**meta, 'mia_urls': [fr + '.other']}
                 self.assertIsNone(chapter_route(wrong, source, self.entries))
-        # Kautsky chapter IV is split across two English pages; no single-leaf route.
-        self.assertFalse(any(e['fr_url'].endswith('/kautsky_18920000_04.htm')
-                             for e in self.entries))
+        # Kautsky chapter IV is split across two English pages.
+        split=next(e for e in self.entries if e['fr_url'].endswith('/kautsky_18920000_04.htm'))
+        self.assertEqual([u.rsplit('/',1)[1] for u in chapter_urls(split)],['ch04.htm','ch04a.htm'])
+
+    def test_split_chapter_preserves_document_boundaries_and_both_parts(self):
+        route=next(e for e in self.entries if e['fr_url'].endswith('/kautsky_18920000_04.htm'))
+        q='Les travailleurs sont unis dans cette lutte.'
+        fr=Document(route['fr_url'],[q],'f')
+        hits,_=exact_occurrences(q,fr)
+        source={'status':'exact_in_examined_documents','occurrences':hits}
+        docs=[Document(u,['The workers are united in this struggle.'],'digest'+str(i))
+              for i,u in enumerate(chapter_urls(route))]
+        cache=Mock()
+        result=retrieve_chapter(q,source,[fr],docs,route,cache)
+        cache.candidate.assert_not_called()
+        self.assertEqual(result['target_scope'],'reviewed_split_chapter')
+        self.assertEqual(result['section_alignment']['status'],'split_chapter_alignment_not_applicable')
+        self.assertEqual(set(x['url'] for x in result['candidates'][:2]),set(chapter_urls(route)))
+        self.assertEqual([x['root'] for x in result['target_attempts']],list(chapter_urls(route)))
+        self.assertFalse(result['auto_publish'])
+        for incomplete in (docs[:1],list(reversed(docs)),docs+[docs[0]]):
+            with self.assertRaisesRegex(ValueError,'chapter_document_or_source_mismatch'):
+                retrieve_chapter(q,source,[fr],incomplete,route,cache)
+
+    def test_split_chapter_catalog_rejects_bad_leaf_sets(self):
+        import json
+        from tempfile import TemporaryDirectory
+        route=next(e for e in self.entries if 'en_urls' in e)
+        urls=list(chapter_urls(route))
+        with TemporaryDirectory() as tmp:
+            path=Path(tmp)/'catalog.json'
+            for bad in ([urls[0]], [urls[0],urls[0]], list(reversed(urls)),
+                        [urls[0],route['en_toc']], [urls[0],route['fr_url']],
+                        [urls[0],'https://example.org/page']):
+                path.write_text(json.dumps({'schema':'wikidebia-chapter-catalog-1',
+                                            'entries':[{**route,'en_urls':bad}]}))
+                with self.assertRaisesRegex(ValueError,'invalid_split_chapter_urls'):
+                    load_chapters(path)
+

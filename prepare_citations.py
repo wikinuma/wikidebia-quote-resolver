@@ -22,7 +22,7 @@ import sys
 from alignment_store import encode
 from auto_retrieve import Retrieval
 from bibliography import load_catalog
-from chapter_routes import load_chapters, chapter_route
+from chapter_routes import load_chapters, chapter_route, chapter_urls
 from source_pdf import load_pdf_catalog
 from citation_inventory import atomic_private, refresh, validate_previous
 from citation_registry import CitationRegistry, DECISIONS, fingerprint, source_identity
@@ -146,7 +146,8 @@ class Campaign:
                                       'WHERE occurrence=? ORDER BY seq DESC', (cid,)):
             previous_result = json.loads(body).get('result', {})
             previous = previous_result.get('chapter_route') or previous_result.get('chapter_route_failure', {}).get('route')
-            if previous and all(previous.get(k)==route.get(k) for k in ('fr_url','en_url')):
+            if (previous and previous.get('fr_url')==route['fr_url']
+                    and previous.get('en_url') and chapter_urls(previous)==chapter_urls(route)):
                 return None
         return route
 

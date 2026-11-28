@@ -75,6 +75,19 @@ class CampaignTests(unittest.TestCase):
         self.assertIsNone(self.c.new_chapter_route('1',[e]))
         self.assertIsNone(self.c.new_chapter_route('2',[e]))
 
+    def test_expanded_split_chapter_route_is_new_evidence(self):
+        from chapter_routes import load_chapters
+        from resolver import ROOT
+        e=next(x for x in load_chapters(ROOT/'chapter-catalog.json') if 'en_urls' in x)
+        prior={k:v for k,v in e.items() if k!='en_urls'}
+        result={'navigation':{'input':{'mia_urls':[e['fr_toc']], 'authors':e['authors']}},
+                'source':{'status':'exact_in_examined_documents','occurrences':[{'url':e['fr_url']}]},
+                'chapter_route':prior}
+        self.c.record('1', INSUFFICIENT, {'result':result})
+        self.assertEqual(self.c.new_chapter_route('1',[e]),e)
+        self.c.record('1', INSUFFICIENT, {'result':{**result,'chapter_route':e}})
+        self.assertIsNone(self.c.new_chapter_route('1',[e]))
+
     def test_select_last_retrieval_status_after_review(self):
         self.c.record('1', CANDIDATES, {'result':{'status':'first'}})
         self.c.record('1', INSUFFICIENT, {'decision':'uncertain'})

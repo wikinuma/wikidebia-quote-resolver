@@ -8,7 +8,7 @@ from pathlib import Path
 import tempfile
 from collections import Counter
 from evidence_audit import Auditor, load_report, read_span
-from chapter_routes import load_chapters, chapter_route, retrieve_chapter
+from chapter_routes import load_chapters, chapter_route, chapter_urls, retrieve_chapter
 from refinement import DirectAlignmentCache, review_packet, select_source_hit, select_hit_metadata
 from resolver import ROOT, norm
 from pilot_full import PilotClient, redact_text
@@ -75,7 +75,7 @@ def main():
                 route=chapter_route(c['metadata'],src,entries)
                 if route is None: continue
                 row={'cohort':group,'id':c['id'],'chapter':route,'status':'pending','old_primary':primary(result),
-                     'old_wrong_chapter':bool(primary(result) and primary(result)[0]['url']!=route['en_url'])}
+                     'old_wrong_chapter':bool(primary(result) and primary(result)[0]['url'] not in chapter_urls(route))}
                 rows.append(row)
                 try:
                     inp,quote=auditor.input(c)
@@ -83,8 +83,8 @@ def main():
                     source,kind=select_hit_metadata(src,route['fr_url'])
                     if source is None: raise ValueError('source_not_selected')
                     fr=auditor.document(route['fr_url'],'fr')
-                    en=auditor.document(route['en_url'],'en')
-                    if isinstance(fr,dict) or isinstance(en,dict): raise ValueError('document_unavailable')
+                    en=[auditor.document(url,'en') for url in chapter_urls(route)]
+                    if isinstance(fr,dict) or any(isinstance(d,dict) for d in en): raise ValueError('document_unavailable')
                     _,_,actual=read_span(fr,source)
                     if auditor.span(source,'fr')['status']!='verified_document_and_span':
                         raise ValueError('source_fingerprint_mismatch')
@@ -99,7 +99,7 @@ def main():
                     updated=retrieve_chapter(quote,current,[fr],en,route,align)
                     updated['review_packet']=review_packet(updated)
                     row.update(status=updated['status'],new=redact_text(updated))
-                    row['new_primary_in_chapter']=bool(primary(row['new']) and primary(row['new'])[0]['url']==route['en_url'])
+                    row['new_primary_in_chapter']=bool(primary(row['new']) and primary(row['new'])[0]['url'] in chapter_urls(route))
                     if c['id'] in decisions:
                         row['reviewed_span_retained_as_primary']=bool(primary(row['new']) and
                             primary(row['new'])[0]['text_sha256']==decisions[c['id']]['en_span_sha256'])

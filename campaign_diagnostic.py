@@ -102,6 +102,9 @@ def projection(state, expected=None):
                'chapter': fields(r.get('chapter_route', r.get('chapter_route_failure', {}).get('route', {})), 'fr_url en_url fr_toc en_toc', url),
                'chapter_error': code(r.get('chapter_route_failure', {}).get('error')),
                'candidates': []}
+        chapter = r.get('chapter_route', r.get('chapter_route_failure', {}).get('route', {}))
+        if isinstance(chapter.get('en_urls'),list):
+            out['chapter']['en_urls'] = [v for u in chapter['en_urls'] if (v := url(u)) is not None]
         queue = r.get('review_packet', {}).get('candidates', []) + r.get('section_alignment', {}).get('candidates', []) + r.get('candidates', [])
         out['candidates'] = list({fingerprint(span(c)):span(c) for c in queue}.values())
         return out

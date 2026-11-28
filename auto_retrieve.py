@@ -26,7 +26,7 @@ from compare import evaluation
 from section_match import extract_headings, automatic_alignment
 from refinement import DirectAlignmentCache, review_packet, select_source_hit
 from source_refinement import long_variants, fragment_paths
-from chapter_routes import chapter_route, retrieve_chapter
+from chapter_routes import chapter_route, chapter_urls, retrieve_chapter
 from source_pdf import SourcePDFs
 from alignment import OMISSION
 
@@ -312,6 +312,23 @@ class Retrieval:
                                             'candidates':[],'fallback_preserved':True,'auto_publish':False}
         return row
 
+    def retrieve_mapped_chapter(self,row,quote,source,chapter):
+        try:
+            docs=[]
+            for url in chapter_urls(chapter):
+                doc,body=mia_doc(self.client,url)
+                if doc.url!=url or explicit_toc(body,doc.url):
+                    raise ValueError('chapter_target_not_expected_leaf')
+                docs.append(doc)
+            row.update(retrieve_chapter(quote,source,list(self.source_documents.values()),
+                                        docs,chapter,self.direct_cache))
+            return self.semantic_sidecar(row,quote,docs)
+        except Exception as exc:
+            row['chapter_route_failure']={'route':chapter,'error':error_kind(exc)}
+            # Missing parts or changed URLs cannot silently become a complete chapter.
+            row['status']='chapter_source_or_target_unavailable'
+            return row
+
     def retrieve_catalog(self,case,row,quote):
         # Only use explicit researched mappings when the ordinary route is
         # unresolved. Never override a conflicting or ambiguous author.
@@ -337,6 +354,9 @@ class Retrieval:
         info={'provider':provider,'scope':'researched_single_target_page_not_complete_edition','root':url,'issues':[],'pages':[]}
         row['target_attempts']=[info]
         if entry.get('target_toc'):
+            chapter=chapter_route(row['navigation']['input'],source,self.chapter_catalog) if self.refined else None
+            if chapter is not None and chapter['en_toc']==url:
+                return self.retrieve_mapped_chapter(row,quote,source,chapter)
             docs,info=self.work('mia',url,'en')
             row['target_attempts']=[info]
             candidates=rank(quote,docs)
@@ -444,16 +464,7 @@ class Retrieval:
         if self.refined and self.chapter_catalog:
             chapter=chapter_route(nav['input'],source,self.chapter_catalog)
             if chapter is not None:
-                try:
-                    doc,body=mia_doc(self.client,chapter['en_url'])
-                    if explicit_toc(body,doc.url): raise ValueError('chapter_target_is_toc')
-                    row.update(retrieve_chapter(quote,source,list(self.source_documents.values()),doc,chapter,self.direct_cache))
-                    return self.semantic_sidecar(row,quote,[doc])
-                except Exception as exc:
-                    row['chapter_route_failure']={'route':chapter,'error':error_kind(exc)}
-                    # Do not silently substitute another chapter when the known one fails.
-                    row['status']='chapter_source_or_target_unavailable'
-                    return row
+                return self.retrieve_mapped_chapter(row,quote,source,chapter)
         if self.toc_matcher is not None:
             from early_toc import try_early_toc
             candidate,diagnostic=try_early_toc(self,row,quote,source)

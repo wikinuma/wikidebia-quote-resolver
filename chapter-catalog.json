@@ -440,6 +440,64 @@
       "fr_toc": "https://www.marxists.org/francais/lenin/works/1917/08/er00t.htm",
       "en_toc": "https://www.marxists.org/archive/lenin/works/1917/staterev/",
       "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_04.htm",
+      "en_url": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch04.htm",
+      "authors": "Karl Kautsky",
+      "fr_heading": "IV. La Société future",
+      "en_heading": "IV. The Commonwealth of the Future (parts 1 and 2)",
+      "fr_toc": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+      "en_toc": "https://www.marxists.org/archive/kautsky/1892/erfurt/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof",
+      "en_urls": [
+        "https://www.marxists.org/archive/kautsky/1892/erfurt/ch04.htm",
+        "https://www.marxists.org/archive/kautsky/1892/erfurt/ch04a.htm"
+      ]
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/defmarx/dma7.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/idom/dm/21-scratch1.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "D'une égratignure au danger de gangrène",
+      "en_heading": "From a Scratch – To the Danger of Gangrene (parts 1 and 2)",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/defmarx/dmtitle.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/idom/dm/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof",
+      "en_urls": [
+        "https://www.marxists.org/archive/trotsky/idom/dm/21-scratch1.htm",
+        "https://www.marxists.org/archive/trotsky/idom/dm/22-scratch2.htm"
+      ]
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/luxembur/junius/rljaf.html",
+      "en_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch01.htm",
+      "authors": "Rosa Luxemburg",
+      "fr_heading": "1. Socialisme ou Barbarie ?",
+      "en_heading": "Chapter 1",
+      "fr_toc": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "en_toc": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/luxembur/junius/rljbf.html",
+      "en_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch02.htm",
+      "authors": "Rosa Luxemburg",
+      "fr_heading": "2. Devant le fait indéniable de la guerre",
+      "en_heading": "Chapter 2",
+      "fr_toc": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "en_toc": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/luxembur/junius/rljff.html",
+      "en_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch06.htm",
+      "authors": "Rosa Luxemburg",
+      "fr_heading": "6. La fin de la lutte des classes",
+      "en_heading": "Chapter 6",
+      "fr_toc": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "en_toc": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
     }
   ]
 }
