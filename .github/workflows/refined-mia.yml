@@ -5,6 +5,7 @@ on:
     paths:
       - 'refinement.py'
       - 'benchmark_refine.py'
+      - 'tests/test_benchmark_refine.py'
       - 'holdout_mia.py'
       - 'source_refinement.py'
       - 'source_evidence.py'

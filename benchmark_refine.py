@@ -22,6 +22,47 @@ from wikirouge_index import open_snapshot, DEFAULT
 BASELINE_SHA='c800e9e37586d760a10c14bbb037e6e4a493fd5c130694b9723914678812ecea'
 ARMS=('indexed','refined')
 
+# The frozen public revision 265868 is still readable and its citation
+# fingerprints still match. Only the MediaWiki page title changed. Verified
+# independently in Actions run 46167499113. Do not alter the baseline artifact,
+# revision, citation identity, sample membership, or general title guard.
+FROZEN_TITLE_CORRECTION = {
+    'id': 'inventory-f063c412bcc27af84c04',
+    'old_title': "Le Léninisme s'éloigne fortement du Communisme tel que théorisé par Marx",
+    'new_title': "Le léninisme s'éloigne fortement du communisme tel que théorisé par Marx",
+    'citation_ref': {
+        'revision': 265868, 'template_index': 0,
+        'quote_sha256': '0a2ba6fffc17f052583da8d96c6d5833acdbd7d03657b2ec732bc269e8de6d7b',
+        'template_sha256': '0c8b2074849d012275f241428d4404b5c8c41cdd9a04f2cb52e516eab695f287',
+    },
+    'verification_run': 46167499113,
+}
+
+
+def correct_frozen_titles(cases, baseline_sha):
+    """Only the documented frozen-cohort title correction is allowed.
+
+    Retrieval still checks the actual title, revision and citation fingerprints
+    independently in both arms. An unexpected further move remains a failure.
+    """
+    if baseline_sha != BASELINE_SHA:
+        return cases, []
+    correction = FROZEN_TITLE_CORRECTION
+    updated = []
+    changes = []
+    for case in cases:
+        if case['id'] == correction['id']:
+            if (case['wiki_title'] != correction['old_title']
+                    or case['citation_ref'] != correction['citation_ref']):
+                raise ValueError('frozen_title_correction_identity_mismatch')
+            updated.append({**case, 'wiki_title': correction['new_title']})
+            changes.append(correction)
+        else:
+            updated.append(case)
+    if len(changes) != 1:
+        raise ValueError('frozen_title_correction_case_missing_or_duplicate')
+    return updated, changes
+
 
 def pinned_cases(path, expected_sha, snapshot_sha):
     raw=Path(path).read_bytes()
@@ -59,6 +100,7 @@ def main():
         p.error('bounded positive limits required')
     with tempfile.TemporaryDirectory(prefix='refined-index-') as tmp, open_snapshot(a.manifest) as index:
         cases=pinned_cases(a.baseline_report,a.baseline_sha,index.fingerprint)
+        cases,title_corrections=correct_frozen_titles(cases,a.baseline_sha)
         catalog=load_catalog(a.catalog)
         discovery=None
         if a.fresh_holdout:
@@ -76,6 +118,7 @@ def main():
                 'evaluation_scope':('fresh quotation fingerprints; report overlap with development works/pages/URLs' if a.fresh_holdout else
                                     'development recheck on frozen 50 citations; catalog derived after baseline inspection'),
                 'discovery':discovery,
+                'frozen_cohort_title_corrections':title_corrections,
                 'baseline_report_sha256':a.baseline_sha,'snapshot_sha256':index.fingerprint,
                 'sample':cases,'catalog_sha256':hashlib.sha256(a.catalog.read_bytes()).hexdigest(),
                 'bounds':{'case_requests':a.case_budget,'max_work_pages':a.max_work_pages},
