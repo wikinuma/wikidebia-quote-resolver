@@ -68,6 +68,9 @@ class RefinementTests(unittest.TestCase):
         meta={'mia_urls':['https://www.marxists.org/francais/plekhanov/works/1904/00/plekhanov_19040000.htm'],
               'article':"La conception matérialiste de l'histoire",'authors':'Gueorgui Plekhanov'}
         self.assertIsNone(match_catalog(meta,entries))
-        harman=[x for x in entries if x.get('target_toc')]
+        harman=[x for x in entries if x['source_url']==
+                'https://www.marxists.org/francais/harman/1979/qcqlm/index.htm']
         self.assertEqual(len(harman),1)
-        self.assertFalse(harman[0]['whole_document_parallel'])
+        self.assertTrue(harman[0]['target_toc'])
+        self.assertTrue(all(not x['whole_document_parallel'] for x in entries
+                            if x.get('target_toc')))

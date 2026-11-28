@@ -93,7 +93,8 @@ class BibliographyTests(unittest.TestCase):
         f=Document(fr,[q],'f')
         hits,_=exact_occurrences(q,f)
         source={'status':'exact_in_examined_documents','occurrences':hits}
-        row={'navigation':{'input':meta},'candidates':[]}
+        row={'navigation':{'input':meta},'candidates':[],
+             'auto_publish':False,'rights':'unreviewed'}
         r=Retrieval(Mock(),8,self.entries,refined=True)
         target=Document(en,['The proletarian class wants the social revolution.'],'e')
         def locate(*args,**kwargs):
