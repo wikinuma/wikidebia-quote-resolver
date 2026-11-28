@@ -68,6 +68,89 @@ def outcome(live, replay, live_rc, replay_rc):
             integrity.get('results_match') is True and integrity.get('response_mismatches') == [])
 
 
+EXPECTED_CASES = {(case, provider) for case in (
+    'manifesto-i', 'manifesto-ii', 'manifesto-preface-1883', 'engels-competition'
+) for provider in ('mia', 'wikirouge')}
+EXPECTED_VARIANT_HASH = '04f2de087e9a38a666307d4c49d7502d541df7036f0a4a15d834d051a1b6c507'
+EXPECTED_VARIANT_NORMALIZED = '093657d49a2239f79a92482b3a0d50143391377d95dec71bce97169136ada92c'
+
+
+def known_documentary_abstention(report):
+    """The fixed 1883 preface variant is a negative documentary control.
+
+    Never upgrade a candidate to a confirmed occurrence. Other incomplete
+    cases, missing inputs, incomplete work scopes and changed variants fail.
+    """
+    if report.get('status') != 'incomplete' or report.get('auto_publish') is not False:
+        return False
+    if report.get('provider_policy') != 'explicit_comparison':
+        return False
+    works = report.get('works', {})
+    if set(works) != {work + ':' + p for work in ('manifesto', 'engels-condition')
+                     for p in ('mia', 'wikirouge')}:
+        return False
+    if any(w.get('scope_complete') is not True or w.get('issues') != []
+           for w in works.values()):
+        return False
+    if {k: v.get('status') for k, v in report.get('api_probes', {}).items()} != {
+        'wikidebats': 'available', 'wikirouge_fr': 'available', 'wikirouge_en': 'available'
+    }:
+        return False
+    cases = report.get('cases', [])
+    if len(cases) != len(EXPECTED_CASES) or {
+        (c.get('id'), c.get('provider')) for c in cases
+    } != EXPECTED_CASES:
+        return False
+    abstained = 0
+    for c in cases:
+        if (c.get('scope_complete') is not True or c.get('pair_issues') != []
+                or c.get('auto_publish') is not False or c.get('rights') != 'unreviewed'
+                or not all(c.get('documents', {}).get(lang, 0) > 0 for lang in ('fr', 'en'))):
+            return False
+        if c.get('status') == 'review_required':
+            if c.get('source_status') != 'normalized_contiguous' or not c.get('fr_occurrences'):
+                return False
+            continue
+        if (c.get('id') != 'manifesto-preface-1883'
+                or c.get('status') != 'incomplete_or_unconfirmed'
+                or c.get('source_status') != 'unconfirmed' or c.get('fr_occurrences') != []):
+            return False
+        variants = c.get('source_diagnostics', {}).get('variant_search', {})
+        candidates = variants.get('candidates', [])
+        if (variants.get('status') != 'variant_review_required'
+                or variants.get('auto_publish') is not False
+                or variants.get('rights') != 'unreviewed'
+                or variants.get('truncated') is not False
+                or variants.get('candidates_truncated') is not False
+                or variants.get('qualifying_hits') != 1 or len(candidates) != 1):
+            return False
+        v = candidates[0]
+        if (v.get('text_sha256') != EXPECTED_VARIANT_HASH
+                or v.get('normalized_sha256') != EXPECTED_VARIANT_NORMALIZED
+                or v.get('token_edits') != 5 or v.get('query_words') != 46
+                or v.get('source_words') != 49 or v.get('boundary_ambiguous') is not False):
+            return False
+        abstained += 1
+    return abstained == 2
+
+
+def regression_outcome(live, replay, live_rc, replay_rc):
+    if outcome(live, replay, live_rc, replay_rc):
+        return 'complete_for_review'
+    integrity = replay.get('replay_integrity', {})
+    if (live_rc == replay_rc == 1
+            and live.get('offline') is False and replay.get('offline') is True
+            and replay.get('requests') == 0
+            and integrity.get('config_matches') is True
+            and integrity.get('model_matches') is True
+            and integrity.get('results_match') is True
+            and integrity.get('response_mismatches') == []
+            and known_documentary_abstention(live)
+            and known_documentary_abstention(replay)):
+        return 'expected_documentary_abstention'
+    return 'failed'
+
+
 def main():
     OUT.mkdir(exist_ok=True)
     live_path = OUT / 'full-work.json'
@@ -82,18 +165,22 @@ def main():
     replay_rc = subprocess.run(command + ['--offline', '--replay-report', str(live_path), '--out', str(replay_path)], cwd=ROOT).returncode if live_path.is_file() else None
     live, replay = read_report(live_path), read_report(replay_path)
     ok = outcome(live, replay, live_rc, replay_rc)
+    regression = regression_outcome(live, replay, live_rc, replay_rc)
     preferred_rc = subprocess.run(command + ['--offline', '--provider', 'preferred', '--out', str(preferred_path)], cwd=ROOT).returncode if live_path.is_file() else None
     preferred = read_report(preferred_path)
     # This third run is a cache-only routing experiment, not a new live benchmark.
     preferred_summary = compact(preferred)
     preferred_summary['unique_requested_urls'] = len({e['request_url'] for e in preferred.get('http_events',[])})
     preferred_summary['comparison_live_unique_requested_urls'] = len({e['request_url'] for e in live.get('http_events',[])})
-    summary = {'live_exit': live_rc, 'replay_exit': replay_rc, 'pilot_complete_for_review': ok,
+    summary = {'live_exit': live_rc, 'replay_exit': replay_rc, 'pilot_complete_for_review': ok, 'regression_outcome': regression,
                'live': compact(live), 'preferred_offline_exit': preferred_rc, 'preferred_offline': preferred_summary, 'replay': {k: replay.get(k) for k in ('status', 'requests', 'cache_hits', 'elapsed_seconds', 'replay_integrity')}}
     text = json.dumps(summary, ensure_ascii=False, indent=2) + '\n'
     summary_path.write_text(text, encoding='utf-8')
     print(text, flush=True)
-    return 0 if ok else 1
+    if regression == 'expected_documentary_abstention':
+        print('::warning::Pilot INCOMPLETE: fixed 1883 source variant correctly rejected; not complete for review.',
+              flush=True)
+    return int(regression == 'failed')
 
 
 if __name__ == '__main__':

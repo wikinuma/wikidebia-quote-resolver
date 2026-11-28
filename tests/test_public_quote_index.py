@@ -3,7 +3,8 @@ import json
 import unittest
 
 from citation_registry import fingerprint
-from public_quote_index import COMPLETE, ENDPOINTS, ROOTS, hashes, page_record, scan, validate_snapshot
+from public_quote_index import (COMPLETE, ENDPOINTS, ROOTS, diagnostic_fr_missing_fields,
+                                hashes, page_record, scan, validate_snapshot)
 from resolver import RequestBudgetExceeded
 
 
@@ -128,6 +129,27 @@ class PublicIndexTests(unittest.TestCase):
         self.assertEqual(summary['pages_reused_same_revision'],2)
         self.assertEqual(summary['pages_fetched_content'],1)
         self.assertEqual(summary['invalid_occurrence_reasons'],{})
+
+    def test_ci_known_fr_defect_does_not_certify_snapshot(self):
+        client = Fake()
+        client.pages[1] = (101, 'First', '{{Citation|ouvrage=Title only}}')
+        value, summary = scan(client, 'fr')
+        self.assertTrue(diagnostic_fr_missing_fields(summary))
+        with self.assertRaises(ValueError):
+            validate_snapshot(value, fingerprint(value), 'fr')
+        for changes in (
+            {'language': 'en'},
+            {'all_enumerated_pages_read': False},
+            {'issues': {'invalid_quote_parameter': 1, 'network_error': 1}},
+            {'invalid_occurrence_reasons': {'empty_quote_field': 1}},
+            {'invalid_occurrences': 13, 'issues': {'invalid_quote_parameter': 13},
+             'invalid_occurrence_reasons': {'missing_quote_field': 13}},
+            {'pages_inspected': 0},
+            {'publication_authorized': True},
+        ):
+            with self.subTest(changes=changes):
+                self.assertFalse(diagnostic_fr_missing_fields({**summary, **changes}))
+        self.assertFalse(diagnostic_fr_missing_fields({}))
 
     def test_missing_page_in_previous_snapshot_is_fetched(self):
         client = Fake()

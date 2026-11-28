@@ -257,16 +257,44 @@ def scan(client, lang, *, batch_size=30, previous=None, previous_sha=None):
     return value, summary
 
 
+def diagnostic_fr_missing_fields(summary):
+    """CI-only: distinguish the observed FR data defect from a failed scan.
+
+    The snapshot remains incomplete; callers needing coverage must use the
+    default strict exit status and validate_snapshot(require_complete=True).
+    """
+    n = summary.get('invalid_occurrences')
+    return (
+        summary.get('schema') == SCHEMA
+        and summary.get('language') == 'fr'
+        and summary.get('status') == 'incomplete'
+        and summary.get('all_enumerated_pages_read') is True
+        and summary.get('all_literal_occurrences_indexable') is False
+        and type(n) is int and 0 < n <= 12
+        and summary.get('issues') == {'invalid_quote_parameter': n}
+        and summary.get('invalid_occurrence_reasons') == {'missing_quote_field': n}
+        and summary.get('pages_enumerated') == summary.get('pages_inspected')
+        and summary.get('citations', 0) > 0
+        and summary.get('publication_authorized') is False
+        and summary.get('hosted_model_calls') == 0
+        and summary.get('cited_url_requests') == 0
+    )
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--language', required=True, choices=sorted(ROOTS))
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--summary', type=Path)
+    p.add_argument('--ci-known-fr-defect', action='store_true',
+                   help='CI diagnostic only; retain incomplete snapshot and warn for the known FR missing fields')
     p.add_argument('--previous', type=Path)
     p.add_argument('--previous-sha256')
     p.add_argument('--budget', type=int, default=1200)
     p.add_argument('--batch-size', type=int, default=30)
     a = p.parse_args(argv)
+    if a.ci_known_fr_defect and (a.language != 'fr' or a.summary is None):
+        p.error('--ci-known-fr-defect requires --language fr and --summary')
     if not 1 <= a.budget <= 5000 or not 1 <= a.batch_size <= 50:
         p.error('invalid bounds')
     if (a.previous is None) != (a.previous_sha256 is None):
@@ -284,6 +312,10 @@ def main(argv=None):
         a.summary.parent.mkdir(parents=True, exist_ok=True)
         a.summary.write_text(json.dumps(summary, sort_keys=True)+'\n', encoding='utf-8')
     print(json.dumps(summary, sort_keys=True), flush=True)
+    if a.ci_known_fr_defect and diagnostic_fr_missing_fields(summary):
+        print('::warning::FR index INCOMPLETE: known missing citation fields; no completeness or publication proof.',
+              flush=True)
+        return 0
     return int(value['status'] != COMPLETE)
 
 

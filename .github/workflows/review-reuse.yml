@@ -1,40 +1,48 @@
-name: Offline campaign reassociation checks
+name: Campaign consolidation and kit compatibility
 on:
   push:
     branches: ['experiment/mia-campaign-diagnostics-20261128']
     paths:
-      - 'review_reuse.py'
-      - 'review_history.py'
-      - 'tests/test_review_history.py'
-      - 'tests/test_review_reuse.py'
-      - 'chapter-catalog.json'
-      - 'chapter_routes.py'
-      - 'tests/test_chapter_routes.py'
-      - 'auto_retrieve.py'
-      - 'alternative-edition-catalog.json'
-      - 'tests/test_auto_retrieve.py'
-      - 'bibliography.py'
-      - 'bibliographic-catalog.json'
-      - 'tests/test_bibliography.py'
-      - 'chapter_quality.py'
-      - 'prepare_citations.py'
-      - 'campaign_diagnostic.py'
-      - 'tests/test_campaign_diagnostic.py'
-      - 'tests/test_prepare_citations.py'
-      - '.github/workflows/review-reuse.yml'
+      - '**'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
+  resolver-and-kit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          path: resolver
+      - uses: actions/checkout@v6
+        with:
+          repository: wikidebates/wikidebia-project
+          ref: 0d0b6da477f35af0697a8dc2b873dd1f45eef51b
+          path: kit-repo
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.13'
-      - run: python -m pip install -r requirements-navigation.txt
-      - run: python -m unittest discover -s tests -v
+          python-version: '3.12'
+      - run: python -m pip install -r resolver/requirements-navigation.txt -r kit-repo/validator/requirements-dev.txt
+      - name: Full resolver regression suite
+        working-directory: resolver
+        run: python -m unittest discover -s tests -v
+      - name: Test unchanged kit contract against candidate Git object
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import runpy, subprocess, sys
+          root = Path.cwd()
+          kit = root / 'kit-repo'
+          resolver = root / 'resolver'
+          sys.path.insert(0, str(kit/'kit/scripts'))
+          import wikidebia_quote_index_collect as collector
+          # Test-only substitution; the production kit pin is untouched.
+          collector.RESOLVER_COMMIT = subprocess.check_output(
+              ['git','-C',str(resolver),'rev-parse','HEAD'],text=True).strip()
+          sys.argv = [str(kit/'tools/test_quote_bridge_contract.py'),
+                      '--resolver-root',str(resolver)]
+          runpy.run_path(sys.argv[0], run_name='__main__')
+          PY

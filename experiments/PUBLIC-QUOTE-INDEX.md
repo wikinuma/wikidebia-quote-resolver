@@ -54,3 +54,19 @@ ou vides sont comptés séparément, sans sortir leur texte. Même si toutes
 les pages ont été lues, une seule occurrence invalide maintient le statut
 incomplete et le code de sortie non nul. Un diagnostic partiel ne devient
 pas un certificat de complétude.
+
+## Distinction CI / complétude documentaire
+
+Le diagnostic CI FR peut explicitement reconnaître le défaut documentaire
+observé le 27 novembre 2026 (au plus douze modèles sans champ citation),
+uniquement si toutes les pages énumérées ont été lues, sans autre anomalie.
+Il émet un avertissement et conserve le statut incomplete, les compteurs et
+le refus de validation de l'instantané comme preuve de complétude. Toute
+nouvelle catégorie d'erreur, dépassement ou défaut de lecture reste bloquant.
+Le mode normal et le recensement EN conservent le code de sortie strict.
+
+Le pilote historique distingue de même la réussite du contrôle de régression
+et la complétude documentaire : seul le cas fixe de la préface de 1883, sur
+les deux fournisseurs et avec les empreintes observées et un rejeu exact,
+peut constituer un contrôle négatif attendu. Le rapport reste incomplet,
+`pilot_complete_for_review=false`. Aucune variante n'est approuvée.
