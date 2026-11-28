@@ -172,7 +172,7 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False,prefer_catalog=False,source_pdf_catalog=()):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False,prefer_catalog=False,source_pdf_catalog=(),catalog_only=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
@@ -181,6 +181,9 @@ class Retrieval:
         self.work_library=work_library
         self.strict_link_policy=strict_link_policy
         self.prefer_catalog=prefer_catalog
+        self.catalog_only=catalog_only
+        if catalog_only and not prefer_catalog:
+            raise ValueError('catalog_only_requires_prefer_catalog')
         self.source_pdfs=SourcePDFs(client,source_pdf_catalog) if source_pdf_catalog else None
         self.semantic_index=semantic_index
         self.toc_matcher=toc_matcher
@@ -437,6 +440,9 @@ class Retrieval:
                 and catalog_route(nav.get('input', {}), self.catalog) is not None):
             row['catalog_preferred'] = True
             return self.retrieve_catalog(case,row,quotes[case['id']])
+        if self.catalog_only:
+            row['status']='alternative_catalog_route_unconfirmed'
+            return row
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
             if self.catalog and nav['status'] in ('work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed') and case['id'] in quotes:
                 return self.retrieve_catalog(case,row,quotes[case['id']])

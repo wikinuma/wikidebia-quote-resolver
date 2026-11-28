@@ -453,3 +453,30 @@ class CampaignTests(unittest.TestCase):
         d,p=self.c.prepare(self.raw,self.audit,novel_only=True)
         self.assertEqual(len(p['sources']),1)
         self.assertEqual(self.c.latest('1')[0],AWAITING)
+
+
+    def test_new_alternative_edition_is_scoped_to_source_leaf_and_untried_target(self):
+        from bibliography import load_catalog
+        from resolver import ROOT
+        entries=load_catalog(ROOT/'alternative-edition-catalog.json')
+        e=entries[0]
+        result={'navigation':{'input':{'mia_urls':[e['source_url']],
+                                       'authors':e['authors'], 'work':e['source_title']}},
+                'source':{'status':'exact_in_examined_documents',
+                          'occurrences':[{'url':e['source_document']}]}}
+        self.c.record('1',INSUFFICIENT,{'result':result})
+        self.assertEqual(self.c.new_alternative_edition('1',entries),e)
+        self.assertIsNone(self.c.new_alternative_edition('2',entries))
+        wrong={**result,'source':{'status':'exact_in_examined_documents',
+                                   'occurrences':[{'url':e['source_document']+'.other'}]}}
+        self.c.record('2',INSUFFICIENT,{'result':wrong})
+        self.assertIsNone(self.c.new_alternative_edition('2',entries))
+        attempt={**result,'bibliographic_route':{'entry':e},
+                 'status':'catalog_candidate_review_required',
+                 'target_attempts':[{'issues':[{'kind':'page_limit'}]}]}
+        self.c.record('1',INSUFFICIENT,{'result':attempt})
+        self.assertEqual(self.c.new_alternative_edition('1',entries),e)
+        self.c.record('1',INSUFFICIENT,{'result':{**attempt,'target_attempts':[{'issues':[]}]}})
+        self.assertIsNone(self.c.new_alternative_edition('1',entries))
+        self.c.record('1',INSUFFICIENT,{'result':result})
+        self.assertIsNone(self.c.new_alternative_edition('1',entries))

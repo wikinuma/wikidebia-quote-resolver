@@ -154,3 +154,30 @@ class AutoRetrievalTests(unittest.TestCase):
         self.assertEqual(row['candidates'],[])
         self.assertEqual([x.args[1] for x in fetch.call_args_list],list(urls))
         retrieve.assert_not_called()
+
+
+    def test_alternative_catalog_only_does_not_fall_back_to_ordinary_route(self):
+        from bibliography import load_catalog
+        from resolver import ROOT
+        entries=load_catalog(ROOT/'alternative-edition-catalog.json')
+        e=entries[0]
+        nav={'status':'mia_route_candidate','author_check':'same_normalized_author_tokens',
+             'input':{'mia_urls':[e['source_url']], 'authors':e['authors'],
+                      'work':e['source_title']}}
+        def discover(client,case,quote_sink=None,**kwargs):
+            quote_sink[case['id']]='Une citation.'
+            return nav
+        r=Retrieval(Mock(),8,entries,refined=True,prefer_catalog=True,catalog_only=True)
+        case={'id':'x','wiki_title':'Argument','selector':'citation'}
+        with patch('auto_retrieve.discover_case',side_effect=discover), \
+             patch.object(r,'retrieve_catalog',return_value={'status':'alternative','candidates':[]}) as preferred, \
+             patch.object(r,'work') as ordinary:
+            self.assertEqual(r.retrieve(case)['status'],'alternative')
+            preferred.assert_called_once()
+            nav['input']['work']='Un autre ouvrage'
+            self.assertEqual(r.retrieve(case)['status'],'alternative_catalog_route_unconfirmed')
+            nav['input']['work']=e['source_title']
+            nav['author_check']='author_tokens_differ'
+            self.assertEqual(r.retrieve(case)['status'],'alternative_catalog_route_unconfirmed')
+            preferred.assert_called_once()
+            ordinary.assert_not_called()

@@ -21,7 +21,8 @@ import sys
 
 from alignment_store import encode
 from auto_retrieve import Retrieval
-from bibliography import load_catalog
+from bibliography import load_catalog, match_catalog
+from refinement import select_hit_metadata
 from chapter_routes import load_chapters, chapter_route, chapter_urls
 from source_pdf import load_pdf_catalog
 from citation_inventory import atomic_private, refresh, validate_previous
@@ -151,6 +152,32 @@ class Campaign:
                     and previous.get('en_url') and chapter_urls(previous)==chapter_urls(route)):
                 return None
         return route
+
+    def new_alternative_edition(self, cid, entries):
+        """Choose only a new documented edition of the uniquely localized leaf.
+
+        The saved source evidence is a preselection hint, not a substitute for
+        fresh source and target checks during retrieval.
+        """
+        result = self.last_retrieval(cid)
+        entry = match_catalog(result.get('navigation', {}).get('input', {}), entries)
+        if (entry is None or not entry.get('source_document')
+                or entry.get('target_provider') not in {'mia', 'wikirouge'}):
+            return None
+        if select_hit_metadata(result.get('source', {}), entry['source_document'])[0] is None:
+            return None
+        for (body,) in self.db.execute(
+                'SELECT evidence FROM campaign_events_v1 WHERE occurrence=? ORDER BY seq DESC',
+                (cid,)):
+            old = json.loads(body).get('result', {})
+            prior = old.get('bibliographic_route', {}).get('entry', {})
+            if (prior.get('source_document') == entry['source_document']
+                    and prior.get('target_url') == entry['target_url']
+                    and old.get('status') in {'catalog_candidate_review_required', 'catalog_no_candidate'}
+                    and old.get('target_attempts')
+                    and not any(a.get('issues') for a in old['target_attempts'])):
+                return None
+        return entry
 
     def select(self, states, limit=0, mia_roots=(), mia_urls=(), retrieval_statuses=()):
         rows = [c for c in self.cases.values()
@@ -591,22 +618,35 @@ def execute(args, state, library):
             new_chapter_only = getattr(args, 'new_chapter_route_only', False)
             if new_chapter_only and (not args.reconsider or getattr(args, 'prefer_catalog', False)):
                 raise ValueError('new_chapter_route_only_requires_reconsider_without_prefer_catalog')
-            selected = campaign.select(states, 0 if new_chapter_only else args.limit,
+            alternative_only = getattr(args, 'alternative_editions_only', False)
+            if alternative_only and (not args.reconsider or new_chapter_only
+                                     or getattr(args, 'prefer_catalog', False)
+                                     or getattr(args, 'source_pdf', False)):
+                raise ValueError('alternative_editions_require_exclusive_reconsider_mode')
+            catalog = load_catalog(ROOT/('alternative-edition-catalog.json' if alternative_only
+                                         else 'bibliographic-catalog.json'))
+            selected = campaign.select(states, 0 if new_chapter_only or alternative_only else args.limit,
                                        getattr(args, 'mia_root', ()), getattr(args, 'mia_url', ()),
                                        getattr(args, 'last_retrieval_status', ()))
             if new_chapter_only:
                 selected = [c for c in selected if campaign.new_chapter_route(c['id'], chapters)]
                 if args.limit:
                     selected = selected[:args.limit]
-            show({'selected':len(selected), 'new_chapter_route_only':new_chapter_only})
+            if alternative_only:
+                selected = [c for c in selected if campaign.new_alternative_edition(c['id'], catalog)]
+                if args.limit:
+                    selected = selected[:args.limit]
+            show({'selected':len(selected), 'new_chapter_route_only':new_chapter_only,
+                  'alternative_editions_only':alternative_only})
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
             with open_current() as index:
                 retrieval = Retrieval(client, args.max_pages,
-                                      load_catalog(ROOT/'bibliographic-catalog.json'),
+                                      catalog,
                                       index, True, chapters,
                                       work_library=library, strict_link_policy=True,
-                                      prefer_catalog=getattr(args, 'prefer_catalog', False),
+                                      prefer_catalog=getattr(args, 'prefer_catalog', False) or alternative_only,
+                                      catalog_only=alternative_only,
                                       source_pdf_catalog=pdf_catalog)
                 if pdf_catalog and selected:
                     selected_urls = {c['mia_url'] for c in selected}
@@ -711,6 +751,8 @@ def main():
                      help='Use explicitly catalogued alternative French PDF editions for targeted reconsideration')
     run.add_argument('--new-chapter-route-only', action='store_true',
                      help='Only reconsider cases with a newly eligible documented chapter, based on saved source evidence')
+    run.add_argument('--alternative-editions-only', action='store_true',
+                     help='Reconsider only uniquely localized source leaves with untried alternative editions')
     run.add_argument('--prefer-catalog', action='store_true',
                      help='Try explicitly documented alternative routes before ordinary navigation targets')
     run.add_argument('--budget', type=int, default=2500)

@@ -1,0 +1,61 @@
+{
+  "schema": "wikidebia-bibliographic-catalog-1",
+  "entries": [
+    {
+      "source_title": "Le programme socialiste",
+      "source_titles": [
+        "Le programme socialiste (La lutte des classes)",
+        "La lutte des classes",
+        "La classe capitaliste"
+      ],
+      "authors": "Karl Kautsky",
+      "source_document": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/kautsky/1911/cap-class/index.htm",
+      "target_title": "The Capitalist Class",
+      "target_toc": true,
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm",
+        "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+        "https://www.marxists.org/archive/kautsky/1911/cap-class/index.htm",
+        "https://www.marxists.org/archive/kautsky/1911/cap-class/ch07.htm",
+        "https://www.marxists.org/archive/kautsky/1911/cap-class/ch08.htm",
+        "https://en.wikisource.org/wiki/Author:Karl_Kautsky",
+        "https://en.wikisource.org/wiki/The_Class_Struggle"
+      ],
+      "bibliography": "Chapter III of the Erfurt commentary; Daniel De Leon translation/adaptation, National Executive Committee Social Labor Party, 1911, transcribed by Sally Ryan. Separate from Bohn's shortened 1910 translation. Subsection titles and substantial corresponding passages are documented. Adaptation may omit or change details; no parallel edition or exact quote claim.",
+      "rights_note": "Published historical translation; applicable reproduction rights and literal transcription still require review.",
+      "researched_on": "2026-11-28",
+      "source_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm"
+    },
+    {
+      "source_title": "Le programme socialiste",
+      "source_titles": [
+        "Le programme socialiste (La lutte des classes)",
+        "La lutte des classes",
+        "La classe capitaliste"
+      ],
+      "authors": "Karl Kautsky",
+      "source_document": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/kautsky/1911/cap-class/index.htm",
+      "target_title": "The Capitalist Class",
+      "target_toc": true,
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm",
+        "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+        "https://www.marxists.org/archive/kautsky/1911/cap-class/index.htm",
+        "https://www.marxists.org/archive/kautsky/1911/cap-class/ch07.htm",
+        "https://www.marxists.org/archive/kautsky/1911/cap-class/ch08.htm",
+        "https://en.wikisource.org/wiki/Author:Karl_Kautsky",
+        "https://en.wikisource.org/wiki/The_Class_Struggle"
+      ],
+      "bibliography": "Chapter III of the Erfurt commentary; Daniel De Leon translation/adaptation, National Executive Committee Social Labor Party, 1911, transcribed by Sally Ryan. Separate from Bohn's shortened 1910 translation. Subsection titles and substantial corresponding passages are documented. Adaptation may omit or change details; no parallel edition or exact quote claim.",
+      "rights_note": "Published historical translation; applicable reproduction rights and literal transcription still require review.",
+      "researched_on": "2026-11-28",
+      "source_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm"
+    }
+  ]
+}
