@@ -75,7 +75,9 @@ def make_api(repo, credential):
     return api
 
 
-def transfer(api, repo, digest, files):
+def transfer(api, repo, digest, files, *, prefix='diagnostics'):
+    if prefix not in {'diagnostics','source-probes'}:
+        raise ValueError('invalid_relay_prefix')
     def check_private():
         meta = api('GET')
         if (meta.get('full_name', '').lower() != repo.lower() or meta.get('private') is not True
@@ -85,7 +87,7 @@ def transfer(api, repo, digest, files):
     def expected_blob(data):
         return sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
 
-    root = 'diagnostics/'+digest
+    root = prefix+'/'+digest
     endpoint = '/contents/'+root
     expected = {name:expected_blob(data) for name,data in files.items()}
 
@@ -109,7 +111,7 @@ def transfer(api, repo, digest, files):
                for name,data in sorted(files.items())]
     check_private()
     updated = api('POST','/git/trees',{'base_tree':tree,'tree':entries})['sha']
-    commit = api('POST','/git/commits',{'message':'Add sealed campaign diagnostic metadata',
+    commit = api('POST','/git/commits',{'message':'Add sealed private campaign diagnostic' if prefix=='diagnostics' else 'Add sealed private source probe',
                                         'tree':updated,'parents':[head]})['sha']
     check_private()
     api('PATCH','/git/refs/heads/main',{'sha':commit,'force':False})

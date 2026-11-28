@@ -310,6 +310,26 @@
       "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
       "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
       "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c_6.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch04.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "IV. Le terrorisme",
+      "en_heading": "Chapter 4. Terrorism",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c_10.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch08.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "IX. Les questions d'organisation du travail",
+      "en_heading": "Chapter 8. Problems of the Organization of Labor, The Soviet Government and Industry",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
     }
   ]
 }

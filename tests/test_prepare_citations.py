@@ -56,6 +56,23 @@ class CampaignTests(unittest.TestCase):
                                'ranges': [[0,len(ENGLISH)]] if decision == 'complete_equivalent' else []}
                               for q,s in packet['sources'].items()]}
 
+    def test_new_chapter_route_uses_saved_source_and_not_previous_attempt(self):
+        from chapter_routes import load_chapters
+        from resolver import ROOT
+        e = next(x for x in load_chapters(ROOT/'chapter-catalog.json')
+                 if x['fr_url'].endswith('/t_c_6.htm'))
+        source = {'status':'exact_in_examined_documents',
+                  'occurrences':[{'url':e['fr_url']}]}
+        result = {'navigation':{'input':{'mia_urls':[e['fr_toc']],
+                                         'authors':e['authors']}},
+                  'source':source}
+        self.c.record('1', CANDIDATES, {'result':result})
+        self.c.record('1', INSUFFICIENT, {'decision':'uncertain'})
+        self.assertEqual(self.c.new_chapter_route('1',[e]),e)
+        self.c.record('1', INSUFFICIENT, {'result':{**result,'chapter_route':e}})
+        self.assertIsNone(self.c.new_chapter_route('1',[e]))
+        self.assertIsNone(self.c.new_chapter_route('2',[e]))
+
     def test_select_last_retrieval_status_after_review(self):
         self.c.record('1', CANDIDATES, {'result':{'status':'first'}})
         self.c.record('1', INSUFFICIENT, {'decision':'uncertain'})

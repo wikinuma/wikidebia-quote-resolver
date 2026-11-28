@@ -22,7 +22,7 @@ import sys
 from alignment_store import encode
 from auto_retrieve import Retrieval
 from bibliography import load_catalog
-from chapter_routes import load_chapters
+from chapter_routes import load_chapters, chapter_route
 from citation_inventory import atomic_private, refresh, validate_previous
 from citation_registry import CitationRegistry, DECISIONS, fingerprint, source_identity
 from evidence_audit import Auditor
@@ -123,14 +123,28 @@ class Campaign:
         with self.db:
             self._append(cid, state, evidence)
 
-    def last_retrieval_status(self, cid):
+    def last_retrieval(self, cid):
         # Review decisions may omit the retrieval result; inspect saved history.
         for (body,) in self.db.execute('SELECT evidence FROM campaign_events_v1 '
                                       'WHERE occurrence=? ORDER BY seq DESC', (cid,)):
             evidence = json.loads(body)
             if 'result' in evidence:
-                return evidence['result'].get('status')
-        return None
+                return evidence['result']
+        return {}
+
+    def last_retrieval_status(self, cid):
+        return self.last_retrieval(cid).get('status')
+
+    def new_chapter_route(self, cid, chapters):
+        result = self.last_retrieval(cid)
+        route = chapter_route(result.get('navigation', {}).get('input', {}),
+                              result.get('source', {}), chapters)
+        if route is None:
+            return None
+        previous = result.get('chapter_route') or result.get('chapter_route_failure', {}).get('route')
+        if previous and all(previous.get(k)==route.get(k) for k in ('fr_url','en_url')):
+            return None
+        return route
 
     def select(self, states, limit=0, mia_roots=(), mia_urls=(), retrieval_statuses=()):
         rows = [c for c in self.cases.values()
@@ -538,15 +552,24 @@ def execute(args, state, library):
                 states = {INSUFFICIENT}
             if args.recheck_reviewed:
                 states = {REVIEWED}
-            selected = campaign.select(states, args.limit, getattr(args, 'mia_root', ()),
-                                       getattr(args, 'mia_url', ()),
+            chapters = load_chapters(ROOT/'chapter-catalog.json')
+            new_chapter_only = getattr(args, 'new_chapter_route_only', False)
+            if new_chapter_only and not args.reconsider:
+                raise ValueError('new_chapter_route_only_requires_reconsider')
+            selected = campaign.select(states, 0 if new_chapter_only else args.limit,
+                                       getattr(args, 'mia_root', ()), getattr(args, 'mia_url', ()),
                                        getattr(args, 'last_retrieval_status', ()))
+            if new_chapter_only:
+                selected = [c for c in selected if campaign.new_chapter_route(c['id'], chapters)]
+                if args.limit:
+                    selected = selected[:args.limit]
+            show({'selected':len(selected), 'new_chapter_route_only':new_chapter_only})
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
             with open_current() as index:
                 retrieval = Retrieval(client, args.max_pages,
                                       load_catalog(ROOT/'bibliographic-catalog.json'),
-                                      index, True, load_chapters(ROOT/'chapter-catalog.json'),
+                                      index, True, chapters,
                                       work_library=library, strict_link_policy=True,
                                       prefer_catalog=getattr(args, 'prefer_catalog', False))
                 for n, case in enumerate(selected, 1):
@@ -641,6 +664,8 @@ def main():
                      help='Limit search to exact French citation URLs (repeatable)')
     run.add_argument('--last-retrieval-status', action='append', default=[],
                      help='Limit search to the last saved retrieval status, even after review (repeatable)')
+    run.add_argument('--new-chapter-route-only', action='store_true',
+                     help='Only reconsider cases with a newly eligible documented chapter, based on saved source evidence')
     run.add_argument('--prefer-catalog', action='store_true',
                      help='Try explicitly documented alternative routes before ordinary navigation targets')
     run.add_argument('--budget', type=int, default=2500)
