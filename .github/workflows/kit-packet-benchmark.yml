@@ -1,0 +1,63 @@
+name: Real debate prepared citation packet experiment
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    paths:
+      - 'experiments/kit_packet_benchmark.py'
+      - '.github/workflows/kit-packet-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  experiment:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: wikidebates/wikidebia-project
+          ref: 3e61da9866eea530084972b86cf7dfde76cd0be1
+          path: kit-checkout
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt -r kit-checkout/requirements-runtime.txt
+      - run: PYTHONPATH=kit-checkout/kit/scripts:kit-checkout/tools python -m pytest -q kit-checkout/tools/test_experimental_prepared_citations.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: wikirouge-refined-mia-comparison
+          run-id: 45715249856
+          github-token: ${{ github.token }}
+          path: frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: mia-bilingual-review-registry
+          run-id: 45719477640
+          github-token: ${{ github.token }}
+          path: registry
+      - uses: actions/download-artifact@v4
+        with:
+          name: mia-second-pass-report
+          run-id: 45772180576
+          github-token: ${{ github.token }}
+          path: second
+      - uses: actions/download-artifact@v4
+        with:
+          name: historical-prepared-citation-audit
+          run-id: 45896673363
+          github-token: ${{ github.token }}
+          path: historical
+      - run: PYTHONPATH=.:kit-checkout/kit/scripts:kit-checkout/tools python experiments/kit_packet_benchmark.py --development frozen/reports-live/refined-index.json --holdout frozen/reports-live/holdout-index.json --first-registry registry/review-registry.json --second-report second/second-pass.json --audit historical/historical-citations.json --out reports-live/kit-packet-experiment.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: kit-prepared-citation-experiment
+          path: reports-live/kit-packet-experiment.json
+          if-no-files-found: warn
+          retention-days: 90

@@ -1,0 +1,46 @@
+name: MIA quotation evidence audit
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'evidence_audit.py'
+      - 'tests/test_evidence_audit.py'
+      - '.github/workflows/mia-evidence-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: mia-evidence-audit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  audit:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Obtain the completed 50-case refinement report
+        uses: actions/download-artifact@v4
+        with:
+          name: wikirouge-refined-mia-comparison
+          run-id: 45714470756
+          github-token: ${{ github.token }}
+          path: baseline-report
+      - name: Independently reread pinned citation and passage evidence
+        run: python evidence_audit.py --report baseline-report/reports-live/refined-index.json --sha256 966046fac999fd30f7bf19ab7b420d78fe4e6a4dd8d4ef549ef14d96a405935f
+      - name: Preserve audit receipts (no full quotation text)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mia-evidence-audit
+          path: reports-live/evidence-audit.json
+          if-no-files-found: warn
+          retention-days: 30

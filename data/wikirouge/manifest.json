@@ -1,0 +1,40 @@
+{
+  "schema": "wikidebia-wikirouge-snapshot-manifest-1",
+  "snapshot_date": "2026-11-25",
+  "source": "Wikirouge public bibliographic metadata",
+  "archive": {
+    "filename": "wikirouge-index-20261125.zip",
+    "bytes": 9450832,
+    "sha256": "c8a10e5c43194ba9d356a16532b96eec74881c03722f2fcc8e7ea3d2d51dccf7"
+  },
+  "database": {
+    "member": "wikirouge-index/wikirouge-index.sqlite3",
+    "bytes": 43663360,
+    "sha256": "64882bfcb7b7bb8726c3de7869e3e78d59165c4499d645eafc2c3f1d88163e0e",
+    "schema": "wikirouge-bibliographic-index-1"
+  },
+  "counts": {
+    "pages": {
+      "fr": 14872,
+      "en": 15711,
+      "total": 30583
+    },
+    "pairs": 10747,
+    "distinct_linked": {
+      "fr": 10714,
+      "en": 10747
+    },
+    "ambiguous_fr_pages": 32,
+    "unresolved_native_links": 777,
+    "mia_url_nonempty": {
+      "fr": 3821,
+      "en": 10407
+    },
+    "mia_key_nonempty": {
+      "fr": 3821,
+      "en": 7641
+    }
+  },
+  "scope": "Bibliographic metadata and candidate links only; no full texts, no approval of quotation equivalence or reuse rights.",
+  "verification": "Archive and SQLite checked locally; the archive itself must be uploaded separately and checked against this manifest."
+}

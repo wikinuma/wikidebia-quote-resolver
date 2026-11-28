@@ -1,0 +1,58 @@
+{
+  "auto_publish": false,
+  "base_snapshot_sha256": "64882bfcb7b7bb8726c3de7869e3e78d59165c4499d645eafc2c3f1d88163e0e",
+  "events": {
+    "en": [],
+    "fr": []
+  },
+  "from": {
+    "en": "2026-11-25T18:11:44Z",
+    "fr": "2026-11-25T18:11:44Z"
+  },
+  "oldest_retained_event": {
+    "en": "2026-08-24T21:36:30Z",
+    "fr": "2024-10-19T15:39:24Z"
+  },
+  "previous_sha256": "64882bfcb7b7bb8726c3de7869e3e78d59165c4499d645eafc2c3f1d88163e0e",
+  "request_receipts": [
+    {
+      "bytes": 205,
+      "request_url": "https://wikirouge.net/texts/fr/w/api.php?action=query&curtimestamp=1&format=json&formatversion=2&list=recentchanges&rcdir=newer&rclimit=1&rcprop=timestamp",
+      "response_sha256": "7946177315aec4195ede578a216d0d2945a9da277707c667ba766c2e521b7de7"
+    },
+    {
+      "bytes": 51,
+      "request_url": "https://wikirouge.net/texts/fr/w/api.php?action=query&format=json&formatversion=2&list=recentchanges&rcdir=newer&rcend=2026-11-26T10%3A39%3A15Z&rclimit=500&rcprop=title%7Cids%7Ctimestamp%7Cflags%7Cloginfo&rcstart=2026-11-25T18%3A11%3A44Z&rctype=edit%7Cnew%7Clog",
+      "response_sha256": "81fae43ab1de4d8f6cc024d4145d94f33dbd5876c4fdf42a87e64bafe283e5a7"
+    },
+    {
+      "bytes": 206,
+      "request_url": "https://wikirouge.net/texts/en/w/api.php?action=query&curtimestamp=1&format=json&formatversion=2&list=recentchanges&rcdir=newer&rclimit=1&rcprop=timestamp",
+      "response_sha256": "feed22fb8e72f5044cbe708953014bf3d93db468fd904ddefed10310c26a4f92"
+    },
+    {
+      "bytes": 51,
+      "request_url": "https://wikirouge.net/texts/en/w/api.php?action=query&format=json&formatversion=2&list=recentchanges&rcdir=newer&rcend=2026-11-26T10%3A39%3A16Z&rclimit=500&rcprop=title%7Cids%7Ctimestamp%7Cflags%7Cloginfo&rcstart=2026-11-25T18%3A11%3A44Z&rctype=edit%7Cnew%7Clog",
+      "response_sha256": "81fae43ab1de4d8f6cc024d4145d94f33dbd5876c4fdf42a87e64bafe283e5a7"
+    }
+  ],
+  "schema": "wikidebia-wikirouge-delta-1",
+  "scope": "Direct recentchanges; candidate metadata only. Indirect changes outside the feed and asynchronous link/category refresh are not a complete snapshot guarantee.",
+  "status": "complete",
+  "summary": {
+    "decoded_network_body_bytes": 513,
+    "elapsed_seconds": 1.952,
+    "kinds": {},
+    "model_calls": 0,
+    "network_requests": 4,
+    "page_updates": 0,
+    "recentchange_events": 0,
+    "resulting_pages": 30583,
+    "resulting_pairs": 10747
+  },
+  "until": {
+    "en": "2026-11-26T10:39:16Z",
+    "fr": "2026-11-26T10:39:15Z"
+  },
+  "updates": []
+}

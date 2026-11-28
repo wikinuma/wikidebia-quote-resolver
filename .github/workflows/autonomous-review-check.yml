@@ -1,0 +1,47 @@
+name: Autonomous real-source review replay
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    paths:
+      - 'autonomous_review_check.py'
+      - 'prepare_citations.py'
+      - 'prepared_resolution.py'
+      - 'translation_handoff.py'
+      - 'tests/test_translation_handoff.py'
+      - 'tests/test_prepare_citations.py'
+      - 'boundary_stress.py'
+      - 'reviewed_boundaries.py'
+      - 'transcription_compare.py'
+      - 'tests/test_transcription_compare.py'
+      - 'tests/test_reviewed_boundaries.py'
+      - 'data/mia/benchmarks/20261126/reviewed-boundaries.json'
+      - 'tests/test_boundary_stress.py'
+      - 'grouped_review.py'
+      - 'review_context.py'
+      - 'review_bundle.py'
+      - '.github/workflows/autonomous-review-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - name: Compare frozen candidates without a new search
+        run: python autonomous_review_check.py --out "${RUNNER_TEMP}/autonomous-review-summary.json"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: autonomous-review-summary
+          path: ${{ runner.temp }}/autonomous-review-summary.json
+          if-no-files-found: ignore
+          retention-days: 30

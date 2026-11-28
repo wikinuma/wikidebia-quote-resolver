@@ -1,0 +1,726 @@
+{
+  "schema": "wikidebia-frozen-semantic-labels-1",
+  "source_commit": "682d9a5e4830e799abcfa60ac81e0b68b8f2a651",
+  "scope": "evaluation only; model-assisted historical decisions, not human gold or reuse rights",
+  "labels": [
+    {
+      "id": "inventory-0575380a6ac2a51f8032",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_Condition_of_the_Working_Class_in_England/05/Competition",
+        "revision": 123697,
+        "document_sha256": "602fbf0a6e9422240908e6e953c10f6802b14006b49ac6590b91d65d30e86f60",
+        "candidate_sha256": "11249e08d98cdef33ec58799602c77e68e10cf31c80d69eaa911d7f993f05caf",
+        "char_start": 1434,
+        "char_end": 2400,
+        "fragments": [
+          {
+            "char_end": 2400,
+            "char_start": 1434,
+            "text_sha256": "11249e08d98cdef33ec58799602c77e68e10cf31c80d69eaa911d7f993f05caf"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-0b0393c5579e60b5ef17",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1938/01/kronstadt.htm",
+        "revision": null,
+        "document_sha256": "d1b64fcc66d50fcc1426aafe5a040b3fc5c822c160aa9b60488591869db92057",
+        "candidate_sha256": "bc695be1f6f1c606b3bf94375106c23f4d3ae139660f307efc9c69700f1692c5",
+        "char_start": 19084,
+        "char_end": 20342,
+        "fragments": [
+          {
+            "char_end": 20342,
+            "char_start": 19084,
+            "text_sha256": "bc695be1f6f1c606b3bf94375106c23f4d3ae139660f307efc9c69700f1692c5"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-0f696669705f0c599db1",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1919/jul/11.htm",
+        "revision": null,
+        "document_sha256": "358f925c3bc77b8b0e1acd7019aeebf78c589c2324b569bc676ad0a30f01a511",
+        "candidate_sha256": "94292532794dd9a7c727d75f7cfb05ee3798eb309a2bf55a476256a361c99d52",
+        "char_start": 13670,
+        "char_end": 14529,
+        "fragments": [
+          {
+            "char_end": 14529,
+            "char_start": 13726,
+            "text_sha256": "4b2de656e034f0ead480d141f6c849a90d549fe0b38be333d4a35e78bd12c9f2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-0f891a9e17aff3ba6067",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1917/staterev/ch05.htm",
+        "revision": null,
+        "document_sha256": "34ea21503f0ae521636fff54705617572deec495ffc1daaa7f5849e0823dcd3f",
+        "candidate_sha256": "49823c95bf06f6f68250addf74074aa16dab48ebd4134e91411902364d3f9350",
+        "char_start": 28078,
+        "char_end": 28476,
+        "fragments": [
+          {
+            "char_end": 28476,
+            "char_start": 28078,
+            "text_sha256": "49823c95bf06f6f68250addf74074aa16dab48ebd4134e91411902364d3f9350"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-140bfff416cadbb090f8",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas",
+        "revision": 137553,
+        "document_sha256": "6daec3135d86123aa34ea4f847c789962a1e4dbc0fc616e8308df1e02eafc7bd",
+        "candidate_sha256": "2f6966f7efd2c4fd964fae883783f4835738fa21d55e52c49885b59b036fae01",
+        "char_start": 4351,
+        "char_end": 5136,
+        "fragments": [
+          {
+            "char_end": 5136,
+            "char_start": 4351,
+            "text_sha256": "2f6966f7efd2c4fd964fae883783f4835738fa21d55e52c49885b59b036fae01"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-1619d9f10521f06f62f7",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_State%3A_A_Lecture_Delivered_at_the_Sverdlov_University",
+        "revision": 132706,
+        "document_sha256": "c1cc5bc6bee9951cba7be3e9108de965c69fde36c25b66283b7d290769a61b57",
+        "candidate_sha256": "bc4550f3bbc27c6c38c7c1bd26a9e28e4370ff63ec604a39df4fdd253655c08c",
+        "char_start": 17041,
+        "char_end": 17677,
+        "fragments": [
+          {
+            "char_end": 17677,
+            "char_start": 17045,
+            "text_sha256": "7e89ea204ceb1dc389867b44d5ca64f34755ceed5523568f3c58f4962e0c1771"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-174270573e419adc2ac6",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/idom/dm/04-again.htm",
+        "revision": null,
+        "document_sha256": "aeb594f5ce59837476d1512d9c76dc28849157fcc39bb299e7d2505203cdfc6d",
+        "candidate_sha256": "925bf07cb038d66f011bdc6f95e230652b5e945d1e6cc4bbcf44ed2512296c36",
+        "char_start": 10965,
+        "char_end": 12112,
+        "fragments": [
+          {
+            "char_end": 12112,
+            "char_start": 10965,
+            "text_sha256": "925bf07cb038d66f011bdc6f95e230652b5e945d1e6cc4bbcf44ed2512296c36"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-29e0fc27845c6adf8ac0",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1939/09/ussr-war.htm",
+        "revision": null,
+        "document_sha256": "7196b0169bca347f0657a8c42e1dc943a1999e6cc201695bece79e6f16cd7e19",
+        "candidate_sha256": "319d61218d75ee0b4a1c25aac3e84bc78df17dd5bb83f4e717079d677f849f0a",
+        "char_start": 11089,
+        "char_end": 11313,
+        "fragments": [
+          {
+            "char_end": 11313,
+            "char_start": 11156,
+            "text_sha256": "dc6947f2d70856d0bfbca1fa2d53b0bb46d6c8002408fe95fe21a0ca2306d9b5"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-317aff6fe7a20f49e941",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1939/09/ussr-war.htm",
+        "revision": null,
+        "document_sha256": "7196b0169bca347f0657a8c42e1dc943a1999e6cc201695bece79e6f16cd7e19",
+        "candidate_sha256": "354740141adc47e7592c0f2cc9737404dd472ab024a6437f38ab7a511f99445c",
+        "char_start": 12051,
+        "char_end": 13150,
+        "fragments": [
+          {
+            "char_end": 12178,
+            "char_start": 12051,
+            "text_sha256": "bd9ebce79f8161f91979710d2f28328204ee606cefa73aca566d0322492af97c"
+          },
+          {
+            "char_end": 13150,
+            "char_start": 12189,
+            "text_sha256": "ffcaa33c422395bbd1b1f75a04eeaeee9dabc7c72ce9dbfce59c35627dbd4905"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-372442e7dc4e6e1c2d0e",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1919/jul/11.htm",
+        "revision": null,
+        "document_sha256": "358f925c3bc77b8b0e1acd7019aeebf78c589c2324b569bc676ad0a30f01a511",
+        "candidate_sha256": "e2560a26210ddbe6f16a60110793fb8afdf2ba320b7ea577a4ff4c79a2336c4b",
+        "char_start": 11108,
+        "char_end": 11718,
+        "fragments": [
+          {
+            "char_end": 11718,
+            "char_start": 11108,
+            "text_sha256": "e2560a26210ddbe6f16a60110793fb8afdf2ba320b7ea577a4ff4c79a2336c4b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-37acae2caab7d10a2473",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1919/jul/11.htm",
+        "revision": null,
+        "document_sha256": "358f925c3bc77b8b0e1acd7019aeebf78c589c2324b569bc676ad0a30f01a511",
+        "candidate_sha256": "7c0a730ed3e8e46cb1058a1d84f0a0a6d00ea93decc075db288caf2f34972e5b",
+        "char_start": 22520,
+        "char_end": 23979,
+        "fragments": [
+          {
+            "char_end": 23979,
+            "char_start": 22520,
+            "text_sha256": "7c0a730ed3e8e46cb1058a1d84f0a0a6d00ea93decc075db288caf2f34972e5b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-3bdf85a3e455df2c0296",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1938/tp/tp-text.htm",
+        "revision": null,
+        "document_sha256": "561038ba4e9c7a85afc7f961c5411ea498d27063b852b323b6f45cf0b8eb11fb",
+        "candidate_sha256": "f5239d55c60465d1790c7547f78b9b0fbcd47b04b7b161f299a92142c4796cb7",
+        "char_start": 15917,
+        "char_end": 16668,
+        "fragments": [
+          {
+            "char_end": 16668,
+            "char_start": 16206,
+            "text_sha256": "317ead4bd05e564e29835b3e31301cf32c4bb95ce40b36b0ed855acd3540318c"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-3cf4d0c9bd8547eeb0b4",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_State%3A_A_Lecture_Delivered_at_the_Sverdlov_University",
+        "revision": 132706,
+        "document_sha256": "c1cc5bc6bee9951cba7be3e9108de965c69fde36c25b66283b7d290769a61b57",
+        "candidate_sha256": "f9267fe8d713905ec7c2487fe3bd23a1af9e5cf8b71a3892ad5beb2e342a2727",
+        "char_start": 15052,
+        "char_end": 15830,
+        "fragments": [
+          {
+            "char_end": 15830,
+            "char_start": 15052,
+            "text_sha256": "f9267fe8d713905ec7c2487fe3bd23a1af9e5cf8b71a3892ad5beb2e342a2727"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-45cec8303528f18c4bb3",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1919/jul/11.htm",
+        "revision": null,
+        "document_sha256": "358f925c3bc77b8b0e1acd7019aeebf78c589c2324b569bc676ad0a30f01a511",
+        "candidate_sha256": "283bfecc5db213b4859ab676dea891f3f341e7014a418424c7634a970d6d2445",
+        "char_start": 16212,
+        "char_end": 17238,
+        "fragments": [
+          {
+            "char_end": 17238,
+            "char_start": 16212,
+            "text_sha256": "283bfecc5db213b4859ab676dea891f3f341e7014a418424c7634a970d6d2445"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-4f017be49eaa97575aba",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/Anti-D%C3%BChring/03/Part_III._Socialism",
+        "revision": 110433,
+        "document_sha256": "2fd74aeaed08b4e6c066176bd4c0c9222d34e279cfb3352db89e033a0a9d8bd2",
+        "candidate_sha256": "6af2783c6a75e7a6f4e5a0c066793da895a2364286383cdc7af421c761feb37d",
+        "char_start": 56212,
+        "char_end": 58968,
+        "fragments": [
+          {
+            "char_end": 58694,
+            "char_start": 56900,
+            "text_sha256": "97b343201aeea8080ae9e163abe48ef8790b93fa08e7c80ec68aa1462bf81148"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-541a5545fa06c8176e21",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/pref02.htm",
+        "revision": null,
+        "document_sha256": "3178b1a4d74882e371ec679ea2011e6e89bd96b3056623c612bf5fac4bdeda55",
+        "candidate_sha256": "0a37edcddf1a76d33b19a36bebbfb5dc7170b5b9a58fb700593e2039064cff97",
+        "char_start": 9407,
+        "char_end": 11355,
+        "fragments": [
+          {
+            "char_end": 9831,
+            "char_start": 9569,
+            "text_sha256": "1613a880fa2b061c0088365316f2101856cc7707188cc1bafdf781390b0e0e6d"
+          },
+          {
+            "char_end": 11101,
+            "char_start": 10019,
+            "text_sha256": "a76ab22115d86e6e51cda63f652f4d37700f989a14be02ee2a8734c85e4e83ef"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-6959f815987733b1f7c5",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_State%3A_A_Lecture_Delivered_at_the_Sverdlov_University",
+        "revision": 132706,
+        "document_sha256": "c1cc5bc6bee9951cba7be3e9108de965c69fde36c25b66283b7d290769a61b57",
+        "candidate_sha256": "321c7c59a2909fca05371920a59f6b06f2fc96866591f055addaf53405c6d607",
+        "char_start": 12551,
+        "char_end": 13285,
+        "fragments": [
+          {
+            "char_end": 13285,
+            "char_start": 12551,
+            "text_sha256": "321c7c59a2909fca05371920a59f6b06f2fc96866591f055addaf53405c6d607"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-6b54aa73d6cfef0e0f2d",
+      "label": {
+        "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+        "revision": null,
+        "document_sha256": "adcc9801c01581c62d3688402b15ee41205798d4f76d5bc289cf2803be120459",
+        "candidate_sha256": "0e61e03f2c2b6fb8b2f19b3dc0b13d027196ba7d219deeadac6c89fa0f074784",
+        "char_start": 25530,
+        "char_end": 26050,
+        "fragments": [
+          {
+            "char_end": 26050,
+            "char_start": 25530,
+            "text_sha256": "0e61e03f2c2b6fb8b2f19b3dc0b13d027196ba7d219deeadac6c89fa0f074784"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-74e41be2c0107318e217",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/Trades_Unions_(1881)",
+        "revision": 129678,
+        "document_sha256": "893e8aeb293712ff85603a52fff4aebec8f16667bcc5f08c9d3b4802d9267e05",
+        "candidate_sha256": "e4a949a5c027b5b0ef686e964a9b632c54afb1097c3af3f747dffee730a2d819",
+        "char_start": 6518,
+        "char_end": 7913,
+        "fragments": [
+          {
+            "char_start": 6518,
+            "char_end": 7816,
+            "text_sha256": "37cc8dbc0f8a7460f4ce017b8d82a3cd7edf14bef05a42d4169dc81b724ef6ba"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-77c9d6d17d3ced7e28cf",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/idom/dm/04-again.htm",
+        "revision": null,
+        "document_sha256": "aeb594f5ce59837476d1512d9c76dc28849157fcc39bb299e7d2505203cdfc6d",
+        "candidate_sha256": "1d6356157dff99cb48063846d2a5b0088f021df57dcb7dbe5f1f70afb9117823",
+        "char_start": 8621,
+        "char_end": 9407,
+        "fragments": [
+          {
+            "char_end": 9407,
+            "char_start": 8621,
+            "text_sha256": "1d6356157dff99cb48063846d2a5b0088f021df57dcb7dbe5f1f70afb9117823"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-7a99a4c26effa82e63ff",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1919/jul/11.htm",
+        "revision": null,
+        "document_sha256": "358f925c3bc77b8b0e1acd7019aeebf78c589c2324b569bc676ad0a30f01a511",
+        "candidate_sha256": "740b6d8c211a0e88793c7a3e821797d9857aa28d8c7f108d1f61c3108f8c33cd",
+        "char_start": 39250,
+        "char_end": 41440,
+        "fragments": [
+          {
+            "char_end": 41243,
+            "char_start": 39794,
+            "text_sha256": "b1b5b5739c088185e233708bd376dd8fefc6ffe57f2a25295bef746054e31b64"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-7d2c5ac9c340338c4c5a",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1940/xx/tu.htm",
+        "revision": null,
+        "document_sha256": "f7b1a20f6ed1035ee57b5a7a157676f441f8f5d1f88ffbc7f48f0b39d0c829f8",
+        "candidate_sha256": "f6274224d8800fc5516f8249443fce44cd01bb0817b162dd3070afd0a26da5b6",
+        "char_start": 376,
+        "char_end": 1162,
+        "fragments": [
+          {
+            "char_end": 1162,
+            "char_start": 651,
+            "text_sha256": "bcb5d30c98c9e4420987a77acabec43d724e22bfe7f501f0432b21b4aa970c5b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-842b10493dc8b5272f5c",
+      "label": {
+        "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch04.htm",
+        "revision": null,
+        "document_sha256": "ff5a45048e5400cafb29a3c817f75e20a2c3b42fbab2c0fc0934532f3cff6c17",
+        "candidate_sha256": "ea79092037d590f0fd9dc03595f077d6ec61dcd83303bbf905e27a674ed5b008",
+        "char_start": 2943,
+        "char_end": 3024,
+        "fragments": [
+          {
+            "char_end": 3024,
+            "char_start": 2943,
+            "text_sha256": "ea79092037d590f0fd9dc03595f077d6ec61dcd83303bbf905e27a674ed5b008"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-98432b5c2a75c56d984b",
+      "label": {
+        "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm",
+        "revision": null,
+        "document_sha256": "0fff9d663819029585558294eb65f3248796c75fe0152189e98a8826288cab32",
+        "candidate_sha256": "de6d8f4fa33dfa1b5824d99315d2f1503995b7e1e60f93ce321d01d83b8637be",
+        "char_start": 7308,
+        "char_end": 8201,
+        "fragments": [
+          {
+            "char_end": 8140,
+            "char_start": 7828,
+            "text_sha256": "83e072940d1182d8eba0587069e6502caec2384034b0d6ee23db5be3ad6e36d4"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-c3c9a7c180dc52ea3db4",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/Letter_to_Walther_Borgius%2C_January_25%2C_1894",
+        "revision": 126889,
+        "document_sha256": "5414549d8c8e7b405eb976b2fcc193ddd7bf7b12f5abfdb862affa73b529a5f6",
+        "candidate_sha256": "d25ef1ff4de6df3d78b1a397823853d96e01bbec61cc74787641c11f5602f238",
+        "char_start": 3400,
+        "char_end": 4834,
+        "fragments": [
+          {
+            "char_end": 4834,
+            "char_start": 3404,
+            "text_sha256": "9e0301a734059c8b4944957b65f3b7386f2ac43518e78827d67edc6dfa42cc77"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-c547548986072f602133",
+      "label": {
+        "url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch08.htm",
+        "revision": null,
+        "document_sha256": "eba66d1bc395b1d4ba9596299a80c760d50c9a221b3a8d2f0df55fee99490416",
+        "candidate_sha256": "0021f9223475b130dded0fcb10435d59a871b42f0a7a1d4dcdd21dbffd6ac78c",
+        "char_start": 11347,
+        "char_end": 12234,
+        "fragments": [
+          {
+            "char_end": 12234,
+            "char_start": 11347,
+            "text_sha256": "0021f9223475b130dded0fcb10435d59a871b42f0a7a1d4dcdd21dbffd6ac78c"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-cd033d7826694671f9b4",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1938/tp/tp-text.htm",
+        "revision": null,
+        "document_sha256": "561038ba4e9c7a85afc7f961c5411ea498d27063b852b323b6f45cf0b8eb11fb",
+        "candidate_sha256": "95f409c0de0fb61d1ffc70a6af5bb011d18cd44350621f899cc1b3edc4d6370f",
+        "char_start": 7110,
+        "char_end": 8058,
+        "fragments": [
+          {
+            "char_end": 7737,
+            "char_start": 7702,
+            "text_sha256": "dc2ef097343180aab58f32d77fbcb3d98a3183e784d4faec3e5fe87d3b2528f2"
+          },
+          {
+            "char_end": 7860,
+            "char_start": 7756,
+            "text_sha256": "0bc0df886a93fcf2e539e3eefb19ead15bb92c601571a8df7183385509d652d0"
+          },
+          {
+            "char_end": 8058,
+            "char_start": 7861,
+            "text_sha256": "cec702a53be200e6e75737e04e14dac53dacf81039a9bb5993c7c5f3b885e78b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-cdd05d568eaa344fdc58",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1939/09/ussr-war.htm",
+        "revision": null,
+        "document_sha256": "7196b0169bca347f0657a8c42e1dc943a1999e6cc201695bece79e6f16cd7e19",
+        "candidate_sha256": "c69f66494c582d9c1f7546b73e21616c6d1cbb2e58fc4bbc36d1af1f65d11a0f",
+        "char_start": 31495,
+        "char_end": 32439,
+        "fragments": [
+          {
+            "char_end": 32439,
+            "char_start": 31495,
+            "text_sha256": "c69f66494c582d9c1f7546b73e21616c6d1cbb2e58fc4bbc36d1af1f65d11a0f"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-e063ff7ab6d925ab7dd7",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1939/09/ussr-war.htm",
+        "revision": null,
+        "document_sha256": "7196b0169bca347f0657a8c42e1dc943a1999e6cc201695bece79e6f16cd7e19",
+        "candidate_sha256": "b816e97b7508357f918031c5ca0235e75ca36a63e2f0473dc6bbd0a1f14db059",
+        "char_start": 27503,
+        "char_end": 28959,
+        "fragments": [
+          {
+            "char_end": 28124,
+            "char_start": 27503,
+            "text_sha256": "4e36d958ee82dec2a38ea1f32fe96bc9c77f93d58fd59770048eaf21c00b1717"
+          },
+          {
+            "char_end": 28752,
+            "char_start": 28540,
+            "text_sha256": "605ceae6b2d5ce886930c47fd0ce95400c9b91c20252d0d7557788b7dfbba689"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-e2028ed5c9ec65c2877a",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas",
+        "revision": 137553,
+        "document_sha256": "6daec3135d86123aa34ea4f847c789962a1e4dbc0fc616e8308df1e02eafc7bd",
+        "candidate_sha256": "6293afa1a2f18f46beaa18b1e9b0cc4511cb402f61caebb4fcc85d0838c9f94c",
+        "char_start": 3893,
+        "char_end": 4350,
+        "fragments": [
+          {
+            "char_end": 4350,
+            "char_start": 3893,
+            "text_sha256": "6293afa1a2f18f46beaa18b1e9b0cc4511cb402f61caebb4fcc85d0838c9f94c"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-e2dc8d58324b549201a5",
+      "label": {
+        "url": "https://www.marxists.org/archive/rakovsky/1928/08/prodanger.htm",
+        "revision": null,
+        "document_sha256": "272590e35a13934180edd16ccca7ea1707cfcd9d554913be418c0f65d04259ca",
+        "candidate_sha256": "ad609507d8a8d9bef8ba1c44f4f0f345d9cbc161d8de9204e7e04a003359ae02",
+        "char_start": 31865,
+        "char_end": 32791,
+        "fragments": [
+          {
+            "char_end": 32328,
+            "char_start": 31865,
+            "text_sha256": "35758888e89d1811d6d0aa77dad6d7cf6199b4af80171de8cfac66cf318b13df"
+          },
+          {
+            "char_end": 32791,
+            "char_start": 32518,
+            "text_sha256": "f16e3d92a602452fcee90aeddc3ad3a7086c90c01fa0de3de76b890bc5b5a340"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-e6c2f48960a2c78a59a5",
+      "label": {
+        "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+        "revision": null,
+        "document_sha256": "adcc9801c01581c62d3688402b15ee41205798d4f76d5bc289cf2803be120459",
+        "candidate_sha256": "5123589ea7452534bc5f2bb6134c1c7ea1c778c8aace06546865bf013a0bab9a",
+        "char_start": 26285,
+        "char_end": 26468,
+        "fragments": [
+          {
+            "char_end": 26468,
+            "char_start": 26285,
+            "text_sha256": "5123589ea7452534bc5f2bb6134c1c7ea1c778c8aace06546865bf013a0bab9a"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-e966c2c9d89d9781a73c",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/idom/dm/04-again.htm",
+        "revision": null,
+        "document_sha256": "aeb594f5ce59837476d1512d9c76dc28849157fcc39bb299e7d2505203cdfc6d",
+        "candidate_sha256": "fc0369934f03bc7b3a0c8be85bca889b78fb022ffdbd214e9b5a1703f42b5b3f",
+        "char_start": 9409,
+        "char_end": 9983,
+        "fragments": [
+          {
+            "char_end": 9983,
+            "char_start": 9409,
+            "text_sha256": "fc0369934f03bc7b3a0c8be85bca889b78fb022ffdbd214e9b5a1703f42b5b3f"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-f014ef20ace220abbd64",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1917/staterev/ch06.htm",
+        "revision": null,
+        "document_sha256": "8b41625d82c827182d14abc640a45527727a696df7064b268b9a9cdbac1de6e3",
+        "candidate_sha256": "cd56888729afa030db3de5877158f58869219b75bb8b1e1e05327e2e2b397826",
+        "char_start": 30840,
+        "char_end": 31206,
+        "fragments": [
+          {
+            "char_end": 31206,
+            "char_start": 30907,
+            "text_sha256": "98ab03bab975498ccd0bb59d267eeac126417d5dca4e2773bc9ff97eb5f65f47"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-f0279e8e85c476a3bf18",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/Letter_to_Walther_Borgius%2C_January_25%2C_1894",
+        "revision": 126889,
+        "document_sha256": "5414549d8c8e7b405eb976b2fcc193ddd7bf7b12f5abfdb862affa73b529a5f6",
+        "candidate_sha256": "f64dfd42544344e99a8d5f1b89684a50b2cfb6a7820f7814561b3fd7ee60f193",
+        "char_start": 98,
+        "char_end": 1933,
+        "fragments": [
+          {
+            "char_end": 1743,
+            "char_start": 102,
+            "text_sha256": "c2230752618079bc8ae2dcc83bec43ccca20125fc577779811fb9d8b9ad213bf"
+          },
+          {
+            "char_end": 1844,
+            "char_start": 1749,
+            "text_sha256": "3707be6c7d0367fe03fb65d85a77514372c8fa875188f7e0b5a647d8d9aac5d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-f1bfb7d4999e8943e304",
+      "label": {
+        "url": "https://wikirouge.net/texts/en/The_State%3A_A_Lecture_Delivered_at_the_Sverdlov_University",
+        "revision": 132706,
+        "document_sha256": "c1cc5bc6bee9951cba7be3e9108de965c69fde36c25b66283b7d290769a61b57",
+        "candidate_sha256": "bd322172b4d904e11dbe84ebb846160f9c98223e19240cc9feca5e64435a7c3c",
+        "char_start": 17678,
+        "char_end": 18789,
+        "fragments": [
+          {
+            "char_end": 18789,
+            "char_start": 17678,
+            "text_sha256": "bd322172b4d904e11dbe84ebb846160f9c98223e19240cc9feca5e64435a7c3c"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-f73a69c5d0172a5ffa95",
+      "label": {
+        "url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch42.htm",
+        "revision": null,
+        "document_sha256": "fc04728880826a78e7606d9086a4e3e963be63894a16a600983032e0d0b21160",
+        "candidate_sha256": "659a9ae869964bc447b51f09d226bf75d67722d77d2af2b905fd4f900441fa06",
+        "char_start": 91123,
+        "char_end": 91839,
+        "fragments": [
+          {
+            "char_end": 91839,
+            "char_start": 91123,
+            "text_sha256": "659a9ae869964bc447b51f09d226bf75d67722d77d2af2b905fd4f900441fa06"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-f89b0ad25aa78988a042",
+      "label": {
+        "url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch06.htm",
+        "revision": null,
+        "document_sha256": "c5a56fa5dbf6b25182928c9e811c6fda9d181da593a51cd013af4755ebe06e59",
+        "candidate_sha256": "1c7cd5e4749c4e842029a8a8a300faabe2b6543842c4b5a64e108860bb5ab296",
+        "char_start": 15915,
+        "char_end": 16227,
+        "fragments": [
+          {
+            "char_end": 16227,
+            "char_start": 15915,
+            "text_sha256": "1c7cd5e4749c4e842029a8a8a300faabe2b6543842c4b5a64e108860bb5ab296"
+          }
+        ]
+      }
+    }
+  ]
+}

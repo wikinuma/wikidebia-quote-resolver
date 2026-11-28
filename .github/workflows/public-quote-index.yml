@@ -1,0 +1,58 @@
+name: Public quotation index
+on:
+  pull_request:
+    branches: ['experiment/pilot-v04']
+    paths:
+      - 'public_quote_index.py'
+      - 'citation_domain_census.py'
+      - 'tests/test_public_quote_index.py'
+      - '.github/workflows/public-quote-index.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - run: python -m unittest discover -s tests -v
+  census:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [fr, en]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-navigation.txt
+      - name: Run strict EN or explicitly classified FR diagnostic
+        env:
+          LANGUAGE: ${{ matrix.language }}
+        run: |
+          extra=()
+          if [[ "$LANGUAGE" == fr ]]; then
+            extra+=(--ci-known-fr-defect)
+          fi
+          python public_quote_index.py --language "$LANGUAGE" --out "$RUNNER_TEMP/quotes/index.json" --summary "$RUNNER_TEMP/quotes/summary.json" "${extra[@]}"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: public-quote-index-summary-${{ matrix.language }}
+          path: ${{ runner.temp }}/quotes/summary.json
+          if-no-files-found: ignore
+          retention-days: 30

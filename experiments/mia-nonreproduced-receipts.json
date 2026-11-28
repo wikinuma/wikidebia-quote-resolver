@@ -1,0 +1,62 @@
+{
+  "schema": "wikidebia-receipt-diagnostic-input-1",
+  "scope": "six previously authenticated candidates of three explicit-MIA cases, no quotation text",
+  "source_report_sha256": "a54994daecd1a75f19ea6b35bee755f03f0b9ae6b2ed428ef297c046691a22c3",
+  "source_run": 45720424112,
+  "entries": [
+    {
+      "case_id": "inventory-09e433a7dff39fbbd9d5",
+      "url": "https://wikirouge.net/texts/en/Trades_Unions_(1881)",
+      "revision": 129678,
+      "sha256": "dc49e957d1d42ed199ce4fa3eb0b286dd427d61f6c2d1b1d0aae45b43f63ebda",
+      "char_start": 7818,
+      "char_end": 8204,
+      "text_sha256": "cbae53ca2208835a79893db13452a9f9644327d086087bec6e1d6f3ea0b17431"
+    },
+    {
+      "case_id": "inventory-09e433a7dff39fbbd9d5",
+      "url": "https://wikirouge.net/texts/en/Trades_Unions_(1881)",
+      "revision": 129678,
+      "sha256": "dc49e957d1d42ed199ce4fa3eb0b286dd427d61f6c2d1b1d0aae45b43f63ebda",
+      "char_start": 13697,
+      "char_end": 14697,
+      "text_sha256": "86471ca0b0b6ce216433082fe2cdc7d4e81771a21495d321b3532a3fd6256e50"
+    },
+    {
+      "case_id": "inventory-74e41be2c0107318e217",
+      "url": "https://wikirouge.net/texts/en/Trades_Unions_(1881)",
+      "revision": 129678,
+      "sha256": "dc49e957d1d42ed199ce4fa3eb0b286dd427d61f6c2d1b1d0aae45b43f63ebda",
+      "char_start": 6518,
+      "char_end": 7913,
+      "text_sha256": "e4a949a5c027b5b0ef686e964a9b632c54afb1097c3af3f747dffee730a2d819"
+    },
+    {
+      "case_id": "inventory-74e41be2c0107318e217",
+      "url": "https://wikirouge.net/texts/en/Trades_Unions_(1881)",
+      "revision": 129678,
+      "sha256": "dc49e957d1d42ed199ce4fa3eb0b286dd427d61f6c2d1b1d0aae45b43f63ebda",
+      "char_start": 7936,
+      "char_end": 9394,
+      "text_sha256": "5f2ca521cb87b03e61b0b6bd9628fa00b82db9bf7dedbc999a87d74b64a38815"
+    },
+    {
+      "case_id": "inventory-a190996c792f6c149039",
+      "url": "https://wikirouge.net/texts/en/The_Condition_of_the_Working_Class_in_England/07/Results",
+      "revision": 123699,
+      "sha256": "9d9e8a59497b663b77b613f2a1ef8545c6bb943267cf305e59f69e64383ac651",
+      "char_start": 50134,
+      "char_end": 51310,
+      "text_sha256": "17f0925db6a9051e0b3a63fe50a16fcc064cdd24eaeb2eeeebf8e501775192dd"
+    },
+    {
+      "case_id": "inventory-a190996c792f6c149039",
+      "url": "https://wikirouge.net/texts/en/The_Condition_of_the_Working_Class_in_England/05/Competition",
+      "revision": 123697,
+      "sha256": "602fbf0a6e9422240908e6e953c10f6802b14006b49ac6590b91d65d30e86f60",
+      "char_start": 373,
+      "char_end": 1432,
+      "text_sha256": "691dddb0ee2c5b032fbc8a3724f0889af1054a48e7653d899e4596b2cbd5b801"
+    }
+  ]
+}
