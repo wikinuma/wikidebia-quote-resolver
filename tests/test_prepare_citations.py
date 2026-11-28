@@ -2,6 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+import argparse
 
 from citation_registry import fingerprint, source_identity
 from alignment import text_and_starts
@@ -9,7 +10,7 @@ from resolver import sha
 from grouped_review import review_view
 from grouped_review import REPLY
 from prepare_citations import (Campaign, AWAITING, CANDIDATES, CLOSED, INSUFFICIENT,
-                               QUEUED, RETRY, REVIEWED, classify, duplicate_groups)
+                               QUEUED, RETRY, REVIEWED, classify, duplicate_groups, parse_mia_root)
 from test_citation_registry import RAW, QUOTE, EN, ENGLISH, ref, candidate, document
 from work_library import WorkLibrary
 
@@ -54,6 +55,77 @@ class CampaignTests(unittest.TestCase):
                                'candidate': s['candidates'][0] if decision == 'complete_equivalent' else None,
                                'ranges': [[0,len(ENGLISH)]] if decision == 'complete_equivalent' else []}
                               for q,s in packet['sources'].items()]}
+
+    def test_new_chapter_route_uses_saved_source_and_not_previous_attempt(self):
+        from chapter_routes import load_chapters
+        from resolver import ROOT
+        e = next(x for x in load_chapters(ROOT/'chapter-catalog.json')
+                 if x['fr_url'].endswith('/t_c_6.htm'))
+        source = {'status':'exact_in_examined_documents',
+                  'occurrences':[{'url':e['fr_url']}]}
+        result = {'navigation':{'input':{'mia_urls':[e['fr_toc']],
+                                         'authors':e['authors']}},
+                  'source':source}
+        self.c.record('1', CANDIDATES, {'result':result})
+        self.c.record('1', INSUFFICIENT, {'decision':'uncertain'})
+        self.assertEqual(self.c.new_chapter_route('1',[e]),e)
+        self.c.record('1', INSUFFICIENT, {'result':{**result,'chapter_route':e}})
+        self.assertIsNone(self.c.new_chapter_route('1',[e]))
+        self.c.record('1', INSUFFICIENT, {'result':result})
+        self.assertIsNone(self.c.new_chapter_route('1',[e]))
+        self.assertIsNone(self.c.new_chapter_route('2',[e]))
+
+    def test_expanded_split_chapter_route_is_new_evidence(self):
+        from chapter_routes import load_chapters
+        from resolver import ROOT
+        e=next(x for x in load_chapters(ROOT/'chapter-catalog.json') if 'en_urls' in x)
+        prior={k:v for k,v in e.items() if k!='en_urls'}
+        result={'navigation':{'input':{'mia_urls':[e['fr_toc']], 'authors':e['authors']}},
+                'source':{'status':'exact_in_examined_documents','occurrences':[{'url':e['fr_url']}]},
+                'chapter_route':prior}
+        self.c.record('1', INSUFFICIENT, {'result':result})
+        self.assertEqual(self.c.new_chapter_route('1',[e]),e)
+        self.c.record('1', INSUFFICIENT, {'result':{**result,'chapter_route':e}})
+        self.assertIsNone(self.c.new_chapter_route('1',[e]))
+
+    def test_select_last_retrieval_status_after_review(self):
+        self.c.record('1', CANDIDATES, {'result':{'status':'first'}})
+        self.c.record('1', INSUFFICIENT, {'decision':'uncertain'})
+        self.c.record('2', INSUFFICIENT, {'result':{'status':'second'}})
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT}, retrieval_statuses=('first',))], ['1'])
+        self.assertEqual(self.c.select({QUEUED}, retrieval_statuses=('first',)), [])
+
+    def test_select_exact_mia_url(self):
+        a, b, c = self.c.cases.values()
+        a['mia_url'] = 'https://www.marxists.org/francais/a.htm'
+        b['mia_url'] = a['mia_url'] + '.extra'
+        c['mia_url'] = a['mia_url']
+        self.c.record(c['id'], REVIEWED, {})
+        self.assertEqual(self.c.select({QUEUED}, mia_urls=(a['mia_url'],)), [a])
+
+    def test_select_mia_roots_filters_before_limit_and_preserves_states(self):
+        root = 'https://www.marxists.org/francais/example/work/'
+        other = 'https://www.marxists.org/francais/example/work-other/'
+        self.c.cases['1']['mia_url'] = other + 'chapter.htm'
+        self.c.cases['2']['mia_url'] = root + 'chapter.htm'
+        self.c.cases['3']['mia_url'] = root + 'another.htm'
+        self.c.record('1', INSUFFICIENT, {})
+        self.c.record('2', INSUFFICIENT, {})
+        self.c.record('3', REVIEWED, {})
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT}, 1, [root])], ['2'])
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT}, 0, [root, other])], ['1', '2'])
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT})], ['1', '2'])
+        self.assertEqual(self.c.latest('3')[0], REVIEWED)
+
+    def test_parse_mia_root_canonicalizes_and_rejects_nondirectories(self):
+        self.assertEqual(parse_mia_root('http://marxists.org/francais/example/'),
+                         'https://www.marxists.org/francais/example/')
+        for value in ('https://example.org/francais/example/', 'https://marxists.org/',
+                      'https://marxists.org/francais/example.htm',
+                      'https://marxists.org/francais/../example/',
+                      'https://marxists.org/francais/example/?q=x'):
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                parse_mia_root(value)
 
     def test_occurrence_accounting_and_duplicate_anomalies(self):
         self.assertEqual(len(duplicate_groups(self.inv)), 1)
@@ -334,3 +406,77 @@ class CampaignTests(unittest.TestCase):
         self.assertIsNone(report['semantic_equivalence'])
         self.assertNotIn(QUOTE,str(report))
         self.assertNotIn(EN,str(report))
+
+
+    def test_novel_only_skips_identical_wide_review_and_keeps_new_occurrence(self):
+        from review_history import SKIPPED
+        self.stage('1')
+        d,p=self.c.prepare(self.raw,self.audit)
+        self.c.apply(self.reply(d,p,'uncertain'),self.raw,self.audit)
+        self.stage('1','3')
+        pairs=self.c.prepare_many(self.raw,self.audit,limit=1,novel_only=True)
+        self.assertEqual(len(pairs),1)
+        self.assertEqual(self.c.latest('1')[0],INSUFFICIENT)
+        self.assertEqual(self.c.latest('1')[1]['reason'],SKIPPED)
+        self.assertEqual(self.c.latest('1')[1]['review_skip']['previous_packet_sha256'],d)
+        self.assertEqual(self.c.summary()['unchanged_review_evidence_skipped'],1)
+        self.assertEqual([o['case_id'] for s in pairs[0][1]['sources'].values()
+                          for o in s['occurrences']],['3'])
+        self.assertEqual(self.c.latest('3')[0],AWAITING)
+
+    def test_novel_only_prunes_orphans_and_preserves_shared_target(self):
+        self.stage('1')
+        d,p=self.c.prepare(self.raw,self.audit)
+        self.c.apply(self.reply(d,p,'no_equivalent'),self.raw,self.audit)
+        self.stage('1','3')
+        digest,packet=self.c.prepare(self.raw,self.audit,novel_only=True)
+        self.assertEqual(len(packet['sources']),1)
+        self.assertEqual(len(packet['targets']),1)
+        self.assertEqual(len(packet['payload']['passages']),1)
+        self.assertEqual(len(packet['payload']['documents']),1)
+        self.assertEqual(packet['campaign_novelty']['skipped_occurrences'],1)
+        view=review_view(packet)
+        self.assertEqual(sum(len(ch['citations']) for g in view['groups'] for ch in g['chapters']),1)
+        self.c.apply(self.reply(digest,packet,'uncertain'),self.raw,self.audit)
+        self.assertEqual(self.c.latest('3')[0],INSUFFICIENT)
+
+    def test_novel_only_does_not_skip_compact_abstention_or_changed_document(self):
+        self.stage('1')
+        d,p=self.c.prepare(self.raw,self.audit,progressive=True)
+        self.c.apply(self.reply(d,p,'uncertain'),self.raw,self.audit)
+        d,p=self.c.prepare(self.raw,self.audit,novel_only=True)
+        self.assertEqual(p['payload']['progressive_review']['stage'],'expanded_fallback')
+        self.c.apply(self.reply(d,p,'uncertain'),self.raw,self.audit)
+        self.doc=document(digest=sha(b'changed document'))
+        self.candidate=candidate(self.doc)
+        self.stage('1')
+        d,p=self.c.prepare(self.raw,self.audit,novel_only=True)
+        self.assertEqual(len(p['sources']),1)
+        self.assertEqual(self.c.latest('1')[0],AWAITING)
+
+
+    def test_new_alternative_edition_is_scoped_to_source_leaf_and_untried_target(self):
+        from bibliography import load_catalog
+        from resolver import ROOT
+        entries=load_catalog(ROOT/'alternative-edition-catalog.json')
+        e=entries[0]
+        result={'navigation':{'input':{'mia_urls':[e['source_url']],
+                                       'authors':e['authors'], 'work':e['source_title']}},
+                'source':{'status':'exact_in_examined_documents',
+                          'occurrences':[{'url':e['source_document']}]}}
+        self.c.record('1',INSUFFICIENT,{'result':result})
+        self.assertEqual(self.c.new_alternative_edition('1',entries),e)
+        self.assertIsNone(self.c.new_alternative_edition('2',entries))
+        wrong={**result,'source':{'status':'exact_in_examined_documents',
+                                   'occurrences':[{'url':e['source_document']+'.other'}]}}
+        self.c.record('2',INSUFFICIENT,{'result':wrong})
+        self.assertIsNone(self.c.new_alternative_edition('2',entries))
+        attempt={**result,'bibliographic_route':{'entry':e},
+                 'status':'catalog_candidate_review_required',
+                 'target_attempts':[{'issues':[{'kind':'page_limit'}]}]}
+        self.c.record('1',INSUFFICIENT,{'result':attempt})
+        self.assertEqual(self.c.new_alternative_edition('1',entries),e)
+        self.c.record('1',INSUFFICIENT,{'result':{**attempt,'target_attempts':[{'issues':[]}]}})
+        self.assertIsNone(self.c.new_alternative_edition('1',entries))
+        self.c.record('1',INSUFFICIENT,{'result':result})
+        self.assertIsNone(self.c.new_alternative_edition('1',entries))

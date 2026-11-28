@@ -75,3 +75,36 @@ class BibliographyTests(unittest.TestCase):
               for i,a in enumerate(['A','A','A','B','C'])]
         selected=choose_sample(rows,3,True)
         self.assertEqual({r['authors'] for r in selected},{'A','B','C'})
+
+
+    def test_unpublished_capital_chapter_uses_specific_catalog_target(self):
+        fr='https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm'
+        en='https://www.marxists.org/archive/marx/works/1864/economic/ch02b.htm'
+        meta={'mia_urls':[fr],'work':'Le Capital',
+              'article':'Résultats du procès de production immédiat',
+              'authors':'Karl Marx'}
+        e=match_catalog(meta,self.entries)
+        self.assertEqual(e['target_url'],en)
+        self.assertEqual(e['source_document'],fr)
+        self.assertFalse(e['whole_document_parallel'])
+        self.assertIsNone(match_catalog({**meta,'authors':'Friedrich Engels'},self.entries))
+        self.assertIsNone(match_catalog({**meta,'mia_urls':[fr+'.other']},self.entries))
+        q='La classe prolétarienne veut la révolution sociale.'
+        f=Document(fr,[q],'f')
+        hits,_=exact_occurrences(q,f)
+        source={'status':'exact_in_examined_documents','occurrences':hits}
+        row={'navigation':{'input':meta},'candidates':[],
+             'auto_publish':False,'rights':'unreviewed'}
+        r=Retrieval(Mock(),8,self.entries,refined=True)
+        target=Document(en,['The proletarian class wants the social revolution.'],'e')
+        def locate(*args,**kwargs):
+            r.source_documents={(fr,'f'):f}
+            return source
+        with patch.object(r,'source',side_effect=locate) as locate_mock, \
+             patch('auto_retrieve.mia_doc',return_value=(target,b'<p>synthetic</p>')) as read:
+            got=r.retrieve_catalog({'id':'x'},row,q)
+        self.assertEqual(locate_mock.call_args.kwargs['preferred_source'],fr)
+        read.assert_called_once_with(r.client,en)
+        self.assertTrue(got['candidates'])
+        self.assertTrue(all(c['url']==en for c in got['candidates']))
+        self.assertFalse(got['auto_publish'])

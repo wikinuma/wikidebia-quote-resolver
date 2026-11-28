@@ -21,19 +21,22 @@ import sys
 
 from alignment_store import encode
 from auto_retrieve import Retrieval
-from bibliography import load_catalog
-from chapter_routes import load_chapters
+from bibliography import load_catalog, match_catalog
+from refinement import select_hit_metadata
+from chapter_routes import load_chapters, chapter_route, chapter_urls
+from source_pdf import load_pdf_catalog
 from citation_inventory import atomic_private, refresh, validate_previous
 from citation_registry import CitationRegistry, DECISIONS, fingerprint, source_identity
 from evidence_audit import Auditor
 from grouped_review import (apply_review, build_packet, candidate_queue,
                             pinned_loader, private_dir, review_view)
-from navigation import error_kind
+from navigation import canonical_mia, error_kind
 from pilot_full import PilotClient
 from prepared_resolution import (CANDIDATES, REVIEWED, RETRY, INSUFFICIENT,
                                  classify, resolve_occurrence)
 from resolver import Client, ROOT
 from review_bundle import write_bundle
+from review_history import ReviewedWindows, SKIPPED
 from transcription_compare import supplement_packet
 from wikirouge_incremental import open_current
 from work_library import WorkLibrary
@@ -123,8 +126,65 @@ class Campaign:
         with self.db:
             self._append(cid, state, evidence)
 
-    def select(self, states, limit=0):
-        rows = [c for c in self.cases.values() if self.latest(c['id'])[0] in states]
+    def last_retrieval(self, cid):
+        # Review decisions may omit the retrieval result; inspect saved history.
+        for (body,) in self.db.execute('SELECT evidence FROM campaign_events_v1 '
+                                      'WHERE occurrence=? ORDER BY seq DESC', (cid,)):
+            evidence = json.loads(body)
+            if 'result' in evidence:
+                return evidence['result']
+        return {}
+
+    def last_retrieval_status(self, cid):
+        return self.last_retrieval(cid).get('status')
+
+    def new_chapter_route(self, cid, chapters):
+        result = self.last_retrieval(cid)
+        route = chapter_route(result.get('navigation', {}).get('input', {}),
+                              result.get('source', {}), chapters)
+        if route is None:
+            return None
+        for (body,) in self.db.execute('SELECT evidence FROM campaign_events_v1 '
+                                      'WHERE occurrence=? ORDER BY seq DESC', (cid,)):
+            previous_result = json.loads(body).get('result', {})
+            previous = previous_result.get('chapter_route') or previous_result.get('chapter_route_failure', {}).get('route')
+            if (previous and previous.get('fr_url')==route['fr_url']
+                    and previous.get('en_url') and chapter_urls(previous)==chapter_urls(route)):
+                return None
+        return route
+
+    def new_alternative_edition(self, cid, entries):
+        """Choose only a new documented edition of the uniquely localized leaf.
+
+        The saved source evidence is a preselection hint, not a substitute for
+        fresh source and target checks during retrieval.
+        """
+        result = self.last_retrieval(cid)
+        entry = match_catalog(result.get('navigation', {}).get('input', {}), entries)
+        if (entry is None or not entry.get('source_document')
+                or entry.get('target_provider') not in {'mia', 'wikirouge'}):
+            return None
+        if select_hit_metadata(result.get('source', {}), entry['source_document'])[0] is None:
+            return None
+        for (body,) in self.db.execute(
+                'SELECT evidence FROM campaign_events_v1 WHERE occurrence=? ORDER BY seq DESC',
+                (cid,)):
+            old = json.loads(body).get('result', {})
+            prior = old.get('bibliographic_route', {}).get('entry', {})
+            if (prior.get('source_document') == entry['source_document']
+                    and prior.get('target_url') == entry['target_url']
+                    and old.get('status') in {'catalog_candidate_review_required', 'catalog_no_candidate'}
+                    and old.get('target_attempts')
+                    and not any(a.get('issues') for a in old['target_attempts'])):
+                return None
+        return entry
+
+    def select(self, states, limit=0, mia_roots=(), mia_urls=(), retrieval_statuses=()):
+        rows = [c for c in self.cases.values()
+                if (not mia_roots or any(c['mia_url'].startswith(root) for root in mia_roots))
+                and (not mia_urls or c['mia_url'] in mia_urls)
+                and self.latest(c['id'])[0] in states
+                and (not retrieval_statuses or self.last_retrieval_status(c['id']) in retrieval_statuses)]
         return rows[:limit] if limit else rows
 
     def summary(self):
@@ -139,6 +199,8 @@ class Campaign:
                 'unrepresented_mia_occurrences': sum(issues.values()),
                 'inventory_issues': dict(issues),
                 'states': {s: counts[s] for s in STATES},
+                'unchanged_review_evidence_skipped': sum(state == INSUFFICIENT and evidence.get('reason') == SKIPPED
+                                                        for state,evidence in latest),
                 'expanded_fallback_pending': sum(state == CANDIDATES and
                     evidence.get('context_stage') == FALLBACK for state,evidence in latest),
                 'duplicate_quote_groups_across_pages': len(anomalies),
@@ -164,11 +226,16 @@ class Campaign:
         return next(self.open_packets(), None)
 
     def prepare(self, load_raw, audit, limit=20, max_payload_chars=120000,
-                *, allow_multiple=False, progressive=False, compare_transcriptions=False):
+                *, allow_multiple=False, progressive=False, compare_transcriptions=False,
+                novel_only=False, history=None):
+        if novel_only and progressive:
+            raise ValueError('novelty_requires_wide_review')
         if not allow_multiple:
             existing = self.open_packet()
             if existing is not None:
                 return existing
+        if novel_only and history is None:
+            history = ReviewedWindows(self.db)
         pending = [(c, self.latest(c['id'])[1]) for c in self.select({CANDIDATES})]
         fallback = [(c, e) for c,e in pending if e.get('context_stage') == FALLBACK]
         # Escalated occurrences are always reviewed in the wide mode, even
@@ -193,6 +260,8 @@ class Campaign:
                 self.record(selected[0][0]['id'], INSUFFICIENT,
                             {'reason': 'single_review_payload_limit'})
                 return None
+            if novel_only:
+                packet = history.filter(packet)
             included = [o['case_id'] for s in packet['sources'].values()
                         for o in s['occurrences']]
             skipped = [s['case_id'] for s in packet['skipped']]
@@ -209,7 +278,11 @@ class Campaign:
                 for failure in packet['skipped']:
                     cid = failure['case_id']
                     old = self.latest(cid)[1]
-                    self._append(cid, RETRY, {**old, 'review_skip': failure})
+                    if failure['status'] == SKIPPED:
+                        self._append(cid, INSUFFICIENT, {**old, 'reason': SKIPPED,
+                                                         'review_skip': failure})
+                    else:
+                        self._append(cid, RETRY, {**old, 'review_skip': failure})
                 if included:
                     self.db.execute('INSERT INTO campaign_packets_v1 VALUES (?,?,?,NULL)',
                                     (digest, encode(packet), 'open'))
@@ -219,14 +292,18 @@ class Campaign:
         return None
 
     def prepare_many(self, load_raw, audit, packets=8, limit=20,
-                     max_payload_chars=120000, *, progressive=False, compare_transcriptions=False):
+                     max_payload_chars=120000, *, progressive=False, compare_transcriptions=False,
+                     novel_only=False):
         """A bounded wave. Re-export pending packets after interruptions;
         never create duplicate open occurrences. One auditor per wave."""
         if packets < 1 or limit < 1:
             raise ValueError('invalid_wave_limits')
+        if novel_only and progressive:
+            raise ValueError('novelty_requires_wide_review')
         existing = list(self.open_packets())
         if existing:
             return existing[:packets]
+        history = ReviewedWindows(self.db) if novel_only else None
         result = []
         while len(result) < packets:
             client = getattr(audit,'client',None)
@@ -237,7 +314,8 @@ class Campaign:
                 break
             batch = self.prepare(load_raw,audit,limit,max_payload_chars,
                                  allow_multiple=True, progressive=progressive,
-                                 compare_transcriptions=compare_transcriptions)
+                                 compare_transcriptions=compare_transcriptions,
+                                 novel_only=novel_only, history=history)
             if batch:
                 result.append(batch)
             if len(self.select({CANDIDATES})) >= before:
@@ -525,14 +603,56 @@ def execute(args, state, library):
                 states = {INSUFFICIENT}
             if args.recheck_reviewed:
                 states = {REVIEWED}
-            selected = campaign.select(states, args.limit)
+            chapters = load_chapters(ROOT/'chapter-catalog.json')
+            pdf_catalog = ()
+            if getattr(args, 'source_pdf', False):
+                import shutil
+                if not args.reconsider or getattr(args,'prefer_catalog',False) or getattr(args,'new_chapter_route_only',False):
+                    raise ValueError('source_pdf_requires_reconsider_without_other_route_override')
+                pdf_catalog = load_pdf_catalog(ROOT/'source-pdf-catalog.json')
+                urls = getattr(args,'mia_url',())
+                if not urls or any(u not in {e['source_url'] for e in pdf_catalog} for u in urls):
+                    raise ValueError('source_pdf_requires_explicit_catalog_urls')
+                if shutil.which('pdftotext') is None:
+                    raise ValueError('source_pdf_requires_pdftotext')
+            new_chapter_only = getattr(args, 'new_chapter_route_only', False)
+            if new_chapter_only and (not args.reconsider or getattr(args, 'prefer_catalog', False)):
+                raise ValueError('new_chapter_route_only_requires_reconsider_without_prefer_catalog')
+            alternative_only = getattr(args, 'alternative_editions_only', False)
+            if alternative_only and (not args.reconsider or new_chapter_only
+                                     or getattr(args, 'prefer_catalog', False)
+                                     or getattr(args, 'source_pdf', False)):
+                raise ValueError('alternative_editions_require_exclusive_reconsider_mode')
+            catalog = load_catalog(ROOT/('alternative-edition-catalog.json' if alternative_only
+                                         else 'bibliographic-catalog.json'))
+            selected = campaign.select(states, 0 if new_chapter_only or alternative_only else args.limit,
+                                       getattr(args, 'mia_root', ()), getattr(args, 'mia_url', ()),
+                                       getattr(args, 'last_retrieval_status', ()))
+            if new_chapter_only:
+                selected = [c for c in selected if campaign.new_chapter_route(c['id'], chapters)]
+                if args.limit:
+                    selected = selected[:args.limit]
+            if alternative_only:
+                selected = [c for c in selected if campaign.new_alternative_edition(c['id'], catalog)]
+                if args.limit:
+                    selected = selected[:args.limit]
+            show({'selected':len(selected), 'new_chapter_route_only':new_chapter_only,
+                  'alternative_editions_only':alternative_only})
             client = PilotClient(state/'http', budget=args.budget)
             raw = pinned_loader(client)
             with open_current() as index:
                 retrieval = Retrieval(client, args.max_pages,
-                                      load_catalog(ROOT/'bibliographic-catalog.json'),
-                                      index, True, load_chapters(ROOT/'chapter-catalog.json'),
-                                      work_library=library, strict_link_policy=True)
+                                      catalog,
+                                      index, True, chapters,
+                                      work_library=library, strict_link_policy=True,
+                                      prefer_catalog=getattr(args, 'prefer_catalog', False) or alternative_only,
+                                      catalog_only=alternative_only,
+                                      source_pdf_catalog=pdf_catalog)
+                if pdf_catalog and selected:
+                    selected_urls = {c['mia_url'] for c in selected}
+                    for entry in pdf_catalog:
+                        if entry['source_url'] in selected_urls:
+                            show({'source_pdf_preflight':retrieval.source_pdfs.prepare(entry)})
                 for n, case in enumerate(selected, 1):
                     if client.requests >= args.budget:
                         break
@@ -546,7 +666,8 @@ def execute(args, state, library):
         elif args.command == 'review':
             batch = campaign.prepare(fresh, audit, args.limit, args.max_payload_chars,
                                      progressive=args.progressive,
-                                     compare_transcriptions=args.compare_transcriptions)
+                                     compare_transcriptions=args.compare_transcriptions,
+                                     novel_only=args.novel_only)
             if batch:
                 digest, packet = batch
                 out = state/'outgoing'/('review-'+digest[:16]+'.json')
@@ -560,7 +681,8 @@ def execute(args, state, library):
         elif args.command == 'review-many':
             pairs = campaign.prepare_many(fresh,audit,args.packets,args.limit,
                                           args.max_payload_chars, progressive=args.progressive,
-                                          compare_transcriptions=args.compare_transcriptions)
+                                          compare_transcriptions=args.compare_transcriptions,
+                                          novel_only=args.novel_only)
             if pairs:
                 wave = fingerprint([digest for digest,_ in pairs])[:16]
                 out = state/'outgoing'/('review-wave-'+wave+'.zip')
@@ -587,6 +709,20 @@ def execute(args, state, library):
     return 0
 
 
+def parse_mia_root(value):
+    root = canonical_mia(value)
+    if root is None or not root.endswith('/') or root == 'https://www.marxists.org/':
+        raise argparse.ArgumentTypeError('expected a specific MIA directory URL ending in /')
+    return root
+
+
+def parse_mia_url(value):
+    url = canonical_mia(value)
+    if url is None or not url.startswith('https://www.marxists.org/francais/') or url.endswith('/'):
+        raise argparse.ArgumentTypeError('expected an exact French MIA document URL')
+    return url
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--state', type=Path, required=True,
@@ -605,6 +741,20 @@ def main():
     cancel.add_argument('--packet-sha', help='Required when several reviews are open')
     run = sub.add_parser('search')
     run.add_argument('--limit', type=int, default=50, help='0 means all matching occurrences')
+    run.add_argument('--mia-root', type=parse_mia_root, action='append', default=[],
+                     help='Limit search to citations under this canonical MIA directory (repeatable)')
+    run.add_argument('--mia-url', type=parse_mia_url, action='append', default=[],
+                     help='Limit search to exact French citation URLs (repeatable)')
+    run.add_argument('--last-retrieval-status', action='append', default=[],
+                     help='Limit search to the last saved retrieval status, even after review (repeatable)')
+    run.add_argument('--source-pdf', action='store_true',
+                     help='Use explicitly catalogued alternative French PDF editions for targeted reconsideration')
+    run.add_argument('--new-chapter-route-only', action='store_true',
+                     help='Only reconsider cases with a newly eligible documented chapter, based on saved source evidence')
+    run.add_argument('--alternative-editions-only', action='store_true',
+                     help='Reconsider only uniquely localized source leaves with untried alternative editions')
+    run.add_argument('--prefer-catalog', action='store_true',
+                     help='Try explicitly documented alternative routes before ordinary navigation targets')
     run.add_argument('--budget', type=int, default=2500)
     run.add_argument('--case-budget', type=int, default=300)
     run.add_argument('--max-pages', type=int, default=64)
@@ -617,12 +767,14 @@ def main():
     review.add_argument('--max-payload-chars', type=int, default=120000)
     review.add_argument('--progressive', action='store_true', help='Start with one adaptive anchor; abstentions receive wide review')
     review.add_argument('--compare-transcriptions', action='store_true', help='Offer verified literal spacing alternatives for documented edition pairs')
+    review.add_argument('--novel-only', action='store_true', help='Skip occurrences wholly covered by an earlier completed wide abstention on identical evidence')
     many = sub.add_parser('review-many', help='Prepare or re-export a private ZIP of independent reviews')
     many.add_argument('--packets',type=int,default=8)
     many.add_argument('--limit',type=int,default=20,help='Max occurrences per packet')
     many.add_argument('--max-payload-chars',type=int,default=120000)
     many.add_argument('--progressive', action='store_true', help='Start with compact reviews; prioritize saved wide fallbacks')
     many.add_argument('--compare-transcriptions', action='store_true', help='Offer verified literal spacing alternatives for documented edition pairs')
+    many.add_argument('--novel-only', action='store_true', help='Skip occurrences wholly covered by an earlier completed wide abstention on identical evidence')
     apply = sub.add_parser('apply')
     apply.add_argument('reply', type=Path, help='JSON path or - for stdin')
     bulk = sub.add_parser('apply-many',help='Import an array of complete per-packet replies')
@@ -636,6 +788,8 @@ def main():
             or getattr(a, 'limit', 0) < 0
             or (a.command == 'review-many' and a.limit < 1)):
         p.error('invalid processing limits')
+    if getattr(a, 'novel_only', False) and getattr(a, 'progressive', False):
+        p.error('--novel-only requires wide review (without --progressive)')
     os.umask(0o077)
     state = private_dir(a.state)
     with (state/'campaign.lock').open('a') as lock:

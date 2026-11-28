@@ -26,7 +26,8 @@ from compare import evaluation
 from section_match import extract_headings, automatic_alignment
 from refinement import DirectAlignmentCache, review_packet, select_source_hit
 from source_refinement import long_variants, fragment_paths
-from chapter_routes import chapter_route, retrieve_chapter
+from chapter_routes import chapter_route, chapter_urls, retrieve_chapter
+from source_pdf import SourcePDFs
 from alignment import OMISSION
 
 
@@ -171,7 +172,7 @@ def document_alignment(quote,source,fr_docs,en_docs,route_method):
 
 
 class Retrieval:
-    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False):
+    def __init__(self,client,max_pages,catalog=(),local_index=None,refined=False,chapter_catalog=(),semantic_index=None,toc_matcher=None,hybrid=False,work_library=None,strict_link_policy=False,prefer_catalog=False,source_pdf_catalog=(),catalog_only=False):
         self.client=client; self.max_pages=max_pages; self.works={}; self.source_documents={}; self.catalog=tuple(catalog)
         self.local_index=local_index
         self.refined=refined
@@ -179,6 +180,11 @@ class Retrieval:
         self.direct_cache=DirectAlignmentCache(store=work_library.alignment_store if work_library is not None else None)
         self.work_library=work_library
         self.strict_link_policy=strict_link_policy
+        self.prefer_catalog=prefer_catalog
+        self.catalog_only=catalog_only
+        if catalog_only and not prefer_catalog:
+            raise ValueError('catalog_only_requires_prefer_catalog')
+        self.source_pdfs=SourcePDFs(client,source_pdf_catalog) if source_pdf_catalog else None
         self.semantic_index=semantic_index
         self.toc_matcher=toc_matcher
         self.hybrid=hybrid
@@ -309,6 +315,23 @@ class Retrieval:
                                             'candidates':[],'fallback_preserved':True,'auto_publish':False}
         return row
 
+    def retrieve_mapped_chapter(self,row,quote,source,chapter):
+        try:
+            docs=[]
+            for url in chapter_urls(chapter):
+                doc,body=mia_doc(self.client,url)
+                if doc.url!=url or explicit_toc(body,doc.url):
+                    raise ValueError('chapter_target_not_expected_leaf')
+                docs.append(doc)
+            row.update(retrieve_chapter(quote,source,list(self.source_documents.values()),
+                                        docs,chapter,self.direct_cache))
+            return self.semantic_sidecar(row,quote,docs)
+        except Exception as exc:
+            row['chapter_route_failure']={'route':chapter,'error':error_kind(exc)}
+            # Missing parts or changed URLs cannot silently become a complete chapter.
+            row['status']='chapter_source_or_target_unavailable'
+            return row
+
     def retrieve_catalog(self,case,row,quote):
         # Only use explicit researched mappings when the ordinary route is
         # unresolved. Never override a conflicting or ambiguous author.
@@ -334,6 +357,9 @@ class Retrieval:
         info={'provider':provider,'scope':'researched_single_target_page_not_complete_edition','root':url,'issues':[],'pages':[]}
         row['target_attempts']=[info]
         if entry.get('target_toc'):
+            chapter=chapter_route(row['navigation']['input'],source,self.chapter_catalog) if self.refined else None
+            if chapter is not None and chapter['en_toc']==url:
+                return self.retrieve_mapped_chapter(row,quote,source,chapter)
             docs,info=self.work('mia',url,'en')
             row['target_attempts']=[info]
             candidates=rank(quote,docs)
@@ -405,6 +431,18 @@ class Retrieval:
         if nav['status']=='ai_translation_required':
             row['status']='ai_translation_required'
             return row
+        # An explicitly selected documented alternative is a new retrieval
+        # path, not a way to override author conflicts or skip source checks.
+        if (self.prefer_catalog and case['id'] in quotes
+                and nav.get('author_check') != 'author_tokens_differ'
+                and nav['status'] in ('mia_route_candidate','wikirouge_route_candidate',
+                                      'work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed')
+                and catalog_route(nav.get('input', {}), self.catalog) is not None):
+            row['catalog_preferred'] = True
+            return self.retrieve_catalog(case,row,quotes[case['id']])
+        if self.catalog_only:
+            row['status']='alternative_catalog_route_unconfirmed'
+            return row
         if nav['status'] not in ('mia_route_candidate','wikirouge_route_candidate'):
             if self.catalog and nav['status'] in ('work_not_resolved','work_link_unconfirmed','work_metadata_unconfirmed') and case['id'] in quotes:
                 return self.retrieve_catalog(case,row,quotes[case['id']])
@@ -412,6 +450,15 @@ class Retrieval:
         quote=quotes[case['id']]
         if nav.get('author_check')=='author_tokens_differ':
             row['status']='author_metadata_conflict'; return row
+        if self.source_pdfs is not None:
+            def fetch_leaf(url):
+                doc,body=mia_doc(self.client,url)
+                if explicit_toc(body,doc.url):
+                    raise ValueError('source_pdf_target_is_toc')
+                return doc
+            alternate=self.source_pdfs.retrieve(row,quote,self.direct_cache,fetch_leaf)
+            if alternate is not None:
+                return alternate
         selector=case.get('selector') or automatic_selector(quote)
         source=self.source(quote,selector,nav); row['source']=source
         if source['status'] not in ('exact_in_examined_documents','variant_review_required'):
@@ -423,16 +470,7 @@ class Retrieval:
         if self.refined and self.chapter_catalog:
             chapter=chapter_route(nav['input'],source,self.chapter_catalog)
             if chapter is not None:
-                try:
-                    doc,body=mia_doc(self.client,chapter['en_url'])
-                    if explicit_toc(body,doc.url): raise ValueError('chapter_target_is_toc')
-                    row.update(retrieve_chapter(quote,source,list(self.source_documents.values()),doc,chapter,self.direct_cache))
-                    return self.semantic_sidecar(row,quote,[doc])
-                except Exception as exc:
-                    row['chapter_route_failure']={'route':chapter,'error':error_kind(exc)}
-                    # Do not silently substitute another chapter when the known one fails.
-                    row['status']='chapter_source_or_target_unavailable'
-                    return row
+                return self.retrieve_mapped_chapter(row,quote,source,chapter)
         if self.toc_matcher is not None:
             from early_toc import try_early_toc
             candidate,diagnostic=try_early_toc(self,row,quote,source)

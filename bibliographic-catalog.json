@@ -5,15 +5,16 @@
       "source_url": "https://www.marxists.org/francais/trotsky/oeuvres/1937/07/lt19370706.htm",
       "source_title": "Réponse à des questions de morale et d’histoire",
       "authors": "Léon Trotsky",
-      "target_provider": "wikirouge",
-      "target_url": "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/trotsky/1937/07/thomas.htm",
       "target_title": "The Questions of Wendelin Thomas",
       "whole_document_parallel": true,
       "evidence": [
         "https://www.marxists.org/francais/trotsky/oeuvres/1937/07/lt19370706.htm",
-        "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas"
+        "https://wikirouge.net/texts/en/The_Questions_of_Wendelin_Thomas",
+        "https://www.marxists.org/archive/trotsky/1937/07/thomas.htm"
       ],
-      "bibliography": "Letter to Wendelin Thomas, 6 July 1937. English publication: Socialist Appeal, vol. 1 no. 2, 21 August 1937, p. 3. French Wikirouge metadata incorrectly dates this to August.",
+      "bibliography": "Letter to Wendelin Thomas, 6 July 1937. English publication: Socialist Appeal, vol. 1 no. 2, 21 August 1937, p. 3. French Wikirouge metadata incorrectly dates this to August. MIA HTML carries the same publication details and credits Einde O'Callaghan for transcription.",
       "rights_note": "Publication provenance located; translator identity and applicable reuse rights not established. Review only.",
       "researched_on": "2026-11-25"
     },
@@ -54,19 +55,20 @@
       "source_url": "https://www.marxists.org/francais/luxembur/junius/index.html",
       "source_title": "La crise de la social-démocratie",
       "authors": "Rosa Luxemburg",
-      "source_document": "https://www.marxists.org/francais/luxembur/junius/rljhf.html",
       "target_provider": "mia",
-      "target_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch08.htm",
-      "target_title": "The Junius Pamphlet, chapter 8",
+      "target_url": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "target_title": "The Junius Pamphlet (The Crisis of German Social Democracy)",
       "whole_document_parallel": false,
       "evidence": [
         "https://www.marxists.org/francais/luxembur/junius/rljhf.html",
         "https://www.marxists.org/archive/luxemburg/1915/junius/",
-        "https://www.marxists.org/archive/luxemburg/1915/junius/ch08.htm"
+        "https://www.marxists.org/archive/luxemburg/1915/junius/ch08.htm",
+        "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm"
       ],
-      "bibliography": "French and English passages about the destruction of the European proletariat located by web search. English index credits Dave Hollis, translated from German, and states GNU Free Documentation License; the exact wiki quotation still needs to be located.",
+      "bibliography": "Complete English table of contents, eight chapters; Dave Hollis translation, with chapter 4 from the 1967 Merlin Press edition. Each quotation requires its own source and target match.",
       "rights_note": "MIA index declares GFDL; verify applicable chapter and compliance with wiki license before reuse.",
-      "researched_on": "2026-11-25"
+      "researched_on": "2026-11-25",
+      "target_toc": true
     },
     {
       "source_url": "https://www.marxists.org/francais/trotsky/livres/bcs/bcs05.htm",
@@ -243,6 +245,130 @@
       "bibliography": "English MIA contains both original English articles from The Labour Standard, 28 May and 4 June 1881. French Wikirouge identifies the French translation in La Revue Socialiste, March 1955. The French MIA leaf could not be decoded by the web reader; runner must confirm the actual French passage before retrieval.",
       "rights_note": "English originals published in 1881, not modern translations. Record exact transcription provenance and review applicable reuse rights; do not auto-authorize.",
       "researched_on": "2026-11-25"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/livres/bcs/bcs04.htm",
+      "source_title": "La Révolution russe",
+      "authors": "Léon Trotsky",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/trotsky/1932/11/oct.htm",
+      "target_title": "In Defence of October",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/livres/bcs/bcs04.htm",
+        "https://www.marxists.org/archive/trotsky/1932/11/oct.htm",
+        "https://www.marxists.org/francais/trotsky/oeuvres/fondamentaux.htm",
+        "https://www.marxists.org/francais/trotsky/oeuvres/1932/11/321125.htm"
+      ],
+      "bibliography": "Copenhagen speech, November 1932; French and English texts correspond by event and argument sequence. Edition differences require passage-level review.",
+      "rights_note": "Documentary route only; verify edition, attribution and reuse rights separately.",
+      "researched_on": "2026-11-28",
+      "source_titles": [
+        "Bolchevisme contre stalinisme"
+      ]
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/livres/bcs/bcs06.htm",
+      "source_title": "Le régime communiste aux U.S.A.",
+      "authors": "Léon Trotsky",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/trotsky/1934/08/ame.htm",
+      "target_title": "If America Should Go Communist",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/livres/bcs/bcs06.htm",
+        "https://www.marxists.org/archive/trotsky/1934/08/ame.htm",
+        "https://www.marxists.org/francais/trotsky/oeuvres/fondamentaux.htm"
+      ],
+      "bibliography": "French and English article openings and successive subjects correspond; written August 1934, published in Liberty on March 23, 1935. Some English passages are absent from this transcription; review exact coverage.",
+      "rights_note": "Documentary route only; verify edition, attribution and reuse rights separately.",
+      "researched_on": "2026-11-28",
+      "source_titles": [
+        "Bolchevisme contre stalinisme",
+        "Le régime communiste aux USA"
+      ]
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/trotsky/livres/bcs/bcs07.htm",
+      "source_title": "Bonapartisme bourgeois et bonapartisme soviétique",
+      "authors": "Léon Trotsky",
+      "target_provider": "wikirouge",
+      "target_url": "https://wikirouge.net/texts/en/Again_on_the_Question_of_Bonapartism",
+      "target_title": "Again on the Question of Bonapartism",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/trotsky/livres/bcs/bcs07.htm",
+        "https://wikirouge.net/texts/en/Again_on_the_Question_of_Bonapartism",
+        "https://www.marxists.org/francais/trotsky/oeuvres/1935/00/bonapartisme.pdf"
+      ],
+      "bibliography": "English subtitle identifies the same article; Wikirouge cites Writings of Leon Trotsky, 1934–1935, New York 1971, pp. 206–209, and dates it March 1, 1935; French alternate gives February 1935. Verify source and target passages; record dating difference.",
+      "rights_note": "Documentary route only; verify edition, attribution and reuse rights separately.",
+      "researched_on": "2026-11-28",
+      "source_titles": [
+        "Bolchevisme contre stalinisme"
+      ]
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/engels/works/1845/03/fe_18450315.htm",
+      "source_title": "La situation de la classe laborieuse en Angleterre",
+      "authors": "Friedrich Engels",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1845/condition-working-class/ch13.htm",
+      "target_title": "The Attitude of the Bourgeoisie Towards the Proletariat",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/engels/works/1845/03/fe_18450315.htm",
+        "https://www.marxists.org/archive/marx/works/1845/condition-working-class/ch13.htm",
+        "https://www.marxists.org/francais/engels/works/1845/03/fe_18450315_11.htm",
+        "https://www.marxists.org/archive/marx/works/1845/condition-working-class/index.htm"
+      ],
+      "bibliography": "Matching chapter headings and opening paragraphs. Panther Edition, 1969, as identified in English table of contents.",
+      "rights_note": "Documentary route only; verify edition, attribution and reuse rights separately.",
+      "researched_on": "2026-11-28",
+      "source_document": "https://www.marxists.org/francais/engels/works/1845/03/fe_18450315_11.htm"
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/engels/works/1894/01/18940125.htm",
+      "source_title": "Lettre à Borgius",
+      "authors": "Friedrich Engels",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1894/letters/94_01_25.htm",
+      "target_title": "Engels to Borgius",
+      "whole_document_parallel": true,
+      "evidence": [
+        "https://www.marxists.org/francais/engels/works/1894/01/18940125.htm",
+        "https://www.marxists.org/archive/marx/works/1894/letters/94_01_25.htm",
+        "https://www.marxists.org/archive/marx/works/1894/letters/index.htm"
+      ],
+      "bibliography": "Letter dated January 25, 1894; Donna Torr translation, International Publishers 1968, Sally Ryan transcription. Other published translations also exist.",
+      "rights_note": "Documentary route only; verify edition, attribution and reuse rights separately.",
+      "researched_on": "2026-11-28",
+      "source_titles": [
+        "Lettre à W. Borgius",
+        "Lettre à Walther Borgius"
+      ]
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm",
+      "source_title": "Résultats du procès de production immédiat",
+      "source_titles": [
+        "Le Capital",
+        "Un chapitre inédit du Capital",
+        "Travail productif et improductif"
+      ],
+      "authors": "Karl Marx",
+      "source_document": "https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1864/economic/ch02b.htm",
+      "target_title": "Productive and Unproductive Labour",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm",
+        "https://www.marxists.org/archive/marx/works/1864/economic/ch02b.htm"
+      ],
+      "bibliography": "The French section II.H, Travail productif et improductif, of the unpublished chapter of Capital corresponds to the English section Productive and Unproductive Labour in Results of the Direct Production Process (Economic Works of Karl Marx 1861-1864). Opening and sequence of examples correspond. Distinguish this manuscript from the ordinary first-volume chapters; no proof of whole-document parallelism or exact quotation boundaries.",
+      "rights_note": "English published translation; exact passage and reproduction rights require separate review.",
+      "researched_on": "2026-11-28"
     }
   ]
 }

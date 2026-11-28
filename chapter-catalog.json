@@ -140,6 +140,364 @@
       "fr_toc": "https://www.marxists.org/francais/harman/1979/qcqlm/index.htm",
       "en_toc": "https://www.marxists.org/archive/harman/1979/marxism/",
       "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp1.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch01.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "L'acquis",
+      "en_heading": "What Has Been Achieved",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp2.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch02.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "Le développement économique et les zigzags de la direction",
+      "en_heading": "Economic Growth and the Zigzags of the Leadership",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp4.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch04.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "La lutte pour le rendement du travail",
+      "en_heading": "The Struggle for the Productivity of Labor",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp5.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch05.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "Le Thermidor soviétique",
+      "en_heading": "The Soviet Thermidor",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp6.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch06.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "L'accroissement de l'inégalité et des antagonismes sociaux",
+      "en_heading": "The Growth of Inequality and Social Antagonisms",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp8.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch08.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "La politique étrangère et l'armée",
+      "en_heading": "Foreign Policy and the Army",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp9.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch09.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "Qu'est-ce que l'U.R.S.S.?",
+      "en_heading": "Social Relations in the Soviet Union",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp10.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch10.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "L'U.R.S.S. dans le miroir de la nouvelle constitution",
+      "en_heading": "The Soviet Union in the Mirror of the New Constitution",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp11.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1936/revbet/ch11.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "Où va l'U.R.S.S.?",
+      "en_heading": "Whither the Soviet Union?",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/revtrahie/frodcp.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1936/revbet/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr39.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch38.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "39. La paysannerie devant Octobre",
+      "en_heading": "38. The Peasantry Before October",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr40.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch39.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "40. La question nationale",
+      "en_heading": "39. The Problem of Nationalities",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr41.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch40.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "41. Sortie du préparlement et lutte pour le congrès des soviets",
+      "en_heading": "40. Withdrawal from the Pre-Parliament and Struggle for the Soviet Congress",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr45.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch44.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "45. La prise de la capitale",
+      "en_heading": "44. The Conquest of the Capital",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr46.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch45.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "46. La prise du palais d'Hiver",
+      "en_heading": "45. The Capture of the Winter Palace",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr47.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch46.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "47. L'insurrection d'Octobre",
+      "en_heading": "46. The October Insurrection",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr48.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch47.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "48. Le congrès de la dictature soviétique",
+      "en_heading": "47. The Congress of the Soviet Dictatorship",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr49.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch48.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "49. Conclusion",
+      "en_heading": "48. Conclusion",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c_6.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch04.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "IV. Le terrorisme",
+      "en_heading": "Chapter 4. Terrorism",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c_10.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch08.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "IX. Les questions d'organisation du travail",
+      "en_heading": "Chapter 8. Problems of the Organization of Labor, The Soviet Government and Industry",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/t_c/t_c.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1920/terrcomm/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr30.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch29.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "30. Kérensky et Kornilov",
+      "en_heading": "29. Kerensky and Kornilov",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr31.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch30.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "31. La conférence d'Etat à Moscou",
+      "en_heading": "30. The State Conference in Moscow",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr37.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch36.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "37. Les bolchéviks et les soviets",
+      "en_heading": "36. The Bolsheviks and the Soviets",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrr38.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/1930/hrr/ch37.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "38. La dernière coalition",
+      "en_heading": "37. The Last Coalition",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/hrrusse/hrrsomm.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/1930/hrr/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_03.htm",
+      "en_url": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch03.htm",
+      "authors": "Karl Kautsky",
+      "fr_heading": "III. La Classe capitaliste",
+      "en_heading": "III. The Capitalist Class",
+      "fr_toc": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+      "en_toc": "https://www.marxists.org/archive/kautsky/1892/erfurt/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_05.htm",
+      "en_url": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch05.htm",
+      "authors": "Karl Kautsky",
+      "fr_heading": "V. La Lutte de classe",
+      "en_heading": "V. The Class Struggle",
+      "fr_toc": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+      "en_toc": "https://www.marxists.org/archive/kautsky/1892/erfurt/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp1.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch01.htm",
+      "authors": "Lénine",
+      "fr_heading": "I. La concentration de la production et les monopoles",
+      "en_heading": "I. Concentration of Production and Monopolies",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp2.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch02.htm",
+      "authors": "Lénine",
+      "fr_heading": "II. Les banques et leur nouveau rôle",
+      "en_heading": "II. Banks and Their New Role",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp7.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch07.htm",
+      "authors": "Lénine",
+      "fr_heading": "VII. L'impérialisme, stade particulier du capitalisme",
+      "en_heading": "VII. Imperialism as a Special Stage of Capitalism",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp10.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/ch10.htm",
+      "authors": "Lénine",
+      "fr_heading": "X. La place de l'impérialisme dans l'Histoire",
+      "en_heading": "X. The Place of Imperialism in History",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1916/vlimperi/vlimp.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1916/imp-hsc/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/lenin/works/1917/08/er3.htm",
+      "en_url": "https://www.marxists.org/archive/lenin/works/1917/staterev/ch03.htm",
+      "authors": "Lénine",
+      "fr_heading": "III. L'Etat et la révolution. L'expérience de la Commune de Paris (1871). Analyse de Marx",
+      "en_heading": "III. Experience of the Paris Commune of 1871. Marx's Analysis",
+      "fr_toc": "https://www.marxists.org/francais/lenin/works/1917/08/er00t.htm",
+      "en_toc": "https://www.marxists.org/archive/lenin/works/1917/staterev/",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000_04.htm",
+      "en_url": "https://www.marxists.org/archive/kautsky/1892/erfurt/ch04.htm",
+      "authors": "Karl Kautsky",
+      "fr_heading": "IV. La Société future",
+      "en_heading": "IV. The Commonwealth of the Future (parts 1 and 2)",
+      "fr_toc": "https://www.marxists.org/francais/kautsky/works/1892/00/kautsky_18920000.htm",
+      "en_toc": "https://www.marxists.org/archive/kautsky/1892/erfurt/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof",
+      "en_urls": [
+        "https://www.marxists.org/archive/kautsky/1892/erfurt/ch04.htm",
+        "https://www.marxists.org/archive/kautsky/1892/erfurt/ch04a.htm"
+      ]
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/trotsky/livres/defmarx/dma7.htm",
+      "en_url": "https://www.marxists.org/archive/trotsky/idom/dm/21-scratch1.htm",
+      "authors": "Léon Trotsky",
+      "fr_heading": "D'une égratignure au danger de gangrène",
+      "en_heading": "From a Scratch – To the Danger of Gangrene (parts 1 and 2)",
+      "fr_toc": "https://www.marxists.org/francais/trotsky/livres/defmarx/dmtitle.htm",
+      "en_toc": "https://www.marxists.org/archive/trotsky/idom/dm/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof",
+      "en_urls": [
+        "https://www.marxists.org/archive/trotsky/idom/dm/21-scratch1.htm",
+        "https://www.marxists.org/archive/trotsky/idom/dm/22-scratch2.htm"
+      ]
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/luxembur/junius/rljaf.html",
+      "en_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch01.htm",
+      "authors": "Rosa Luxemburg",
+      "fr_heading": "1. Socialisme ou Barbarie ?",
+      "en_heading": "Chapter 1",
+      "fr_toc": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "en_toc": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/luxembur/junius/rljbf.html",
+      "en_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch02.htm",
+      "authors": "Rosa Luxemburg",
+      "fr_heading": "2. Devant le fait indéniable de la guerre",
+      "en_heading": "Chapter 2",
+      "fr_toc": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "en_toc": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
+    },
+    {
+      "fr_url": "https://www.marxists.org/francais/luxembur/junius/rljff.html",
+      "en_url": "https://www.marxists.org/archive/luxemburg/1915/junius/ch06.htm",
+      "authors": "Rosa Luxemburg",
+      "fr_heading": "6. La fin de la lutte des classes",
+      "en_heading": "Chapter 6",
+      "fr_toc": "https://www.marxists.org/francais/luxembur/junius/index.html",
+      "en_toc": "https://www.marxists.org/archive/luxemburg/1915/junius/index.htm",
+      "scope": "reviewed_bilingual_chapter_not_parallel_edition_proof"
     }
   ]
 }
