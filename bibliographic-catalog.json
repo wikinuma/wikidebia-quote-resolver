@@ -347,6 +347,28 @@
         "Lettre à W. Borgius",
         "Lettre à Walther Borgius"
       ]
+    },
+    {
+      "source_url": "https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm",
+      "source_title": "Résultats du procès de production immédiat",
+      "source_titles": [
+        "Le Capital",
+        "Un chapitre inédit du Capital",
+        "Travail productif et improductif"
+      ],
+      "authors": "Karl Marx",
+      "source_document": "https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm",
+      "target_provider": "mia",
+      "target_url": "https://www.marxists.org/archive/marx/works/1864/economic/ch02b.htm",
+      "target_title": "Productive and Unproductive Labour",
+      "whole_document_parallel": false,
+      "evidence": [
+        "https://www.marxists.org/francais/marx/works/1867/Capital-inedit/kmcapI-6-2H.htm",
+        "https://www.marxists.org/archive/marx/works/1864/economic/ch02b.htm"
+      ],
+      "bibliography": "The French section II.H, Travail productif et improductif, of the unpublished chapter of Capital corresponds to the English section Productive and Unproductive Labour in Results of the Direct Production Process (Economic Works of Karl Marx 1861-1864). Opening and sequence of examples correspond. Distinguish this manuscript from the ordinary first-volume chapters; no proof of whole-document parallelism or exact quotation boundaries.",
+      "rights_note": "English published translation; exact passage and reproduction rights require separate review.",
+      "researched_on": "2026-11-28"
     }
   ]
 }
