@@ -46,3 +46,37 @@ jobs:
                       '--resolver-root',str(resolver)]
           runpy.run_path(sys.argv[0], run_name='__main__')
           PY
+      - name: Diagnose the shared unavailable frozen benchmark input
+        working-directory: resolver
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          import json
+          from navigation import WD_API, raw_parse, extract_citation_ref, error_kind
+          from pilot_full import PilotClient
+          data = json.loads(Path('data/mia/benchmarks/20261126/prior-cohort.json').read_text())
+          case, = [c for c in data['cases'] if c['id'] == 'inventory-f063c412bcc27af84c04']
+          ref = case['citation_ref']
+          outcome = {'case_id':case['id'], 'pinned_revision':ref['revision'],
+                     'scope':'diagnostic_only_not_benchmark_success'}
+          with TemporaryDirectory() as tmp:
+              client = PilotClient(Path(tmp), budget=3)
+              try:
+                  title, rev, raw = raw_parse(client, WD_API, oldid=ref['revision'])
+                  outcome['revision_matches'] = rev == ref['revision']
+                  outcome['title_matches'] = title.replace('_',' ') == case['wiki_title'].replace('_',' ')
+                  if not outcome['title_matches']:
+                      # Public page name only; no quote or raw page in logs.
+                      outcome['observed_public_title'] = title
+                  try:
+                      extract_citation_ref(raw, ref)
+                      outcome['citation_fingerprints_match'] = True
+                  except Exception as exc:
+                      outcome['citation_fingerprints_match'] = False
+                      outcome['citation_error'] = error_kind(exc)
+              except Exception as exc:
+                  outcome['input_error'] = error_kind(exc)
+              outcome['requests'] = client.requests
+          print(json.dumps(outcome, ensure_ascii=False, sort_keys=True))
+          PY

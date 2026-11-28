@@ -14,7 +14,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
-from citation_registry import CitationRegistry, fingerprint, source_identity
+from citation_registry import CitationRegistry, fingerprint, passage_identity, source_identity
 from evidence_audit import Auditor
 from navigation import WD_API, raw_parse, templates
 from pilot_full import PilotClient
@@ -28,6 +28,7 @@ def replay(bundle, expected_sha, registry, load_revision, audit):
     imported = import_bundle(registry, bundle, expected_sha)
     entries = bundle['entries']
     states = Counter()
+    retry_reasons = Counter()
     pages = {}
     retrieval_calls = 0
 
@@ -88,6 +89,12 @@ def replay(bundle, expected_sha, registry, load_revision, audit):
             if 'published_passage' in result:
                 raise ValueError('unverified_text_returned')
             states[result['state']] += 1
+            if result['state'] == 'retry_documentary':
+                # Enumerate a small fixed vocabulary, not arbitrary error text.
+                reason = result.get('evidence', {}).get('reason') or result.get('reason')
+                retry_reasons[reason if reason in {
+                    'stored_passage_not_revalidated', 'pinned_revision_mismatch',
+                    'inventory_source_identity_mismatch'} else 'other'] += 1
             continue
         passage = result['published_passage']
         if (result['citation_ref'] != ref
@@ -96,11 +103,13 @@ def replay(bundle, expected_sha, registry, load_revision, audit):
                 or passage['auto_publish'] is not False
                 or passage['editorial_review_required'] is not True):
             raise ValueError('audit_handoff_identity_mismatch')
-        # Do not count another receipt as verification of this exact entry,
-        # even if the registry considers the two selected spans equivalent.
-        if passage['receipt']['entry_sha256'] != row['entry_sha256']:
-            states['different_receipt_selected'] += 1
-            continue
+        # A second receipt is acceptable for the same locked occurrence only
+        # if the source identity and the existing registry's passage identity
+        # agree. Never label this as revalidation of the original envelope.
+        selected = passage['receipt']
+        if (selected['source']['source_key'] != source['source_key']
+                or passage_identity(selected) != passage_identity(entry)):
+            raise ValueError('audit_selected_passage_mismatch')
         from resolver import sha
         fragments = passage['fragments']
         if (not fragments
@@ -108,18 +117,26 @@ def replay(bundle, expected_sha, registry, load_revision, audit):
                     for f in fragments] != entry['fragments']
                 or any(sha(f['text'].encode()) != f['text_sha256'] for f in fragments)):
             raise ValueError('audit_fragment_mismatch')
-        states['exact_receipt_reconstructed'] += 1
+        if selected['entry_sha256'] != row['entry_sha256']:
+            states['equivalent_receipt_reconstructed'] += 1
+        else:
+            states['exact_receipt_reconstructed'] += 1
 
     if sum(states.values()) != len(entries) or retrieval_calls:
         raise ValueError('audit_accounting_or_retrieval_failure')
     verified = states['exact_receipt_reconstructed']
+    usable = verified + states['equivalent_receipt_reconstructed']
     return {'schema': 'wikidebia-prepared-bundle-replay-1',
             'scope': 'historical_pinned_receipts_lookup_only_not_current_kit_work',
             'bundle_sha256': expected_sha, 'entries': len(entries),
             'conflicting_sources': imported['conflicting_sources'],
             'states': dict(sorted(states.items())),
             'exact_receipts_reconstructed': verified,
+            'equivalent_receipts_reconstructed': usable - verified,
+            'entries_with_revalidated_passage': usable,
+            'retry_reasons': dict(sorted(retry_reasons.items())),
             'all_receipts_revalidated': bool(entries) and verified == len(entries),
+            'all_entries_have_revalidated_passage': bool(entries) and usable == len(entries),
             'source_revisions_attempted': len(pages),
             'retrieval_calls': retrieval_calls, 'model_calls': 0,
             'rights': 'unreviewed', 'auto_publish': False}
@@ -150,7 +167,7 @@ def main(argv=None):
             result['request_error_count'] = sum(
                 e.get('status') == 'error' for e in client.events)
         print(json.dumps(result, sort_keys=True))
-        return 0 if result['all_receipts_revalidated'] else 2
+        return 0 if result['all_entries_have_revalidated_passage'] else 2
     except Exception as exc:
         # Never print the private bundle, title, passage or exception message.
         print(json.dumps({'status': 'audit_failed', 'error_type': type(exc).__name__,

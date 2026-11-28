@@ -45,6 +45,21 @@ class PreparedBundleReplayTests(unittest.TestCase):
         self.assertEqual(export_bundle(self.registry),self.bundle)
         self.assertEqual(export_bundle(self.target),self.bundle)
 
+    def test_two_concordant_receipts_are_not_two_exact_envelopes(self):
+        c = candidate(self.doc)
+        rv = review(RAW,self.rf,self.doc,c)
+        rv['reviewer'] = 'another reviewer'
+        self.registry.record(RAW,self.rf,self.doc,c,rv)
+        self.bundle = export_bundle(self.registry)
+        self.digest = fingerprint(self.bundle)
+        got = self.run_audit()
+        self.assertEqual(got['entries'],2)
+        self.assertEqual(got['states'],{
+            'exact_receipt_reconstructed':1,'equivalent_receipt_reconstructed':1})
+        self.assertEqual(got['entries_with_revalidated_passage'],2)
+        self.assertFalse(got['all_receipts_revalidated'])
+        self.assertTrue(got['all_entries_have_revalidated_passage'])
+
     def test_changed_source_or_target_abstains(self):
         for raw,doc,revision,expected in [
             (RAW.replace('plusieurs','autres'),self.doc,7,'source_identity_unconfirmed'),
@@ -54,6 +69,9 @@ class PreparedBundleReplayTests(unittest.TestCase):
                 got = self.run_audit(raw,doc,revision)
                 self.assertFalse(got['all_receipts_revalidated'])
                 self.assertEqual(got['states'],{expected:1})
+                self.assertFalse(got['all_entries_have_revalidated_passage'])
+                if expected == 'retry_documentary':
+                    self.assertEqual(got['retry_reasons'],{'stored_passage_not_revalidated':1})
 
     def test_unavailable_revision_and_wrong_digest(self):
         def unavailable(_):
