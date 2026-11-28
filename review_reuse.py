@@ -1,6 +1,7 @@
 """Opt-in offline re-association of sealed campaign review passages.
 
-A plan names only old packet IDs and Unicode offsets. The original packets
+A plan names only old packet IDs and Unicode offsets or bounded padding.
+Extensions read only the identical verified cached document. The original packets
 remain immutable; a new, ordinary review packet is sealed locally. No search,
 network read, receipt registration or publication occurs during preparation.
 Normal Campaign.apply reopens the pinned source and exact target document.
@@ -13,13 +14,16 @@ import os
 from pathlib import Path
 
 from alignment_store import encode
-from citation_registry import fingerprint
+from citation_registry import fingerprint, check_target
+from alignment import text_and_starts
+from review_context import exact_target
 from grouped_review import PACKET, REPLY, REJECT, private_dir
 from prepare_citations import Campaign, AWAITING, INSUFFICIENT, load_inventory
 from resolver import sha
 from work_library import WorkLibrary
 
 PLAN = 'wikidebia-reuse-review-plan-1'
+EXTENDED_PLAN = 'wikidebia-reuse-review-plan-2'
 
 
 def applied_packets(campaign):
@@ -58,10 +62,42 @@ def checked_passage(packet, pid):
     return target, text
 
 
-def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=False):
+def extend_cached_passage(prior, source, entry, load_document):
+    """Expand an earlier authorized window on the identical cached document.
+    Never trust a replacement body, parser output, URL or document revision.
+    """
+    pid = entry['target_pid']
+    if pid not in source['candidates']:
+        raise ValueError('reuse_extension_not_authorized')
+    padding = entry['extend']
+    if (not isinstance(padding, list) or len(padding) != 2
+            or any(type(n) is not int or not 0 <= n <= 4000 for n in padding)
+            or not any(padding)):
+        raise ValueError('reuse_invalid_extension')
+    target, _ = checked_passage(prior, pid)
+    if load_document is None:
+        raise ValueError('reuse_offline_cache_required')
+    doc = load_document(target['document']['url'], 'en')
+    if doc is None or isinstance(doc, dict):
+        raise ValueError('reuse_cached_document_unavailable')
+    # In addition to the body hash, check the parser and old coordinates.
+    try:
+        check_target(doc, target)
+    except (ValueError, TypeError, AttributeError, KeyError) as exc:
+        raise ValueError('reuse_cached_document_mismatch') from exc
+    full, _ = text_and_starts(doc)
+    a = max(0, target['char_start'] - padding[0])
+    b = min(len(full), target['char_end'] + padding[1])
+    if b-a > 15000:
+        raise ValueError('reuse_invalid_extension')
+    return exact_target(doc, a, b), full[a:b], target
+
+
+def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=False,
+                 load_document=None, skip_unavailable=False):
     if (not isinstance(plan, dict)
             or set(plan) != {'schema', 'inventory_sha256', 'entries'}
-            or plan['schema'] != PLAN
+            or plan['schema'] not in (PLAN, EXTENDED_PLAN)
             or plan['inventory_sha256'] != campaign.inventory['manifest_sha256']
             or not isinstance(plan['entries'], list)
             or not 1 <= len(plan['entries']) <= 20
@@ -72,14 +108,16 @@ def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=Fals
     history = applied_packets(campaign)
     sources, targets, documents, passages, groups, proofs = {}, {}, {}, {}, [], {}
     seen, doc_ids, target_ids = set(), {}, {}
-    skipped_examined = []
+    skipped_examined, skipped_unavailable = [], []
     for entry in plan['entries']:
-        if (not isinstance(entry, dict)
-                or set(entry) != {'packet', 'qid', 'donor_packet', 'donor_pid', 'range'}):
+        if not isinstance(entry, dict):
+            raise ValueError('reuse_invalid_entry')
+        extension = (plan['schema'] == EXTENDED_PLAN
+                     and set(entry) == {'packet', 'qid', 'target_pid', 'extend'})
+        if not extension and set(entry) != {'packet', 'qid', 'donor_packet', 'donor_pid', 'range'}:
             raise ValueError('reuse_invalid_entry')
         prior, reply = history[entry['packet']]
-        donor, _ = history[entry['donor_packet']]
-        old_q, donor_pid = entry['qid'], entry['donor_pid']
+        old_q = entry['qid']
         source = prior['sources'][old_q]
         if len(source['occurrences']) != 1:
             raise ValueError('reuse_distinct_occurrence_required')
@@ -100,38 +138,51 @@ def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=Fals
         group, chapter, quote = quote_view(prior, old_q)
         if not group['work']:
             raise ValueError('reuse_work_identity_missing')
-        old_targets = [checked_passage(prior, pid)[0] for pid in source['candidates']]
-        target, donor_text = checked_passage(donor, donor_pid)
-        # Same exact document, not just URL, and a donor actually offered to
-        # another occurrence of the same bibliographic work.
-        if not any(t['document'] == target['document'] for t in old_targets):
-            raise ValueError('reuse_document_not_previously_authorized')
-        donor_ok = False
-        for dq, ds in donor['sources'].items():
-            if donor_pid not in ds['candidates']:
+        if extension:
+            try:
+                new_target, text, target = extend_cached_passage(
+                    prior, source, entry, load_document)
+            except ValueError as exc:
+                if not skip_unavailable or str(exc) not in {
+                        'reuse_cached_document_unavailable', 'reuse_cached_document_mismatch'}:
+                    raise
+                skipped_unavailable.append({'case_id': cid, 'reason': str(exc)})
                 continue
-            dg, _, _ = quote_view(donor, dq)
-            if ((dg['authors'], dg['work']) == (group['authors'], group['work'])
-                    and any(o['case_id'] != cid for o in ds['occurrences'])):
-                donor_ok = True
-                break
-        if not donor_ok:
-            raise ValueError('reuse_no_same_work_donor')
-        bounds = entry['range']
-        if (not isinstance(bounds, list) or len(bounds) != 2
-                or any(type(n) is not int for n in bounds)
-                or not 0 <= bounds[0] < bounds[1] <= len(donor_text)
-                or bounds[1] - bounds[0] > 15000):
-            raise ValueError('reuse_invalid_range')
-        a, b = bounds
-        text = donor_text[a:b]
-        if not text.strip():
-            raise ValueError('reuse_empty_passage')
-        new_target = {'document': deepcopy(target['document']),
-                      'char_start': target['char_start'] + a,
-                      'char_end': target['char_start'] + b,
-                      'text_sha256': sha(text.encode())}
-        new_target['candidate_key'] = fingerprint(new_target)
+        else:
+            donor, _ = history[entry['donor_packet']]
+            donor_pid = entry['donor_pid']
+            old_targets = [checked_passage(prior, pid)[0] for pid in source['candidates']]
+            target, donor_text = checked_passage(donor, donor_pid)
+            # Same exact document, not just URL, and a donor actually offered to
+            # another occurrence of the same bibliographic work.
+            if not any(t['document'] == target['document'] for t in old_targets):
+                raise ValueError('reuse_document_not_previously_authorized')
+            donor_ok = False
+            for dq, ds in donor['sources'].items():
+                if donor_pid not in ds['candidates']:
+                    continue
+                dg, _, _ = quote_view(donor, dq)
+                if ((dg['authors'], dg['work']) == (group['authors'], group['work'])
+                        and any(o['case_id'] != cid for o in ds['occurrences'])):
+                    donor_ok = True
+                    break
+            if not donor_ok:
+                raise ValueError('reuse_no_same_work_donor')
+            bounds = entry['range']
+            if (not isinstance(bounds, list) or len(bounds) != 2
+                    or any(type(n) is not int for n in bounds)
+                    or not 0 <= bounds[0] < bounds[1] <= len(donor_text)
+                    or bounds[1] - bounds[0] > 15000):
+                raise ValueError('reuse_invalid_range')
+            a, b = bounds
+            text = donor_text[a:b]
+            if not text.strip():
+                raise ValueError('reuse_empty_passage')
+            new_target = {'document': deepcopy(target['document']),
+                          'char_start': target['char_start'] + a,
+                          'char_end': target['char_start'] + b,
+                          'text_sha256': sha(text.encode())}
+            new_target['candidate_key'] = fingerprint(new_target)
         # Do not recycle a passage (or mere truncation) already shown to
         # this exact occurrence, even if it used a different passage ID.
         already_examined = False
@@ -170,19 +221,25 @@ def build_packet(campaign, plan, max_payload_chars=120000, *, skip_examined=Fals
                        'chapters': [{'fr_url': chapter['fr_url'], 'article': chapter['article'],
                                      'citations': [view]}]})
         proofs[qid] = {**deepcopy(entry), 'case_id': cid,
-                       'donor_candidate_key': target['candidate_key'],
+                       ('prior_candidate_key' if extension else 'donor_candidate_key'):
+                           target['candidate_key'],
                        'new_candidate_key': key}
     payload = {'groups': groups, 'documents': documents, 'passages': passages}
     if len(encode(payload)) > max_payload_chars:
         raise ValueError('reuse_payload_limit')
-    return {'schema': PACKET, 'payload': payload, 'sources': sources,
+    packet = {'schema': PACKET, 'payload': payload, 'sources': sources,
             'targets': targets, 'skipped': [], 'rights': 'unreviewed',
             'auto_publish': False, 'campaign_batch': fingerprint(plan),
             'campaign_reuse': proofs, 'campaign_reuse_skipped_examined': skipped_examined}
+    if plan['schema'] == EXTENDED_PLAN:
+        packet['campaign_reuse_skipped_unavailable'] = skipped_unavailable
+    return packet
 
 
-def prepare(campaign, plan, *, write=False, skip_examined=False):
-    packet = build_packet(campaign, plan, skip_examined=skip_examined)
+def prepare(campaign, plan, *, write=False, skip_examined=False,
+            load_document=None, skip_unavailable=False):
+    packet = build_packet(campaign, plan, skip_examined=skip_examined,
+                          load_document=load_document, skip_unavailable=skip_unavailable)
     digest = fingerprint(packet)
     registered = write and bool(packet['sources'])
     if registered:
@@ -197,6 +254,7 @@ def prepare(campaign, plan, *, write=False, skip_examined=False):
     return {'packet_sha256': digest if packet['sources'] else None,
             'occurrences': len(packet['sources']),
             'skipped_examined': packet['campaign_reuse_skipped_examined'],
+            'skipped_unavailable': packet.get('campaign_reuse_skipped_unavailable', []),
             'candidate_chars': sum(p['length'] for p in packet['payload']['passages'].values()),
             'prepared': registered, 'network_requests': 0, 'auto_publish': False,
             'rights': 'unreviewed'}
@@ -210,6 +268,8 @@ def main():
                    help='Register a new open packet; otherwise preview only')
     p.add_argument('--skip-examined', action='store_true',
                    help='Report and omit passages already examined for that exact occurrence')
+    p.add_argument('--skip-unavailable', action='store_true',
+                   help='Omit cache misses or document mismatches, never substitute evidence')
     a = p.parse_args()
     os.umask(0o077)
     state = private_dir(a.state)
@@ -218,8 +278,14 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with WorkLibrary(state/'works.sqlite3') as library:
             campaign = Campaign(library, load_inventory(state/'inventory.json'))
+            loader = None
+            if plan.get('schema') == EXTENDED_PLAN:
+                from evidence_audit import Auditor
+                from pilot_full import PilotClient
+                loader = Auditor(PilotClient(state/'http', offline=True)).document
             print(encode(prepare(campaign, plan, write=a.prepare,
-                                 skip_examined=a.skip_examined)))
+                                 skip_examined=a.skip_examined, load_document=loader,
+                                 skip_unavailable=a.skip_unavailable)))
     return 0
 
 

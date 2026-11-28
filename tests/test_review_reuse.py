@@ -12,7 +12,7 @@ from grouped_review import build_packet, REPLY, review_view
 from prepare_citations import Campaign, AWAITING, INSUFFICIENT, REVIEWED
 from resolver import sha
 from review_bundle import build_bundle
-from review_reuse import PLAN, prepare
+from review_reuse import PLAN, EXTENDED_PLAN, prepare
 from test_citation_registry import RAW, QUOTE, ref, document
 from work_library import WorkLibrary
 
@@ -151,6 +151,66 @@ class ReuseReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'reuse_document_not_previously_authorized'):
             prepare(self.c, plan, write=True)
         self.assertIsNone(self.c.open_packet())
+
+    def extension_plan(self):
+        return {'schema': EXTENDED_PLAN, 'inventory_sha256': 'a'*64,
+                'entries': [{'packet': self.prior, 'qid': 'q1', 'target_pid': 'p1',
+                             'extend': [0, self.end-self.mid]}]}
+
+    def test_extend_identical_cached_document_and_import(self):
+        plan = self.extension_plan()
+        preview = prepare(self.c, plan, load_document=self.audit.document)
+        self.assertEqual(preview['candidate_chars'], self.end)
+        self.assertFalse(preview['prepared'])
+        result = prepare(self.c, plan, write=True, load_document=self.audit.document)
+        self.assertEqual(result['packet_sha256'], preview['packet_sha256'])
+        self.assertEqual(result['network_requests'], 0)
+        digest, packet = self.c.open_packet()
+        self.assertEqual(review_view(packet)['passages']['p1']['text'], self.text[:self.end])
+        self.assertEqual(packet['targets']['p1']['char_end'], self.end)
+        self.assertIn('prior_candidate_key', packet['campaign_reuse']['q1'])
+        reply = {'schema': REPLY, 'packet_sha256': digest, 'reviewer': 'test',
+                 'decisions': [{'id': 'q1', 'decision': 'boundary_adjustment',
+                                'candidate': 'p1', 'ranges': [[self.mid, self.end]]}]}
+        self.assertEqual(self.c.apply(reply, self.raw, self.audit)['recorded'], 1)
+        self.assertEqual(self.c.latest('1')[0], REVIEWED)
+
+    def test_cached_extension_requires_exact_document_and_explicit_novel_range(self):
+        plan = self.extension_plan()
+        with self.assertRaisesRegex(ValueError, 'reuse_offline_cache_required'):
+            prepare(self.c, plan, write=True)
+        miss = lambda *_: {'status':'document_unavailable'}
+        with self.assertRaisesRegex(ValueError, 'reuse_cached_document_unavailable'):
+            prepare(self.c, plan, write=True, load_document=miss)
+        wrong = document(digest=sha(b'changed'), blocks=self.doc.blocks)
+        with self.assertRaisesRegex(ValueError, 'reuse_cached_document_mismatch'):
+            prepare(self.c, plan, write=True, load_document=lambda *_: wrong)
+        for pad in ([0,0], [False, 2], [0,4001], [-1,2]):
+            bad = deepcopy(plan)
+            bad['entries'][0]['extend'] = pad
+            with self.assertRaisesRegex(ValueError, 'reuse_invalid_extension'):
+                prepare(self.c, bad, load_document=self.audit.document)
+        bad = deepcopy(plan)
+        bad['entries'][0]['target_pid'] = 'p99'
+        with self.assertRaisesRegex(ValueError, 'reuse_extension_not_authorized'):
+            prepare(self.c, bad, load_document=self.audit.document)
+        bad = deepcopy(plan)
+        bad['entries'][0]['extend'] = [20,0]
+        with self.assertRaisesRegex(ValueError, 'reuse_passage_already_examined'):
+            prepare(self.c, bad, load_document=self.audit.document)
+        self.assertIsNone(self.c.open_packet())
+
+    def test_cache_miss_can_be_skipped_without_losing_other_reassociation(self):
+        plan = self.extension_plan()
+        third = self.history('3', 0, self.mid, 'uncertain')
+        plan['entries'].append({**self.plan['entries'][0], 'packet': third})
+        result = prepare(self.c, plan, write=True, skip_unavailable=True,
+                         load_document=lambda *_: {'status':'document_unavailable'})
+        self.assertEqual(result['occurrences'], 1)
+        self.assertEqual(result['skipped_unavailable'], [
+            {'case_id':'1','reason':'reuse_cached_document_unavailable'}])
+        self.assertEqual(self.c.latest('1')[0], INSUFFICIENT)
+        self.assertEqual(self.c.latest('3')[0], AWAITING)
 
     def test_reject_tampered_historical_packet(self):
         body = self.c.db.execute('SELECT packet FROM campaign_packets_v1 WHERE digest=?',
