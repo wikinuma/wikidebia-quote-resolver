@@ -16,43 +16,53 @@
       "sections": [
         {
           "heading": "Préface",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/intro.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/intro.htm",
+          "pdf_page": 5
         },
         {
           "heading": "I. Le rapport des forces",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch01.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch01.htm",
+          "pdf_page": 9
         },
         {
           "heading": "II. La dictature du prolétariat",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch02.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch02.htm",
+          "pdf_page": 13
         },
         {
           "heading": "III. La démocratie",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch03.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch03.htm",
+          "pdf_page": 18
         },
         {
           "heading": "IV. Le terrorisme",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch04.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch04.htm",
+          "pdf_page": 29
         },
         {
           "heading": "V. La Commune de Paris et la Russie des Soviets",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch05.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch05.htm",
+          "pdf_page": 41
         },
         {
           "heading": "VI. Marx et Kautsky",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch06.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch06.htm",
+          "pdf_page": 54
         },
         {
           "heading": "VIII. La classe ouvrière et sa politique soviétique",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch07.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch07.htm",
+          "pdf_page": 58
         },
         {
           "heading": "IX. Les questions d'organisation du travail",
-          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch08.htm"
+          "en_url": "https://www.marxists.org/archive/trotsky/1920/terrcomm/ch08.htm",
+          "pdf_page": 75
         },
         {
           "heading": "X. Karl Kautsky, son école et son livre",
-          "en_url": null
+          "en_url": null,
+          "pdf_page": 103
         }
       ],
       "evidence": [
@@ -61,7 +71,8 @@
         "https://www.marxists.org/archive/trotsky/1920/terrcomm/intro.htm"
       ],
       "scope": "reviewed_titles_not_proof_of_parallel_edition",
-      "rights_note": "Alternative French transcription hosted by MIA. PDF body numbering differs from its own TOC. Only identified sections with a verified quote location may supply English review candidates. No rights approval. The French author preface corresponds to the English Introduction, not H. N. Brailsford's English Preface."
+      "rights_note": "Alternative French transcription hosted by MIA. PDF body numbering differs from its own TOC. Only identified sections with a verified quote location may supply English review candidates. No rights approval. The French author preface corresponds to the English Introduction, not H. N. Brailsford's English Preface. Physical PDF pages are documented against the body headings, not the table of contents. Page references are one-based; printed numbers start at zero.",
+      "expected_pdf_pages": 123
     }
   ]
 }

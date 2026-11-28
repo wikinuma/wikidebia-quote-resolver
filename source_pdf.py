@@ -10,7 +10,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from alignment import OMISSION, exact_occurrences
+from alignment import OMISSION, exact_occurrences, tokens_with_offsets
 from alignment_store import document_identity
 from bibliography import match_catalog
 from navigation import canonical_mia, error_kind
@@ -48,6 +48,7 @@ def load_pdf_catalog(path):
         sections = e['sections']
         if not 2 <= len(sections) <= 100 or sections[-1]['en_url'] is not None:
             raise ValueError('missing_pdf_terminal_heading')
+        validate_page_anchors(e)
         headings = [norm(x['heading']) for x in sections]
         if any(not x for x in headings) or len(headings) != len(set(headings)):
             raise ValueError('ambiguous_pdf_headings')
@@ -58,6 +59,20 @@ def load_pdf_catalog(path):
         if len(set(targets)) != len(targets):
             raise ValueError('duplicate_pdf_target')
     return tuple(data['entries'])
+
+
+def validate_page_anchors(entry):
+    anchors = [s.get('pdf_page') for s in entry['sections']]
+    if all(a is None for a in anchors):
+        if 'expected_pdf_pages' in entry:
+            raise ValueError('source_pdf_page_count_without_anchors')
+        return False
+    count = entry.get('expected_pdf_pages')
+    if (type(count) is not int or not 1 <= count <= 1000
+            or any(type(a) is not int or not entry['skip_pages'] < a <= count for a in anchors)
+            or anchors != sorted(set(anchors))):
+        raise ValueError('invalid_source_pdf_page_anchors')
+    return True
 
 
 def extract_pdf(body):
@@ -75,6 +90,64 @@ def extract_pdf(body):
     return text
 
 
+def page_anchored_documents(pages, entry, digest):
+    """Verify a complete body heading at the documented physical page start.
+
+    The page number alone is not evidence. Token offsets handle a heading
+    split across lines or adjacent to the first paragraph without guessing
+    a new title. If the edition or heading changes, fail before any retry.
+    """
+    if len(pages) != entry['expected_pdf_pages']:
+        raise ValueError(f"source_pdf_page_count_mismatch: expected {entry['expected_pdf_pages']}, got {len(pages)}")
+    cleaned = []
+    removed_numbers = 0
+    for i, page in enumerate(pages):
+        lines = page.splitlines()
+        nonempty = [j for j,line in enumerate(lines) if line.strip()]
+        if nonempty:
+            expected = str(i + entry['footer_page_offset'])
+            edges = {j for j in (nonempty[0],nonempty[-1]) if lines[j].strip() == expected}
+            # Remove a single standalone printed number from either edge.
+            # Two matching edges are ambiguous: retain both.
+            if len(edges) == 1:
+                del lines[edges.pop()]
+                removed_numbers += 1
+        cleaned.append('\n'.join(lines))
+    starts = []
+    for section in entry['sections']:
+        page = section['pdf_page']
+        actual = cleaned[page-1]
+        tokens = tokens_with_offsets(actual)
+        words = [t[0] for t in tokens]
+        target = norm(section['heading']).split()
+        # Some PDF text layers join the printed page number and heading
+        # on one line. Permit exactly that documented numeric prefix.
+        prefix = 1 if words[:1] == [str(page-1+entry['footer_page_offset'])] else 0
+        if words[prefix:prefix+len(target)] != target:
+            observed = ' '.join(words[:min(len(target)+2,16)])
+            raise ValueError(f"source_pdf_heading_mismatch: page {page}; expected {section['heading']!r}; observed {observed!r}")
+        start = tokens[prefix][1]
+        end = tokens[prefix+len(target)-1][2]
+        if start > 180 or end > 600:
+            raise ValueError(f'source_pdf_heading_not_at_page_start: page {page}')
+        starts.append((page,end))
+    out = []
+    for section,(page,end),(next_page,_) in zip(entry['sections'],starts,starts[1:]):
+        body = '\n\n'.join([cleaned[page-1][end:], *cleaned[page:next_page-1]])
+        blocks = [re.sub(r'\s+',' ',p).strip()
+                  for p in re.split(r'\n\s*\n',body) if p.strip()]
+        if sum(len(norm(b).split()) for b in blocks) < 40:
+            raise ValueError(f'source_pdf_section_too_short: page {page}')
+        d = Document(entry['pdf_url'],blocks,digest,section['heading'],headings=(section['heading'],))
+        out.append((section,d,{'heading':section['heading'],'pdf_page_start':page,
+                             'pdf_page_end':next_page-1,
+                             'extracted_document':document_identity(d),
+                             'coordinate_scope':'extracted_section_blocks_v1'}))
+    return out, {'pages':len(pages),'removed_page_numbers':removed_numbers,
+                 'heading_verification':'exact_tokens_at_documented_page_start',
+                 'verified_heading_pages':[p for p,_ in starts]}
+
+
 def section_documents(text, entry, digest):
     # Keep paragraph and line structure. Drop only a standalone final
     # integer matching the documented printed-page offset on each page.
@@ -83,6 +156,8 @@ def section_documents(text, entry, digest):
         pages.pop()
     if not entry['skip_pages'] < len(pages) <= 1000:
         raise ValueError('source_pdf_page_count')
+    if validate_page_anchors(entry):
+        return page_anchored_documents(pages,entry,digest)
     lines, page_numbers = [], []
     footer_matches = 0
     for i, page in enumerate(pages):
@@ -112,7 +187,7 @@ def section_documents(text, entry, digest):
             elif i+1 < len(lines) and norm(lines[i+1]) and norm(line+' '+lines[i+1]) == needle:
                 matches.append((i,i+2))
         if len(matches) != 1:
-            raise ValueError('source_pdf_heading_missing_or_ambiguous')
+            raise ValueError(f"source_pdf_heading_missing_or_ambiguous: {s['heading']!r}; pages {[page_numbers[i] for i,_ in matches]}")
         locations.append(matches[0])
     if any(a[1]>=b[0] for a,b in zip(locations,locations[1:])):
         raise ValueError('source_pdf_heading_order')

@@ -9,6 +9,7 @@ class SourcePDFTests(unittest.TestCase):
         self.entry=load_pdf_catalog(ROOT/'source-pdf-catalog.json')[0]
         self.assertTrue(self.entry['sections'][0]['en_url'].endswith('/intro.htm'))
         self.quote='Une phrase précise et vérifiable dans le premier chapitre.'
+        self.entry.pop('expected_pdf_pages')
         self.entry={**self.entry,'skip_pages':1,'sections':[
             {'heading':'I. Premier chapitre','en_url':'https://www.marxists.org/archive/example/first.htm'},
             {'heading':'III. Deuxième chapitre','en_url':'https://www.marxists.org/archive/example/second.htm'},
@@ -32,6 +33,30 @@ class SourcePDFTests(unittest.TestCase):
             section_documents(self.raw.replace('IV. Fin','Autre fin'),self.entry,'digest')
         with self.assertRaisesRegex(ValueError,'source_pdf_heading_missing_or_ambiguous'):
             section_documents(self.raw.replace('IV. Fin','III. Deuxième chapitre\nIV. Fin'),self.entry,'digest')
+
+    def test_page_anchors_accept_wrapped_heading_and_exact_page_number(self):
+        entry={**self.entry,'expected_pdf_pages':4,
+               'sections':[{**s,'pdf_page':i+2} for i,s in enumerate(self.entry['sections'])]}
+        # Heading fragments may be split over physical lines, and a page
+        # number may precede a heading on the same line. The body is kept.
+        raw=self.raw.replace('I. Premier chapitre\n\n'+self.quote,
+                             '1 I.\n\nPremier\nchapitre '+self.quote)
+        # Avoid a duplicated synthetic printed number on this page.
+        raw=raw.replace(self.filler+'\n1\f',self.filler+'\f')
+        raw=raw.replace('III. Deuxième\nchapitre','2\nIII.\n\nDeuxième\nchapitre')
+        raw=raw.replace(self.filler+'\n2\f',self.filler+'\f')
+        sections,meta=section_documents(raw,entry,'digest')
+        self.assertEqual(meta['verified_heading_pages'],[2,3,4])
+        self.assertEqual(locate(self.quote,sections)[1],'exact')
+        self.assertTrue(sections[0][1].blocks[0].startswith(self.quote))
+        self.assertEqual(sections[0][2]['pdf_page_start'],2)
+        self.assertEqual(sections[0][2]['pdf_page_end'],2)
+        with self.assertRaisesRegex(ValueError,'source_pdf_heading_mismatch: page 3'):
+            section_documents(raw.replace('Deuxième\nchapitre','Autre\nchapitre'),entry,'digest')
+        with self.assertRaisesRegex(ValueError,'source_pdf_page_count_mismatch'):
+            section_documents(raw+'Autre page\f',entry,'digest')
+        with self.assertRaisesRegex(ValueError,'invalid_source_pdf_page_anchors'):
+            section_documents(raw,{**entry,'sections':[entry['sections'][0],self.entry['sections'][1],entry['sections'][2]]},'digest')
 
     def test_ambiguous_exact_source_abstains(self):
         sections,_=section_documents(self.raw.replace('chapitre\n\n'+self.filler,
