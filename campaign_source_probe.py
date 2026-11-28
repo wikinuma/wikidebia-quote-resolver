@@ -35,10 +35,9 @@ def prior_result(db, cid):
     if first is None or first[0] not in PENDING:
         return None
     state = first[0]
-    for raw in (first[1],):
-        result = json.loads(raw).get('result')
-        if result is not None:
-            return state, result
+    result = json.loads(first[1]).get('result')
+    if result is not None:
+        return state, result
     for _, raw in events:
         result = json.loads(raw).get('result')
         if result is not None:
@@ -126,13 +125,13 @@ def project(state, url, expected_inventory):
     return {'schema':'wikidebia-source-probe-1', 'inventory_sha256':expected_inventory,
             'source_url':url, 'auto_publish':False, 'rights':'unreviewed',
             'states':dict(Counter(r['state'] for r in rows)),
-            'retrieval_statuses':dict(Counter(r['retrieval_status'] for r in rows)),
+            'retrieval_statuses':dict(Counter(r['retrieval_status'] or 'unknown' for r in rows)),
             'source_quotes':sum('fr' in r for r in rows),
             'probe_errors':dict(Counter(r['probe_error'] for r in rows if 'probe_error' in r)),
             'eligible_chapters':sum('eligible_chapter' in r for r in rows),
             'cache_only':True, 'network_requests':client.requests,
             'cache_hits':client.hits, 'cached_source_documents':len(docs),
-            'cache_issue_kinds':dict(Counter(i.get('error',i['kind']) for i in info.get('issues',[]))),
+            'cache_issue_kinds':dict(Counter(i.get('error') or i.get('kind') or 'unknown' for i in info.get('issues',[]))),
             'rows':rows, 'scopes':scopes}
 
 
@@ -154,6 +153,8 @@ def main():
     digest = manifest['diagnostic_sha256']
     directory = a.out/digest
     directory.mkdir(mode=0o700,parents=True,exist_ok=True)
+    if directory.is_symlink() or directory.stat().st_mode & 0o077:
+        raise ValueError('insecure_source_probe_directory')
     for name,data in files.items():
         path = directory/name
         if path.is_symlink():

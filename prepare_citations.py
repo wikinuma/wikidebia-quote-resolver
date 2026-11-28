@@ -141,9 +141,12 @@ class Campaign:
                               result.get('source', {}), chapters)
         if route is None:
             return None
-        previous = result.get('chapter_route') or result.get('chapter_route_failure', {}).get('route')
-        if previous and all(previous.get(k)==route.get(k) for k in ('fr_url','en_url')):
-            return None
+        for (body,) in self.db.execute('SELECT evidence FROM campaign_events_v1 '
+                                      'WHERE occurrence=? ORDER BY seq DESC', (cid,)):
+            previous_result = json.loads(body).get('result', {})
+            previous = previous_result.get('chapter_route') or previous_result.get('chapter_route_failure', {}).get('route')
+            if previous and all(previous.get(k)==route.get(k) for k in ('fr_url','en_url')):
+                return None
         return route
 
     def select(self, states, limit=0, mia_roots=(), mia_urls=(), retrieval_statuses=()):
@@ -554,8 +557,8 @@ def execute(args, state, library):
                 states = {REVIEWED}
             chapters = load_chapters(ROOT/'chapter-catalog.json')
             new_chapter_only = getattr(args, 'new_chapter_route_only', False)
-            if new_chapter_only and not args.reconsider:
-                raise ValueError('new_chapter_route_only_requires_reconsider')
+            if new_chapter_only and (not args.reconsider or getattr(args, 'prefer_catalog', False)):
+                raise ValueError('new_chapter_route_only_requires_reconsider_without_prefer_catalog')
             selected = campaign.select(states, 0 if new_chapter_only else args.limit,
                                        getattr(args, 'mia_root', ()), getattr(args, 'mia_url', ()),
                                        getattr(args, 'last_retrieval_status', ()))

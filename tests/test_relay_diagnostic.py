@@ -32,6 +32,10 @@ class RelayTest(unittest.TestCase):
                 state['uploaded'] = True
                 return {}
             raise AssertionError((method,suffix))
+        with self.assertRaisesRegex(ValueError,'invalid_relay_prefix'):
+            transfer(api,repo,digest,files,prefix='unexpected')
+        with self.assertRaisesRegex(ValueError,'relay_is_not_expected_private'):
+            transfer(api,repo,digest,files,prefix='source-probes')
         with self.assertRaisesRegex(ValueError,'relay_is_not_expected_private'):
             transfer(api,repo,digest,files)
         self.assertEqual(writes,[])
