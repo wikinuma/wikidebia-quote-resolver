@@ -2,6 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+import argparse
 
 from citation_registry import fingerprint, source_identity
 from alignment import text_and_starts
@@ -9,7 +10,7 @@ from resolver import sha
 from grouped_review import review_view
 from grouped_review import REPLY
 from prepare_citations import (Campaign, AWAITING, CANDIDATES, CLOSED, INSUFFICIENT,
-                               QUEUED, RETRY, REVIEWED, classify, duplicate_groups)
+                               QUEUED, RETRY, REVIEWED, classify, duplicate_groups, parse_mia_root)
 from test_citation_registry import RAW, QUOTE, EN, ENGLISH, ref, candidate, document
 from work_library import WorkLibrary
 
@@ -54,6 +55,30 @@ class CampaignTests(unittest.TestCase):
                                'candidate': s['candidates'][0] if decision == 'complete_equivalent' else None,
                                'ranges': [[0,len(ENGLISH)]] if decision == 'complete_equivalent' else []}
                               for q,s in packet['sources'].items()]}
+
+    def test_select_mia_roots_filters_before_limit_and_preserves_states(self):
+        root = 'https://www.marxists.org/francais/example/work/'
+        other = 'https://www.marxists.org/francais/example/work-other/'
+        self.c.cases['1']['mia_url'] = other + 'chapter.htm'
+        self.c.cases['2']['mia_url'] = root + 'chapter.htm'
+        self.c.cases['3']['mia_url'] = root + 'another.htm'
+        self.c.record('1', INSUFFICIENT, {})
+        self.c.record('2', INSUFFICIENT, {})
+        self.c.record('3', REVIEWED, {})
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT}, 1, [root])], ['2'])
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT}, 0, [root, other])], ['1', '2'])
+        self.assertEqual([c['id'] for c in self.c.select({INSUFFICIENT})], ['1', '2'])
+        self.assertEqual(self.c.latest('3')[0], REVIEWED)
+
+    def test_parse_mia_root_canonicalizes_and_rejects_nondirectories(self):
+        self.assertEqual(parse_mia_root('http://marxists.org/francais/example/'),
+                         'https://www.marxists.org/francais/example/')
+        for value in ('https://example.org/francais/example/', 'https://marxists.org/',
+                      'https://marxists.org/francais/example.htm',
+                      'https://marxists.org/francais/../example/',
+                      'https://marxists.org/francais/example/?q=x'):
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                parse_mia_root(value)
 
     def test_occurrence_accounting_and_duplicate_anomalies(self):
         self.assertEqual(len(duplicate_groups(self.inv)), 1)
